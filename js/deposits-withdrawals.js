@@ -30,6 +30,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set default date to today
     transactionDateInput.value = new Date().toISOString().slice(0, 10);
     
+    // Filter controls
+    const assetTypeFilter = document.getElementById('asset-type-filter');
+    const noteSearch = document.getElementById('note-search');
+    const clearFiltersBtn = document.getElementById('clear-filters-btn');
+    
+    if (assetTypeFilter) {
+        assetTypeFilter.addEventListener('change', renderTransactionsList);
+    }
+    
+    if (noteSearch) {
+        noteSearch.addEventListener('input', renderTransactionsList);
+    }
+    
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', () => {
+            if (assetTypeFilter) assetTypeFilter.value = '';
+            if (noteSearch) noteSearch.value = '';
+            renderTransactionsList();
+        });
+    }
+    
     // Initial render
     renderTransactionsList();
     renderDepositsSummary();
@@ -116,19 +137,32 @@ function deleteTransaction(id) {
 
 function renderTransactionsList() {
     const transactionsListDiv = document.getElementById('transactions-list');
+    const transactionsCountSpan = document.getElementById('transactions-count');
     if (!transactionsListDiv) return;
     
-    const transactions = loadTransactions();
+    // Get all transactions and filter out buy/sell transactions (only show deposit/withdrawal)
+    const allTransactions = loadTransactions();
+    const transactions = allTransactions.filter(tx => 
+        tx.type === 'deposit' || tx.type === 'withdrawal'
+    );
     
-    if (transactions.length === 0) {
-        transactionsListDiv.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">No transactions logged.</td></tr>';
+    // Apply filters
+    const filteredTransactions = applyFilters(transactions);
+    
+    // Update count
+    if (transactionsCountSpan) {
+        transactionsCountSpan.textContent = filteredTransactions.length;
+    }
+    
+    if (filteredTransactions.length === 0) {
+        transactionsListDiv.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">No deposit/withdrawal transactions found.</td></tr>';
         return;
     }
     
     let html = '';
-    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    transactions.forEach(tx => {
+    filteredTransactions.forEach(tx => {
         const typeColor = tx.type === 'deposit' ? 'text-green-400' : 'text-red-400';
         const typeIcon = tx.type === 'deposit' ? '↗' : '↘';
         
@@ -142,8 +176,8 @@ function renderTransactionsList() {
                 <td class="py-2 px-2">${tx.date}</td>
                 <td class="py-2 px-2">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
-                    <button onclick="editTransaction(${tx.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs mr-1">Edit</button>
-                    <button onclick="deleteTransaction(${tx.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
+                    <button onclick="editTransaction(${tx.id})" class="glass-button text-xs px-2 py-1 mr-1">✏️</button>
+                    <button onclick="deleteTransaction(${tx.id})" class="glass-button glass-button-danger text-xs px-2 py-1">🗑️</button>
                 </td>
             </tr>
         `;
@@ -152,11 +186,34 @@ function renderTransactionsList() {
     transactionsListDiv.innerHTML = html;
 }
 
+function applyFilters(transactions) {
+    const assetTypeFilter = document.getElementById('asset-type-filter')?.value || '';
+    const noteSearch = document.getElementById('note-search')?.value || '';
+    
+    return transactions.filter(tx => {
+        // Filter by asset type
+        if (assetTypeFilter && tx.assetType !== assetTypeFilter) {
+            return false;
+        }
+        
+        // Filter by note search
+        if (noteSearch && (!tx.note || !tx.note.toLowerCase().includes(noteSearch.toLowerCase()))) {
+            return false;
+        }
+        
+        return true;
+    });
+}
+
 function renderDepositsSummary() {
     const depositsSummaryTable = document.getElementById('deposits-summary-table');
     if (!depositsSummaryTable) return;
     
-    const transactions = loadTransactions();
+    // Filter out buy/sell transactions (only show deposit/withdrawal)
+    const allTransactions = loadTransactions();
+    const transactions = allTransactions.filter(tx => 
+        tx.type === 'deposit' || tx.type === 'withdrawal'
+    );
     const totals = getTransactionTotals(transactions);
     
     const assetLabels = {

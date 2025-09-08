@@ -647,7 +647,7 @@ function renderCryptoTransactions() {
     const transactions = loadTransactions().filter(tx => tx.assetType === 'crypto');
     
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No crypto transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">No crypto transactions yet.</td></tr>';
         return;
     }
     
@@ -668,6 +668,10 @@ function renderCryptoTransactions() {
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.price, tx.currency)}</td>
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, tx.currency)}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.currency}</td>
+                <td class="py-2 px-2">
+                    <button onclick="editCryptoTransaction(${tx.id})" class="glass-button text-xs px-2 py-1 mr-1">✏️</button>
+                    <button onclick="deleteCryptoTransaction(${tx.id})" class="glass-button glass-button-danger text-xs px-2 py-1">🗑️</button>
+                </td>
             </tr>
         `;
     });
@@ -675,8 +679,123 @@ function renderCryptoTransactions() {
     tbody.innerHTML = html;
 }
 
+// Edit and delete crypto transaction functions
+function editCryptoTransaction(transactionId) {
+    const transactions = loadTransactions();
+    const transaction = transactions.find(tx => tx.id === transactionId);
+    
+    if (!transaction) {
+        showNotification('Transaction not found', 'error');
+        return;
+    }
+    
+    // Populate the edit modal
+    document.getElementById('edit-crypto-transaction-id').value = transaction.id;
+    document.getElementById('edit-crypto-transaction-type').value = transaction.type;
+    document.getElementById('edit-crypto-transaction-name').value = transaction.symbol;
+    document.getElementById('edit-crypto-transaction-quantity').value = transaction.quantity;
+    document.getElementById('edit-crypto-transaction-price').value = transaction.price;
+    document.getElementById('edit-crypto-transaction-date').value = transaction.date;
+    
+    // Show the modal
+    document.getElementById('edit-crypto-transaction-modal').classList.remove('hidden');
+}
+
+function deleteCryptoTransaction(transactionId) {
+    if (!confirm('Are you sure you want to delete this transaction?')) {
+        return;
+    }
+    
+    const transactions = loadTransactions();
+    const transaction = transactions.find(tx => tx.id === transactionId);
+    
+    if (!transaction) {
+        showNotification('Transaction not found', 'error');
+        return;
+    }
+    
+    // Remove the transaction
+    const updatedTransactions = transactions.filter(tx => tx.id !== transactionId);
+    saveTransactions(updatedTransactions);
+    
+    // Recalculate portfolio
+    calculateTotalValue();
+    renderCrypto();
+    renderCryptoTransactions();
+    
+    showNotification('Transaction deleted successfully', 'success');
+}
+
 // Initialize notes when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     initializeNotes();
     renderCryptoTransactions();
+    
+    // Add event listeners for edit crypto transaction modal
+    const editCryptoTransactionForm = document.getElementById('edit-crypto-transaction-form');
+    const editCryptoTransactionCancelBtn = document.getElementById('edit-crypto-transaction-cancel-btn');
+    const editCryptoTransactionModal = document.getElementById('edit-crypto-transaction-modal');
+    
+    if (editCryptoTransactionForm) {
+        editCryptoTransactionForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const transactionId = parseInt(document.getElementById('edit-crypto-transaction-id').value);
+            const type = document.getElementById('edit-crypto-transaction-type').value;
+            const name = document.getElementById('edit-crypto-transaction-name').value;
+            const quantity = parseFloat(document.getElementById('edit-crypto-transaction-quantity').value);
+            const price = parseFloat(document.getElementById('edit-crypto-transaction-price').value);
+            const date = document.getElementById('edit-crypto-transaction-date').value;
+            
+            if (!name || !quantity || !price || !date) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+            
+            const transactions = loadTransactions();
+            const transactionIndex = transactions.findIndex(tx => tx.id === transactionId);
+            
+            if (transactionIndex === -1) {
+                showNotification('Transaction not found', 'error');
+                return;
+            }
+            
+            // Update the transaction
+            transactions[transactionIndex] = {
+                ...transactions[transactionIndex],
+                type: type,
+                symbol: name,
+                quantity: quantity,
+                price: price,
+                total: quantity * price,
+                date: date
+            };
+            
+            saveTransactions(transactions);
+            
+            // Recalculate portfolio
+            calculateTotalValue();
+            renderCrypto();
+            renderCryptoTransactions();
+            
+            // Close modal
+            editCryptoTransactionModal.classList.add('hidden');
+            
+            showNotification('Transaction updated successfully', 'success');
+        });
+    }
+    
+    if (editCryptoTransactionCancelBtn) {
+        editCryptoTransactionCancelBtn.addEventListener('click', () => {
+            editCryptoTransactionModal.classList.add('hidden');
+        });
+    }
+    
+    if (editCryptoTransactionModal) {
+        editCryptoTransactionModal.addEventListener('click', (e) => {
+            if (e.target === editCryptoTransactionModal) {
+                editCryptoTransactionModal.classList.add('hidden');
+            }
+        });
+    }
 });

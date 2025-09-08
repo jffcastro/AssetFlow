@@ -37,7 +37,7 @@
         <!-- Page Title -->
         <div class="mb-6">
             <h2 class="text-3xl font-bold text-emerald-400 mb-2">Deposits & Withdrawals</h2>
-            <p class="text-gray-400">Track your deposits and withdrawals across different asset types</p>
+            <p class="text-gray-400">Track money flow in and out of your brokerage accounts (separate from asset transactions)</p>
         </div>
 
         <!-- Add Transaction Button -->
@@ -49,7 +49,8 @@
 
         <!-- Summary Section -->
         <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
-            <h3 class="text-xl font-semibold mb-4">Transaction Summary</h3>
+            <h3 class="text-xl font-semibold mb-4">Money Flow Summary</h3>
+            <p class="text-sm text-gray-400 mb-4">This tracks cash deposits and withdrawals to/from your brokerage accounts, not individual asset transactions.</p>
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead>
@@ -74,6 +75,29 @@
                 <div class="text-sm text-gray-400">
                     <span id="transactions-count">0</span> transactions
                 </div>
+            </div>
+            
+            <!-- Filter Controls -->
+            <div class="mb-4 flex flex-wrap gap-4 items-center">
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-300">Filter by Asset Type:</label>
+                    <select id="asset-type-filter" class="glass-input p-2 rounded-lg text-sm">
+                        <option value="">All Types</option>
+                        <option value="stock">Stocks</option>
+                        <option value="crypto">Crypto</option>
+                        <option value="etf">ETFs</option>
+                        <option value="cs2">CS2 Items</option>
+                        <option value="static-assets">Static Assets</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-gray-300">Search Note:</label>
+                    <input type="text" id="note-search" placeholder="Search in notes..." 
+                           class="glass-input p-2 rounded-lg text-sm w-48">
+                </div>
+                <button id="clear-filters-btn" class="glass-button text-sm px-3 py-2">
+                    Clear Filters
+                </button>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
