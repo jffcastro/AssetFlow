@@ -6,11 +6,8 @@
     <title>Stocks - AssetFlow</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="css/glass-theme.css" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #111827; /* bg-gray-900 */
-        }
         .positive-gain { color: #22c55e; /* green-500 */ }
         .negative-gain { color: #ef4444; /* red-500 */ }
         .modal-backdrop {
@@ -25,14 +22,14 @@
             <div class="flex flex-col md:flex-row items-center gap-2 w-full">
                 <h1 class="text-2xl md:text-3xl font-bold mr-4">AssetFlow</h1>
                 <nav class="flex flex-wrap gap-1">
-                    <a href="dashboard.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Dashboard</a>
-                    <a href="stocks.html" class="bg-emerald-700 text-white px-2 py-1 rounded text-xs font-medium">Stocks</a>
-                    <a href="etfs.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">ETFs</a>
-                    <a href="crypto.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Crypto</a>
-                    <a href="static-assets.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Cash & Savings</a>
-                    <a href="cs2.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">CS2 Items</a>
-                    <a href="deposits-withdrawals.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Deposits & Withdrawals</a>
-                    <a href="api-keys.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">API Keys</a>
+                    <a href="dashboard.html" class="nav-button text-xs">Dashboard</a>
+                    <a href="stocks.html" class="nav-button text-xs bg-emerald-500/30">Stocks</a>
+                    <a href="etfs.html" class="nav-button text-xs">ETFs</a>
+                    <a href="crypto.html" class="nav-button text-xs">Crypto</a>
+                    <a href="static-assets.html" class="nav-button text-xs">Cash & Savings</a>
+                    <a href="cs2.html" class="nav-button text-xs">CS2 Items</a>
+                    <a href="deposits-withdrawals.html" class="nav-button text-xs">Deposits & Withdrawals</a>
+                    <a href="api-keys.html" class="nav-button text-xs">API Keys</a>
                 </nav>
             </div>
         </header>
@@ -45,16 +42,16 @@
 
         <!-- Stock Actions -->
         <div class="mb-6 flex flex-wrap gap-3">
-            <button id="buy-stock-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+            <button id="buy-stock-btn" class="glass-button glass-button-secondary">
                 Buy Stock
             </button>
-            <button id="sell-stock-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+            <button id="sell-stock-btn" class="glass-button glass-button-danger">
                 Sell Stock
             </button>
         </div>
 
         <!-- Stocks Table -->
-        <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+        <div class="glass-table p-4 md:p-6 rounded-xl shadow-lg">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold">Your Stocks</h3>
                 <div class="text-sm text-gray-400">
@@ -84,10 +81,10 @@
         </div>
 
         <!-- Upcoming Events -->
-        <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg mt-6">
+        <div class="glass-chart-container mt-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold">Upcoming Stock Events</h3>
-                <button id="refresh-events-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                <button id="refresh-events-btn" class="glass-button">
                     Refresh Events
                 </button>
             </div>
@@ -99,39 +96,39 @@
 
     <!-- Add Stock Modal -->
     <div id="stock-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
-        <div class="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-md mx-4 border border-gray-600">
+        <div class="glass-modal p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
             <h2 id="stock-modal-title" class="text-xl font-bold mb-6 text-center">Add New Stock</h2>
             <form id="stock-form">
                 <input type="hidden" id="stock-id">
                 
                 <div class="mb-4">
                     <label for="stock-name" class="block mb-2">Ticker (e.g., AAPL)</label>
-                    <input type="text" id="stock-name" placeholder="e.g., AAPL" class="w-full bg-gray-700 p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <input type="text" id="stock-name" placeholder="e.g., AAPL" class="w-full glass-input p-2 rounded-lg" required>
                 </div>
                 
                 <div class="mb-4">
                     <label for="stock-quantity" class="block mb-2">Quantity</label>
-                    <input type="number" id="stock-quantity" step="any" placeholder="e.g., 10" class="w-full bg-gray-700 p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <input type="number" id="stock-quantity" step="any" placeholder="e.g., 10" class="w-full glass-input p-2 rounded-lg" required>
                 </div>
                 
                 <div class="mb-4">
                     <label for="stock-purchase-price" class="block mb-2">Purchase Price</label>
-                    <input type="number" id="stock-purchase-price" step="any" placeholder="e.g., 150.25" class="w-full bg-gray-700 p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <input type="number" id="stock-purchase-price" step="any" placeholder="e.g., 150.25" class="w-full glass-input p-2 rounded-lg" required>
                 </div>
                 
                 <div class="mb-6">
                     <label for="stock-currency" class="block mb-2">Currency</label>
-                    <select id="stock-currency" class="w-full bg-gray-700 p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500">
+                    <select id="stock-currency" class="w-full glass-input p-2 rounded-lg">
                         <option value="EUR">EUR</option>
                         <option value="USD">USD</option>
                     </select>
                 </div>
                 
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="submit" class="flex-1 glass-button glass-button-primary">
                         Save
                     </button>
-                    <button type="button" id="stock-cancel-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="button" id="stock-cancel-btn" class="flex-1 glass-button">
                         Cancel
                     </button>
                 </div>
@@ -141,22 +138,22 @@
 
     <!-- Buy Stock Modal -->
     <div id="buy-stock-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
+        <div class="glass-modal p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
             <h3 class="text-xl font-semibold mb-4 text-blue-400">Buy Stock</h3>
             <form id="buy-stock-form">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Stock Symbol</label>
                     <input type="text" id="buy-stock-symbol" placeholder="e.g., AAPL" required
-                           class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
+                           class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
                     <input type="number" id="buy-stock-quantity" placeholder="Number of shares" required min="1" step="1"
-                           class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
+                           class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Currency</label>
-                    <select id="buy-stock-currency" class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
+                    <select id="buy-stock-currency" class="w-full glass-input p-3 rounded-lg">
                         <option value="EUR">EUR</option>
                         <option value="USD">USD</option>
                     </select>
@@ -164,18 +161,18 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share</label>
                     <input type="number" id="buy-stock-price" placeholder="Price per share" required min="0" step="0.01"
-                           class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
+                           class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
                     <input type="date" id="buy-stock-date" required
-                           class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
+                           class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="submit" class="flex-1 glass-button glass-button-secondary">
                         Buy Stock
                     </button>
-                    <button type="button" id="buy-stock-cancel-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="button" id="buy-stock-cancel-btn" class="flex-1 glass-button">
                         Cancel
                     </button>
                 </div>
@@ -185,36 +182,36 @@
 
     <!-- Sell Stock Modal -->
     <div id="sell-stock-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
-        <div class="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
+        <div class="glass-modal p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
             <h3 class="text-xl font-semibold mb-4 text-red-400">Sell Stock</h3>
             <form id="sell-stock-form">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Stock Symbol</label>
                     <select id="sell-stock-symbol" required
-                            class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                            class="w-full glass-input p-3 rounded-lg">
                         <option value="">Select a stock to sell</option>
                     </select>
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
                     <input type="number" id="sell-stock-quantity" placeholder="Number of shares" required min="1" step="1"
-                           class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                           class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share (EUR)</label>
                     <input type="number" id="sell-stock-price" placeholder="Price per share" required min="0" step="0.01"
-                           class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                           class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
                     <input type="date" id="sell-stock-date" required
-                           class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                           class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="submit" class="flex-1 glass-button glass-button-danger">
                         Sell Stock
                     </button>
-                    <button type="button" id="sell-stock-cancel-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="button" id="sell-stock-cancel-btn" class="flex-1 glass-button">
                         Cancel
                     </button>
                 </div>
@@ -223,10 +220,10 @@
     </div>
 
     <!-- Transaction History -->
-    <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg mb-6 max-w-7xl mx-auto">
+    <div class="glass-chart-container mb-6 max-w-7xl mx-auto">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-semibold text-emerald-400">Stock Transaction History</h3>
-            <button id="refresh-transactions-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+            <button id="refresh-transactions-btn" class="glass-button">
                 Refresh
             </button>
         </div>
@@ -253,7 +250,7 @@
     </div>
 
     <!-- Investment Notes -->
-    <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg mb-6 max-w-7xl mx-auto">
+    <div class="glass-chart-container mb-6 max-w-7xl mx-auto">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-semibold text-emerald-400">Investment Notes</h3>
             <div class="text-xs text-gray-500">
@@ -262,12 +259,13 @@
         </div>
         <p class="text-gray-400 text-sm mb-4">Keep track of your investment thoughts, strategies, and observations about your stock portfolio.</p>
         <textarea id="stocks-notes" placeholder="Write your investment notes here..." 
-                  class="w-full bg-gray-700 p-4 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500 text-white resize-none" 
+                  class="w-full glass-input p-4 rounded-lg resize-none" 
                   rows="6"></textarea>
     </div>
 
     <!-- Scripts -->
     <script src="js/shared.js"></script>
     <script src="js/stocks.js"></script>
+    <script src="js/theme-switcher.js"></script>
 </body>
 </html>
