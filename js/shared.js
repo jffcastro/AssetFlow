@@ -1537,9 +1537,12 @@ function calculatePortfolioFromTransactions() {
                 holding.quantity += tx.quantity;
                 holding.totalCost += tx.total;
             } else if (tx.type === 'sell') {
+                // Reduce totalCost proportionally based on average cost per share
+                if (holding.quantity > 0) {
+                    const costToRemove = holding.totalCost * (tx.quantity / holding.quantity);
+                    holding.totalCost -= costToRemove;
+                }
                 holding.quantity -= tx.quantity;
-                holding.totalCost -= tx.total;
-
             }
 
             holding.transactions.push(tx);
