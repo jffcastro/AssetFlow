@@ -844,7 +844,7 @@ function calculatePortfolioBreakdown() {
     
     // Calculate ETFs value
     portfolio.etfs.forEach(etf => {
-        const price = priceCache.stocks[etf.name] || 0;
+        const price = priceCache.etfs[etf.name] || 0;
         let value = price * etf.quantity;
         if (etf.currency === 'USD') value = value / eurUsdRate;
         breakdown['ETFs'] += value;
@@ -930,7 +930,7 @@ function calculateBestPerformer() {
     
     // Check ETFs
     portfolio.etfs.forEach(etf => {
-        const currentPrice = priceCache.stocks[etf.name] || 0;
+        const currentPrice = priceCache.etfs[etf.name] || 0;
         if (currentPrice > 0 && etf.purchasePrice > 0) {
             const pnlPercentage = ((currentPrice - etf.purchasePrice) / etf.purchasePrice) * 100;
             if (pnlPercentage > bestPercentage) {
@@ -982,7 +982,7 @@ function calculateWorstPerformer() {
     
     // Check ETFs
     portfolio.etfs.forEach(etf => {
-        const currentPrice = priceCache.stocks[etf.name] || 0;
+        const currentPrice = priceCache.etfs[etf.name] || 0;
         if (currentPrice > 0 && etf.purchasePrice > 0) {
             const pnlPercentage = ((currentPrice - etf.purchasePrice) / etf.purchasePrice) * 100;
             if (pnlPercentage < worstPercentage) {
@@ -1034,7 +1034,7 @@ function calculateTotalPnL() {
     
     // Calculate ETFs P&L
     portfolio.etfs.forEach(etf => {
-        const currentPrice = priceCache.stocks[etf.name] || 0;
+        const currentPrice = priceCache.etfs[etf.name] || 0;
         if (currentPrice > 0 && etf.purchasePrice > 0) {
             const currentValue = currentPrice * etf.quantity;
             const purchaseValue = etf.purchasePrice * etf.quantity;
@@ -1093,7 +1093,7 @@ function calculateTotalPnLPercentage() {
     
     // Calculate ETFs
     portfolio.etfs.forEach(etf => {
-        const currentPrice = priceCache.stocks[etf.name] || 0;
+        const currentPrice = priceCache.etfs[etf.name] || 0;
         if (currentPrice > 0 && etf.purchasePrice > 0) {
             const currentValue = currentPrice * etf.quantity;
             const purchaseValue = etf.purchasePrice * etf.quantity;
