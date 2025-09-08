@@ -669,8 +669,8 @@ function renderCryptoTransactions() {
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, tx.currency)}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.currency}</td>
                 <td class="py-2 px-2">
-                    <button onclick="editCryptoTransaction(${tx.id})" class="glass-button text-xs px-2 py-1 mr-1">✏️</button>
-                    <button onclick="deleteCryptoTransaction(${tx.id})" class="glass-button glass-button-danger text-xs px-2 py-1">🗑️</button>
+                    <button onclick="editCryptoTransaction('${tx.id}')" class="glass-button text-xs px-2 py-1 mr-1">✏️</button>
+                    <button onclick="deleteCryptoTransaction('${tx.id}')" class="glass-button glass-button-danger text-xs px-2 py-1">🗑️</button>
                 </td>
             </tr>
         `;
