@@ -6,10 +6,10 @@
     <title>Cash & Savings - AssetFlow</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="css/glass-theme.css" rel="stylesheet">
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #111827; /* bg-gray-900 */
         }
         .positive-gain { color: #22c55e; /* green-500 */ }
         .negative-gain { color: #ef4444; /* red-500 */ }
@@ -25,14 +25,14 @@
             <div class="flex flex-col md:flex-row items-center gap-2 w-full">
                 <h1 class="text-2xl md:text-3xl font-bold mr-4">AssetFlow</h1>
                 <nav class="flex flex-wrap gap-1">
-                    <a href="dashboard.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Dashboard</a>
-                    <a href="stocks.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Stocks</a>
-                    <a href="etfs.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">ETFs</a>
-                    <a href="crypto.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Crypto</a>
-                    <a href="static-assets.html" class="bg-emerald-700 text-white px-2 py-1 rounded text-xs font-medium">Cash & Savings</a>
-                    <a href="cs2.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">CS2 Items</a>
-                    <a href="deposits-withdrawals.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Deposits & Withdrawals</a>
-                    <a href="api-keys.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">API Keys</a>
+                    <a href="dashboard.html" class="nav-button text-xs">Dashboard</a>
+                    <a href="stocks.html" class="nav-button text-xs">Stocks</a>
+                    <a href="etfs.html" class="nav-button text-xs">ETFs</a>
+                    <a href="crypto.html" class="nav-button text-xs">Crypto</a>
+                    <a href="static-assets.html" class="nav-button text-xs bg-emerald-500/30">Cash & Savings</a>
+                    <a href="cs2.html" class="nav-button text-xs">CS2 Items</a>
+                    <a href="deposits-withdrawals.html" class="nav-button text-xs">Deposits & Withdrawals</a>
+                    <a href="api-keys.html" class="nav-button text-xs">API Keys</a>
                 </nav>
             </div>
         </header>
@@ -45,7 +45,7 @@
 
         <!-- Add Static Asset Button -->
         <div class="mb-6">
-            <button id="add-static-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+            <button id="add-static-btn" class="glass-button glass-button-primary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                 Add New Account
             </button>
         </div>
@@ -53,7 +53,7 @@
         <!-- Cash & Savings by Type -->
         <div class="space-y-6">
             <!-- Savings -->
-            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+            <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-green-400">Savings</h3>
                     <div class="text-sm text-gray-400">
@@ -80,7 +80,7 @@
             </div>
 
             <!-- Emergency Fund -->
-            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+            <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-yellow-400">Emergency Fund</h3>
                     <div class="text-sm text-gray-400">
@@ -107,7 +107,7 @@
             </div>
 
             <!-- Cash -->
-            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+            <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-xl font-semibold text-blue-400">Cash</h3>
                     <div class="text-sm text-gray-400">
@@ -138,14 +138,14 @@
 
     <!-- Add Static Asset Modal -->
     <div id="static-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
-        <div class="bg-gray-800 p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
+        <div class="glass-chart-container p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
             <h2 id="static-modal-title" class="text-2xl font-bold mb-6">Add New Account</h2>
             <form id="static-form">
                 <input type="hidden" id="static-id">
                 
                 <div class="mb-4">
                     <label for="static-type" class="block mb-2">Account Type</label>
-                    <select id="static-type" class="w-full bg-gray-700 p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <select id="static-type" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
                         <option value="Savings">Savings</option>
                         <option value="Emergency Fund">Emergency Fund</option>
                         <option value="Cash">Cash</option>
@@ -154,17 +154,17 @@
                 
                 <div class="mb-4">
                     <label for="static-name" class="block mb-2">Name</label>
-                    <input type="text" id="static-name" placeholder="e.g., High-Yield Savings" class="w-full bg-gray-700 p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <input type="text" id="static-name" placeholder="e.g., High-Yield Savings" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
                 </div>
                 
                 <div class="mb-4">
                     <label for="static-value" class="block mb-2">Current Value</label>
-                    <input type="number" id="static-value" step="any" placeholder="e.g., 5000.00" class="w-full bg-gray-700 p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <input type="number" id="static-value" step="any" placeholder="e.g., 5000.00" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
                 </div>
                 
                 <div class="mb-4">
                     <label for="static-currency" class="block mb-2">Currency</label>
-                    <select id="static-currency" class="w-full bg-gray-700 p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500">
+                    <select id="static-currency" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500">
                         <option value="EUR">EUR</option>
                         <option value="USD">USD</option>
                     </select>
@@ -172,7 +172,7 @@
                 
                 <div class="mb-4">
                     <div class="flex items-center gap-2 mb-2">
-                        <input type="checkbox" id="static-yield-account" class="w-4 h-4 text-emerald-600 bg-gray-700 border-gray-600 rounded focus:ring-emerald-500 focus:ring-2">
+                        <input type="checkbox" id="static-yield-account" class="w-4 h-4 text-emerald-600 glass-input border-gray-600 rounded focus:ring-emerald-500 focus:ring-2">
                         <label for="static-yield-account" class="text-sm font-medium">High-Yield Account</label>
                     </div>
                     <div class="text-xs text-gray-400">Enable to track interest earnings and projected values</div>
@@ -180,15 +180,15 @@
                 
                 <div class="mb-6" id="yield-rate-container" style="display: none;">
                     <label for="static-interest-rate" class="block mb-2">Annual Interest Rate (%)</label>
-                    <input type="number" id="static-interest-rate" step="0.01" min="0" max="50" placeholder="e.g., 4.5" class="w-full bg-gray-700 p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500">
+                    <input type="number" id="static-interest-rate" step="0.01" min="0" max="50" placeholder="e.g., 4.5" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500">
                     <div class="text-xs text-gray-400 mt-1">Enter the annual percentage rate (APR) for this account</div>
                 </div>
                 
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="submit" class="flex-1 glass-button glass-button-primary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                         Save
                     </button>
-                    <button type="button" id="static-cancel-btn" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="button" id="static-cancel-btn" class="flex-1 bg-gray-600 hover:glass-input text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                         Cancel
                     </button>
                 </div>
@@ -200,5 +200,6 @@
     <!-- Scripts -->
     <script src="js/shared.js"></script>
     <script src="js/static-assets.js"></script>
+    <script src="js/theme-switcher.js"></script>
 </body>
 </html>
