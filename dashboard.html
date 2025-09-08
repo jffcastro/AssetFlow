@@ -8,17 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #111827; /* bg-gray-900 */
-        }
-        .positive-gain { color: #22c55e; /* green-500 */ }
-        .negative-gain { color: #ef4444; /* red-500 */ }
-        .modal-backdrop {
-            background-color: rgba(0, 0, 0, 0.5);
-        }
-    </style>
+    <link href="css/glass-theme.css" rel="stylesheet">
 </head>
 <body class="text-white">
     <div class="container mx-auto p-4 md:p-6">
@@ -26,14 +16,14 @@
         <header class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
             <div class="flex flex-col md:flex-row items-center gap-2 w-full">
                 <h1 class="text-2xl md:text-3xl font-bold mr-4">AssetFlow</h1>
-                <nav class="flex flex-wrap gap-1">
-                    <a href="stocks.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Stocks</a>
-                    <a href="etfs.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">ETFs</a>
-                    <a href="crypto.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Crypto</a>
-                    <a href="static-assets.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Cash & Savings</a>
-                    <a href="cs2.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">CS2 Items</a>
-                    <a href="deposits-withdrawals.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Deposits & Withdrawals</a>
-                    <a href="api-keys.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">API Keys</a>
+                <nav class="flex flex-wrap gap-2">
+                    <a href="stocks.html" class="nav-button text-white px-3 py-2 rounded-lg text-sm font-medium">Stocks</a>
+                    <a href="etfs.html" class="nav-button text-white px-3 py-2 rounded-lg text-sm font-medium">ETFs</a>
+                    <a href="crypto.html" class="nav-button text-white px-3 py-2 rounded-lg text-sm font-medium">Crypto</a>
+                    <a href="static-assets.html" class="nav-button text-white px-3 py-2 rounded-lg text-sm font-medium">Cash & Savings</a>
+                    <a href="cs2.html" class="nav-button text-white px-3 py-2 rounded-lg text-sm font-medium">CS2 Items</a>
+                    <a href="deposits-withdrawals.html" class="nav-button text-white px-3 py-2 rounded-lg text-sm font-medium">Deposits & Withdrawals</a>
+                    <a href="api-keys.html" class="nav-button text-white px-3 py-2 rounded-lg text-sm font-medium">API Keys</a>
                 </nav>
             </div>
             <div class="flex flex-col md:flex-row w-full md:w-auto justify-between items-center gap-2">
@@ -50,7 +40,7 @@
 
         <!-- Total Portfolio Value (Multi-currency) -->
         <div id="portfolio-total-value-bar" class="w-full flex justify-center items-center mb-4">
-            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white text-center px-6 md:px-10 py-6 rounded-2xl shadow-2xl border border-emerald-500/30 backdrop-blur-sm">
+            <div class="card-glass text-white text-center px-6 md:px-10 py-6 rounded-2xl shadow-2xl">
                 <div class="mb-2">
                     <span class="text-sm md:text-base font-medium text-emerald-100">Total Portfolio Value</span>
                 </div>
@@ -77,12 +67,12 @@
 
         <!-- Exchange Rates Bar -->
         <div class="w-full flex justify-center items-center mb-6">
-            <div class="bg-gray-800 text-white px-4 md:px-6 py-2 rounded-lg shadow-lg border border-gray-600 flex flex-col md:flex-row gap-2 md:gap-4 items-center justify-center">
+            <div class="glass-effect text-white px-4 md:px-6 py-2 rounded-lg shadow-lg flex flex-col md:flex-row gap-2 md:gap-4 items-center justify-center">
                 <span class="text-sm font-medium text-gray-300">Exchange Rates:</span>
                 <span id="eur-usd-rate-label" class="text-emerald-400 font-medium text-sm">EUR/USD: --</span>
                 <span id="eur-btc-rate-label" class="text-yellow-400 font-medium text-sm">EUR/BTC: --</span>
                 <span id="eur-eth-rate-label" class="text-yellow-300 font-medium text-sm">EUR/ETH: --</span>
-                <button id="fetch-rates-btn" class="bg-blue-700 hover:bg-blue-800 text-white font-medium py-1 px-3 rounded transition duration-300 text-xs">Update All</button>
+                <button id="fetch-rates-btn" class="bg-white/20 hover:bg-white/30 text-white font-medium py-1 px-3 rounded-lg transition duration-300 text-xs backdrop-blur-sm border border-white/30">Update All</button>
                 <div class="text-xs text-gray-400 border-l border-gray-600 pl-2">
                     <span class="text-gray-300">Last Update:</span>
                     <span id="last-update-time">Never</span>
