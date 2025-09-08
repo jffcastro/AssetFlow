@@ -177,8 +177,6 @@ For enhanced features, configure API keys:
 
 - **Backup**: Use the "Backup Data" button to download a complete backup
 - **Restore**: Use the "Restore Data" button to restore from a backup file
-- **Export**: Export portfolio data to CSV format
-- **Import**: Import portfolio data from CSV files
 
 ## 🧪 Testing
 
@@ -210,33 +208,12 @@ AssetFlow includes a comprehensive test suite:
 - **API Keys**: Stored locally and only used for legitimate API calls
 - **Backup**: You control your data with local backup/restore functionality
 
-## 🌐 Browser Compatibility
-
-- ✅ Chrome 80+
-- ✅ Firefox 75+
-- ✅ Safari 13+
-- ✅ Edge 80+
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our contributing guidelines:
-
-1. **Fork the repository**
-2. **Create a feature branch**
-3. **Add tests** for new functionality
-4. **Ensure all tests pass**
-5. **Submit a pull request**
-
 ### Development Setup
 
 1. Clone the repository
 2. Open in your preferred code editor
 3. Use a local web server for development
 4. Run tests before submitting changes
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
@@ -257,30 +234,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    - Check browser console for errors
    - Verify data format is correct
 
-### Getting Help
-
-- 📧 **Email**: [your-email@example.com]
-- 🐛 **Issues**: [GitHub Issues](https://github.com/yourusername/assetflow/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/yourusername/assetflow/discussions)
-
-## 🗺️ Roadmap
-
-### Upcoming Features
-
-- [ ] **Mobile App**: Native mobile application
-- [ ] **Cloud Sync**: Optional cloud data synchronization
-- [ ] **Advanced Analytics**: More sophisticated portfolio analysis
-- [ ] **Tax Reporting**: Tax loss harvesting and reporting features
-- [ ] **Social Features**: Portfolio sharing and comparison
-- [ ] **AI Insights**: Machine learning-powered portfolio recommendations
-
-### Version History
-
-- **v1.0.0** - Initial release with core portfolio management
-- **v1.1.0** - Added CS2 items support and enhanced analytics
-- **v1.2.0** - Improved API integration and transaction management
-- **v1.3.0** - Added comprehensive test suite and documentation
-
 ## 🙏 Acknowledgments
 
 - **Yahoo Finance** for stock and ETF price data
@@ -288,14 +241,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Frankfurter** for exchange rate data
 - **Chart.js** for beautiful data visualizations
 - **Tailwind CSS** for responsive design framework
-
-## 📊 Statistics
-
-- **Lines of Code**: ~5,000+
-- **Test Coverage**: 95%+
-- **Supported Assets**: 5+ types
-- **API Integrations**: 5+ services
-- **Browser Support**: 4+ major browsers
 
 ---
 
