@@ -42,10 +42,10 @@
 
         <!-- ETF Actions -->
         <div class="mb-6 flex flex-wrap gap-3">
-            <button id="buy-etf-btn" class="glass-button glass-button-secondary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+            <button id="buy-etf-btn" class="glass-button glass-button-secondary">
                 Buy ETF
             </button>
-            <button id="sell-etf-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+            <button id="sell-etf-btn" class="glass-button glass-button-danger">
                 Sell ETF
             </button>
         </div>
@@ -253,11 +253,12 @@
                         <th class="text-left py-2 px-2 text-gray-300">Price</th>
                         <th class="text-left py-2 px-2 text-gray-300">Total</th>
                         <th class="text-left py-2 px-2 text-gray-300">Currency</th>
+                        <th class="text-left py-2 px-2 text-gray-300">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="etf-transactions-tbody">
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-gray-400">No ETF transactions yet.</td>
+                        <td colspan="8" class="text-center py-4 text-gray-400">No ETF transactions yet.</td>
                     </tr>
                 </tbody>
             </table>
@@ -276,6 +277,65 @@
         <textarea id="etfs-notes" placeholder="Write your investment notes here..." 
                   class="w-full glass-input p-4 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500 text-white resize-none" 
                   rows="6"></textarea>
+    </div>
+
+    <!-- Edit ETF Transaction Modal -->
+    <div id="edit-etf-transaction-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+        <div class="glass-modal p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
+            <h3 class="text-xl font-semibold mb-4 text-blue-400">Edit ETF Transaction</h3>
+            <form id="edit-etf-transaction-form">
+                <input type="hidden" id="edit-etf-transaction-id">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Transaction Type</label>
+                    <select id="edit-etf-transaction-type" class="w-full glass-input p-3 rounded-lg">
+                        <option value="buy">Buy</option>
+                        <option value="sell">Sell</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">ETF Symbol</label>
+                    <input type="text" id="edit-etf-transaction-symbol" placeholder="e.g., VWCE.DE" required
+                           class="w-full glass-input p-3 rounded-lg">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
+                    <input type="number" id="edit-etf-transaction-quantity" placeholder="Number of shares" required min="1" step="1"
+                           class="w-full glass-input p-3 rounded-lg">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share</label>
+                    <input type="number" id="edit-etf-transaction-price" placeholder="Price per share" required min="0" step="0.01"
+                           class="w-full glass-input p-3 rounded-lg">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Currency</label>
+                    <select id="edit-etf-transaction-currency" class="w-full glass-input p-3 rounded-lg">
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
+                    <input type="date" id="edit-etf-transaction-date" required
+                           class="w-full glass-input p-3 rounded-lg">
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="submit" class="flex-1 glass-button glass-button-primary">
+                        Update Transaction
+                    </button>
+                    <button type="button" id="edit-etf-transaction-cancel-btn" class="flex-1 glass-button">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Scripts -->

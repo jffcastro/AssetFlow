@@ -652,7 +652,7 @@ function renderStockTransactions() {
     const transactions = loadTransactions().filter(tx => tx.assetType === 'stock');
     
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No stock transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">No stock transactions yet.</td></tr>';
         return;
     }
     
@@ -673,12 +673,129 @@ function renderStockTransactions() {
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.price, tx.currency)}</td>
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, tx.currency)}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.currency}</td>
+                <td class="py-2 px-2">
+                    <div class="flex gap-1">
+                        <button onclick="editStockTransaction('${tx.id}')" class="glass-button text-xs px-2 py-1" title="Edit">
+                            ✏️
+                        </button>
+                        <button onclick="deleteStockTransaction('${tx.id}')" class="glass-button glass-button-danger text-xs px-2 py-1" title="Delete">
+                            🗑️
+                        </button>
+                    </div>
+                </td>
             </tr>
         `;
     });
     
     tbody.innerHTML = html;
 }
+
+// Edit stock transaction
+function editStockTransaction(transactionId) {
+    const transactions = loadTransactions();
+    const transaction = transactions.find(tx => tx.id === transactionId);
+    
+    if (!transaction) {
+        showNotification('Transaction not found', 'error');
+        return;
+    }
+    
+    // Populate the edit modal
+    document.getElementById('edit-transaction-id').value = transaction.id;
+    document.getElementById('edit-transaction-type').value = transaction.type;
+    document.getElementById('edit-transaction-symbol').value = transaction.symbol;
+    document.getElementById('edit-transaction-quantity').value = transaction.quantity;
+    document.getElementById('edit-transaction-price').value = transaction.price;
+    document.getElementById('edit-transaction-currency').value = transaction.currency;
+    document.getElementById('edit-transaction-date').value = transaction.date;
+    
+    // Show the modal
+    document.getElementById('edit-stock-transaction-modal').classList.remove('hidden');
+}
+
+// Delete stock transaction
+function deleteStockTransaction(transactionId) {
+    if (!confirm('Are you sure you want to delete this transaction? This action cannot be undone.')) {
+        return;
+    }
+    
+    const transactions = loadTransactions();
+    const updatedTransactions = transactions.filter(tx => tx.id !== transactionId);
+    saveTransactions(updatedTransactions);
+    
+    // Recalculate portfolio
+    calculatePortfolioFromTransactions();
+    renderStocks();
+    renderStockTransactions();
+    
+    showNotification('Transaction deleted successfully', 'success');
+}
+
+// Handle edit transaction form submission
+document.addEventListener('DOMContentLoaded', () => {
+    const editForm = document.getElementById('edit-stock-transaction-form');
+    const editCancelBtn = document.getElementById('edit-transaction-cancel-btn');
+    
+    if (editForm) {
+        editForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const transactionId = document.getElementById('edit-transaction-id').value;
+            const type = document.getElementById('edit-transaction-type').value;
+            const symbol = document.getElementById('edit-transaction-symbol').value.toUpperCase();
+            const quantity = parseInt(document.getElementById('edit-transaction-quantity').value);
+            const price = parseFloat(document.getElementById('edit-transaction-price').value);
+            const currency = document.getElementById('edit-transaction-currency').value;
+            const date = document.getElementById('edit-transaction-date').value;
+            
+            if (!symbol || !quantity || !price || !date) {
+                showNotification('Please fill in all fields', 'error');
+                return;
+            }
+            
+            const total = quantity * price;
+            
+            // Update the transaction
+            const transactions = loadTransactions();
+            const transactionIndex = transactions.findIndex(tx => tx.id === transactionId);
+            
+            if (transactionIndex === -1) {
+                showNotification('Transaction not found', 'error');
+                return;
+            }
+            
+            transactions[transactionIndex] = {
+                ...transactions[transactionIndex],
+                type,
+                symbol,
+                quantity,
+                price,
+                total,
+                currency,
+                date,
+                timestamp: new Date().toISOString()
+            };
+            
+            saveTransactions(transactions);
+            
+            // Recalculate portfolio
+            calculatePortfolioFromTransactions();
+            renderStocks();
+            renderStockTransactions();
+            
+            // Close modal
+            document.getElementById('edit-stock-transaction-modal').classList.add('hidden');
+            
+            showNotification('Transaction updated successfully', 'success');
+        });
+    }
+    
+    if (editCancelBtn) {
+        editCancelBtn.addEventListener('click', () => {
+            document.getElementById('edit-stock-transaction-modal').classList.add('hidden');
+        });
+    }
+});
 
 // Initialize notes when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
