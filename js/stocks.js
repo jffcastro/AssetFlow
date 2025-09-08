@@ -588,7 +588,8 @@ function handleBuyStock() {
     };
     
     addTransaction(transaction);
-    saveData();
+    // Recalculate portfolio from transactions (source of truth)
+    calculatePortfolioFromTransactions();
     renderStocks();
     renderStockTransactions();
     closeBuyStockModal();
@@ -636,7 +637,8 @@ function handleSellStock() {
     };
     
     addTransaction(transaction);
-    saveData();
+    // Recalculate portfolio from transactions (source of truth)
+    calculatePortfolioFromTransactions();
     renderStocks();
     renderStockTransactions();
     closeSellStockModal();
@@ -724,6 +726,7 @@ function deleteStockTransaction(transactionId) {
     saveTransactions(updatedTransactions);
     
     // Recalculate portfolio
+    // Recalculate portfolio from transactions (source of truth)
     calculatePortfolioFromTransactions();
     renderStocks();
     renderStockTransactions();
@@ -779,6 +782,7 @@ document.addEventListener('DOMContentLoaded', () => {
             saveTransactions(transactions);
             
             // Recalculate portfolio
+            // Recalculate portfolio from transactions (source of truth)
             calculatePortfolioFromTransactions();
             renderStocks();
             renderStockTransactions();

@@ -443,7 +443,8 @@ function handleBuyEtf() {
     };
     
     addTransaction(transaction);
-    saveData();
+    // Recalculate portfolio from transactions (source of truth)
+    calculatePortfolioFromTransactions();
     renderEtfs();
     renderEtfTransactions();
     closeBuyEtfModal();
@@ -491,7 +492,8 @@ function handleSellEtf() {
     };
     
     addTransaction(transaction);
-    saveData();
+    // Recalculate portfolio from transactions (source of truth)
+    calculatePortfolioFromTransactions();
     renderEtfs();
     renderEtfTransactions();
     closeSellEtfModal();
