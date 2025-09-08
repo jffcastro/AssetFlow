@@ -1,0 +1,542 @@
+// ETFs page functionality
+document.addEventListener('DOMContentLoaded', () => {
+    // DOM elements
+    const etfModal = document.getElementById('etf-modal');
+    const etfForm = document.getElementById('etf-form');
+    const etfCancelBtn = document.getElementById('etf-cancel-btn');
+    const etfModalTitle = document.getElementById('etf-modal-title');
+    // Price update button removed - handled automatically from dashboard
+    
+    const etfIdInput = document.getElementById('etf-id');
+    const etfNameInput = document.getElementById('etf-name');
+    const etfQuantityInput = document.getElementById('etf-quantity');
+    const etfPurchasePriceInput = document.getElementById('etf-purchase-price');
+    const etfCurrencySelect = document.getElementById('etf-currency');
+    const etfsTbody = document.getElementById('etfs-tbody');
+    
+    // Buy/Sell DOM elements
+    const buyEtfBtn = document.getElementById('buy-etf-btn');
+    const sellEtfBtn = document.getElementById('sell-etf-btn');
+    const buyEtfModal = document.getElementById('buy-etf-modal');
+    const sellEtfModal = document.getElementById('sell-etf-modal');
+    const buyEtfForm = document.getElementById('buy-etf-form');
+    const sellEtfForm = document.getElementById('sell-etf-form');
+    const buyEtfCancelBtn = document.getElementById('buy-etf-cancel-btn');
+    const sellEtfCancelBtn = document.getElementById('sell-etf-cancel-btn');
+    const sellEtfSymbolSelect = document.getElementById('sell-etf-symbol');
+    const refreshEtfTransactionsBtn = document.getElementById('refresh-etf-transactions-btn');
+
+    // Event listeners
+    etfCancelBtn.addEventListener('click', closeEtfModal);
+    etfModal.addEventListener('click', (e) => {
+        if (e.target === etfModal) closeEtfModal();
+    });
+    
+    etfForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveEtf();
+    });
+
+    // Buy/Sell event listeners
+    buyEtfBtn.addEventListener('click', openBuyEtfModal);
+    sellEtfBtn.addEventListener('click', openSellEtfModal);
+    buyEtfCancelBtn.addEventListener('click', closeBuyEtfModal);
+    sellEtfCancelBtn.addEventListener('click', closeSellEtfModal);
+    buyEtfModal.addEventListener('click', (e) => {
+        if (e.target === buyEtfModal) closeBuyEtfModal();
+    });
+    sellEtfModal.addEventListener('click', (e) => {
+        if (e.target === sellEtfModal) closeSellEtfModal();
+    });
+    
+    buyEtfForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleBuyEtf();
+    });
+    
+    sellEtfForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handleSellEtf();
+    });
+    
+    refreshEtfTransactionsBtn.addEventListener('click', renderEtfTransactions);
+    
+    // Price updates are now handled automatically from the dashboard
+    
+    // Initial render
+    renderEtfs();
+});
+
+function openEtfModal(mode = 'add', etf = null) {
+    const etfForm = document.getElementById('etf-form');
+    const etfModalTitle = document.getElementById('etf-modal-title');
+    const etfIdInput = document.getElementById('etf-id');
+    const etfNameInput = document.getElementById('etf-name');
+    const etfQuantityInput = document.getElementById('etf-quantity');
+    const etfPurchasePriceInput = document.getElementById('etf-purchase-price');
+    const etfCurrencySelect = document.getElementById('etf-currency');
+    
+    etfForm.reset();
+    etfModalTitle.textContent = mode === 'add' ? 'Add New ETF' : 'Edit ETF';
+    etfIdInput.value = etf ? etf.id : '';
+    
+    if (etf) {
+        etfNameInput.value = etf.name;
+        etfQuantityInput.value = etf.quantity;
+        etfPurchasePriceInput.value = etf.purchasePrice;
+        etfCurrencySelect.value = etf.currency;
+    } else {
+        etfCurrencySelect.value = 'EUR';
+    }
+    
+    document.getElementById('etf-modal').classList.remove('hidden');
+}
+
+function closeEtfModal() {
+    document.getElementById('etf-modal').classList.add('hidden');
+}
+
+function saveEtf() {
+    const etfIdInput = document.getElementById('etf-id');
+    const etfNameInput = document.getElementById('etf-name');
+    const etfQuantityInput = document.getElementById('etf-quantity');
+    const etfPurchasePriceInput = document.getElementById('etf-purchase-price');
+    const etfCurrencySelect = document.getElementById('etf-currency');
+    
+    const etfData = {
+        id: etfIdInput.value ? parseInt(etfIdInput.value) : Date.now(),
+        name: etfNameInput.value.toUpperCase(),
+        quantity: parseFloat(etfQuantityInput.value),
+        purchasePrice: parseFloat(etfPurchasePriceInput.value),
+        currency: etfCurrencySelect.value
+    };
+    
+    if (etfIdInput.value) {
+        // Edit existing ETF
+        const index = portfolio.etfs.findIndex(e => e.id == etfIdInput.value);
+        if (index !== -1) {
+            portfolio.etfs[index] = etfData;
+        }
+    } else {
+        // Add new ETF
+        portfolio.etfs.push(etfData);
+    }
+    
+    saveData();
+    renderEtfs();
+    closeEtfModal();
+    showNotification('ETF saved successfully!', 'success');
+}
+
+function deleteEtf(id) {
+    if (confirm('Are you sure you want to delete this ETF?')) {
+        portfolio.etfs = portfolio.etfs.filter(e => e.id != id);
+        saveData();
+        renderEtfs();
+        showNotification('ETF deleted successfully!', 'success');
+    }
+}
+
+function renderEtfs() {
+    const etfsTbody = document.getElementById('etfs-tbody');
+    const etfsCount = document.getElementById('etfs-count');
+    if (!etfsTbody) return;
+    
+    // Update count
+    if (etfsCount) {
+        etfsCount.textContent = portfolio.etfs.length;
+    }
+    
+    if (portfolio.etfs.length === 0) {
+        etfsTbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No ETFs added yet.</td></tr>';
+        return;
+    }
+    
+    let html = '';
+    let totalValue = 0;
+    let totalPnl = 0;
+    
+    // First pass: calculate total values
+    portfolio.etfs.forEach(etf => {
+        const cachedData = priceCache.etfs[etf.name] || {};
+        const currentPrice = cachedData.price || 0;
+        const value = currentPrice * etf.quantity;
+        const purchaseValue = etf.purchasePrice * etf.quantity;
+        const pnl = value - purchaseValue;
+        
+        // Convert to EUR for total calculation
+        let valueEur = value;
+        let pnlEur = pnl;
+        if (etf.currency === 'USD') {
+            valueEur = value / eurUsdRate;
+            pnlEur = pnl / eurUsdRate;
+        }
+        
+        totalValue += valueEur;
+        totalPnl += pnlEur;
+    });
+    
+    // Second pass: render rows with allocation percentages
+    portfolio.etfs.forEach(etf => {
+        const cachedData = priceCache.etfs[etf.name] || {};
+        const currentPrice = cachedData.price || 0;
+        const change24h = cachedData.change24h || 0;
+        const value = currentPrice * etf.quantity;
+        const purchaseValue = etf.purchasePrice * etf.quantity;
+        const pnl = value - purchaseValue;
+        const pnlPercentage = purchaseValue > 0 ? (pnl / purchaseValue) * 100 : 0;
+        
+        // Convert to EUR for total calculation
+        let valueEur = value;
+        let pnlEur = pnl;
+        if (etf.currency === 'USD') {
+            valueEur = value / eurUsdRate;
+            pnlEur = pnl / eurUsdRate;
+        }
+        
+        const pnlClass = pnl >= 0 ? 'positive-gain' : 'negative-gain';
+        const pnlSign = pnl >= 0 ? '+' : '';
+        
+        // Calculate allocation percentage
+        const allocationPercentage = totalValue > 0 ? (valueEur / totalValue) * 100 : 0;
+        
+        // Format 24h change
+        const change24hClass = change24h >= 0 ? 'text-emerald-400' : 'text-red-400';
+        const change24hSign = change24h >= 0 ? '+' : '';
+        const change24hDisplay = currentPrice > 0 ? `${change24hSign}${change24h.toFixed(2)}%` : '--';
+        
+        html += `
+            <tr class="border-b border-gray-700">
+                <td class="py-2 px-2 font-semibold">
+                    <a href="https://finance.yahoo.com/quote/${etf.name}" target="_blank" class="text-blue-400 hover:text-blue-300 underline">
+                        ${etf.name}
+                    </a>
+                </td>
+                <td class="py-2 px-2">${etf.quantity}</td>
+                <td class="py-2 px-2">${formatCurrency(etf.purchasePrice, etf.currency)}</td>
+                <td class="py-2 px-2">${currentPrice > 0 ? formatCurrency(currentPrice, etf.currency) : '--'}</td>
+                <td class="py-2 px-2 ${change24hClass}">${change24hDisplay}</td>
+                <td class="py-2 px-2">${currentPrice > 0 ? formatCurrency(value, etf.currency) : '--'}</td>
+                <td class="py-2 px-2">${allocationPercentage.toFixed(1)}%</td>
+                <td class="py-2 px-2 ${pnlClass}">
+                    ${currentPrice > 0 ? `${pnlSign}${formatCurrency(pnl, etf.currency)} (${pnlSign}${pnlPercentage.toFixed(2)}%)` : '--'}
+                </td>
+                <td class="py-2 px-2">
+                    <button onclick="editEtf(${etf.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs mr-1">Edit</button>
+                    <button onclick="deleteEtf(${etf.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    // Add total row
+    if (portfolio.etfs.length > 0) {
+        const totalPnlClass = totalPnl >= 0 ? 'positive-gain' : 'negative-gain';
+        const totalPnlSign = totalPnl >= 0 ? '+' : '';
+        const totalPnlPercentage = totalValue > 0 ? (totalPnl / (totalValue - totalPnl)) * 100 : 0;
+        
+        html += `
+            <tr class="border-t-2 border-emerald-500 bg-gray-900">
+                <td colspan="4" class="py-2 px-2 font-bold text-emerald-300">Total</td>
+                <td class="py-2 px-2 font-bold text-emerald-300">--</td>
+                <td class="py-2 px-2 font-bold text-emerald-300">${formatCurrency(totalValue, 'EUR')}</td>
+                <td class="py-2 px-2 font-bold text-emerald-300">100.0%</td>
+                <td class="py-2 px-2 font-bold ${totalPnlClass}">
+                    ${totalPnlSign}${formatCurrency(totalPnl, 'EUR')} (${totalPnlSign}${totalPnlPercentage.toFixed(2)}%)
+                </td>
+                <td class="py-2 px-2"></td>
+            </tr>
+        `;
+    }
+    
+    etfsTbody.innerHTML = html;
+}
+
+function editEtf(id) {
+    const etf = portfolio.etfs.find(e => e.id == id);
+    if (etf) {
+        openEtfModal('edit', etf);
+    }
+}
+
+async function updateEtfPrices() {
+    const getEtfsPricesBtn = document.getElementById('get-etfs-prices-btn');
+    if (getEtfsPricesBtn) {
+        getEtfsPricesBtn.disabled = true;
+        getEtfsPricesBtn.textContent = 'Updating...';
+    }
+    
+    let updatedCount = 0;
+    const promises = portfolio.etfs.map(async (etf) => {
+        try {
+            const price = await fetchStockPrice(etf.name);
+            if (price) {
+                priceCache.stocks[etf.name] = price;
+                updatedCount++;
+            }
+        } catch (error) {
+            console.error(`Error fetching price for ${etf.name}:`, error);
+        }
+    });
+    
+    await Promise.all(promises);
+    savePriceCache();
+    renderEtfs();
+    
+    if (getEtfsPricesBtn) {
+        getEtfsPricesBtn.disabled = false;
+        getEtfsPricesBtn.textContent = 'Update Prices';
+    }
+    
+    showNotification(`Updated prices for ${updatedCount} ETFs`, 'success');
+}
+
+// Notes functionality
+function initializeNotes() {
+    const notesTextarea = document.getElementById('etfs-notes');
+    const charCount = document.getElementById('notes-char-count');
+    
+    if (notesTextarea && charCount) {
+        // Load existing notes
+        loadNotes();
+        
+        // Event listeners
+        notesTextarea.addEventListener('input', () => {
+            updateCharCount();
+            autoSaveNotes();
+        });
+        
+        // Auto-save on blur
+        notesTextarea.addEventListener('blur', autoSaveNotes);
+    }
+}
+
+function loadNotes() {
+    const notesTextarea = document.getElementById('etfs-notes');
+    const charCount = document.getElementById('notes-char-count');
+    
+    if (notesTextarea && charCount) {
+        const notes = localStorage.getItem('etfsNotes') || '';
+        notesTextarea.value = notes;
+        updateCharCount();
+    }
+}
+
+function autoSaveNotes() {
+    const notesTextarea = document.getElementById('etfs-notes');
+    
+    if (notesTextarea) {
+        const notes = notesTextarea.value;
+        localStorage.setItem('etfsNotes', notes);
+    }
+}
+
+function updateCharCount() {
+    const notesTextarea = document.getElementById('etfs-notes');
+    const charCount = document.getElementById('notes-char-count');
+    
+    if (notesTextarea && charCount) {
+        const count = notesTextarea.value.length;
+        charCount.textContent = count;
+    }
+}
+
+// Buy/Sell functionality
+function openBuyEtfModal() {
+    const modal = document.getElementById('buy-etf-modal');
+    const dateInput = document.getElementById('buy-etf-date');
+    dateInput.value = new Date().toISOString().split('T')[0];
+    modal.classList.remove('hidden');
+}
+
+function closeBuyEtfModal() {
+    const modal = document.getElementById('buy-etf-modal');
+    modal.classList.add('hidden');
+    document.getElementById('buy-etf-form').reset();
+}
+
+function openSellEtfModal() {
+    const modal = document.getElementById('sell-etf-modal');
+    const dateInput = document.getElementById('sell-etf-date');
+    const symbolSelect = document.getElementById('sell-etf-symbol');
+    
+    // Populate ETF symbols dropdown
+    symbolSelect.innerHTML = '<option value="">Select an ETF to sell</option>';
+    if (portfolio.etfs) {
+        portfolio.etfs.forEach(etf => {
+            if (etf.quantity > 0) {
+                const option = document.createElement('option');
+                option.value = etf.name;
+                option.textContent = `${etf.name} (${etf.quantity} shares)`;
+                symbolSelect.appendChild(option);
+            }
+        });
+    }
+    
+    dateInput.value = new Date().toISOString().split('T')[0];
+    modal.classList.remove('hidden');
+}
+
+function closeSellEtfModal() {
+    const modal = document.getElementById('sell-etf-modal');
+    modal.classList.add('hidden');
+    document.getElementById('sell-etf-form').reset();
+}
+
+function handleBuyEtf() {
+    const symbol = document.getElementById('buy-etf-symbol').value.trim().toUpperCase();
+    const quantity = parseInt(document.getElementById('buy-etf-quantity').value);
+    const price = parseFloat(document.getElementById('buy-etf-price').value);
+    const currency = document.getElementById('buy-etf-currency').value;
+    const date = document.getElementById('buy-etf-date').value;
+    
+    if (!symbol || !quantity || !price || !date) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+    }
+    
+    // Convert to EUR if needed
+    let priceInEur = price;
+    if (currency === 'USD') {
+        priceInEur = price * eurUsdRate;
+    }
+    
+    // Add to portfolio
+    if (!portfolio.etfs) portfolio.etfs = [];
+    
+    const existingEtfIndex = portfolio.etfs.findIndex(etf => etf.name === symbol);
+    
+    if (existingEtfIndex !== -1) {
+        // Update existing ETF
+        const existingEtf = portfolio.etfs[existingEtfIndex];
+        const totalQuantity = existingEtf.quantity + quantity;
+        const totalCost = (existingEtf.quantity * existingEtf.purchasePrice) + (quantity * price);
+        const averagePrice = totalCost / totalQuantity;
+        
+        portfolio.etfs[existingEtfIndex] = {
+            ...existingEtf,
+            quantity: totalQuantity,
+            purchasePrice: averagePrice
+        };
+    } else {
+        // Add new ETF
+        portfolio.etfs.push({
+            name: symbol,
+            quantity: quantity,
+            purchasePrice: priceInEur,
+            currency: 'EUR'
+        });
+    }
+    
+    // Record transaction
+    const transaction = {
+        id: Date.now().toString(),
+        type: 'buy',
+        assetType: 'etf',
+        symbol: symbol,
+        quantity: quantity,
+        price: price,
+        total: quantity * price,
+        currency: currency,
+        date: date,
+        timestamp: new Date().toISOString()
+    };
+    
+    addTransaction(transaction);
+    saveData();
+    renderEtfs();
+    renderEtfTransactions();
+    closeBuyEtfModal();
+    
+    showNotification(`Successfully bought ${quantity} shares of ${symbol}`, 'success');
+}
+
+function handleSellEtf() {
+    const symbol = document.getElementById('sell-etf-symbol').value;
+    const quantity = parseInt(document.getElementById('sell-etf-quantity').value);
+    const price = parseFloat(document.getElementById('sell-etf-price').value);
+    const date = document.getElementById('sell-etf-date').value;
+    
+    if (!symbol || !quantity || !price || !date) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+    }
+    
+    const etfIndex = portfolio.etfs.findIndex(etf => etf.name === symbol);
+    const etf = portfolio.etfs[etfIndex];
+    
+    if (!etf || etf.quantity < quantity) {
+        showNotification(`Insufficient shares. You only have ${etf ? etf.quantity : 0} shares of ${symbol}`, 'error');
+        return;
+    }
+    
+    // Update portfolio
+    etf.quantity -= quantity;
+    if (etf.quantity === 0) {
+        portfolio.etfs.splice(etfIndex, 1);
+    }
+    
+    // Record transaction
+    const transaction = {
+        id: Date.now().toString(),
+        type: 'sell',
+        assetType: 'etf',
+        symbol: symbol,
+        quantity: quantity,
+        price: price,
+        total: quantity * price,
+        currency: 'EUR',
+        date: date,
+        timestamp: new Date().toISOString()
+    };
+    
+    addTransaction(transaction);
+    saveData();
+    renderEtfs();
+    renderEtfTransactions();
+    closeSellEtfModal();
+    
+    showNotification(`Successfully sold ${quantity} shares of ${symbol}`, 'success');
+}
+
+// Transaction history rendering
+function renderEtfTransactions() {
+    const tbody = document.getElementById('etf-transactions-tbody');
+    if (!tbody) return;
+    
+    const transactions = loadTransactions().filter(tx => tx.assetType === 'etf');
+    
+    if (transactions.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-gray-400">No ETF transactions yet.</td></tr>';
+        return;
+    }
+    
+    // Sort by date (newest first)
+    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    let html = '';
+    transactions.forEach(tx => {
+        const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
+        const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
+        
+        html += `
+            <tr class="border-b border-gray-700">
+                <td class="py-2 px-2 text-gray-300">${new Date(tx.date).toLocaleDateString()}</td>
+                <td class="py-2 px-2 ${typeColor}">${typeText}</td>
+                <td class="py-2 px-2 text-white font-medium">${tx.symbol}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.quantity}</td>
+                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.price, tx.currency)}</td>
+                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, tx.currency)}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.currency}</td>
+            </tr>
+        `;
+    });
+    
+    tbody.innerHTML = html;
+}
+
+// Initialize notes when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    initializeNotes();
+    renderEtfTransactions();
+});

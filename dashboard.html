@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AssetFlow Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 */
+        }
+        .positive-gain { color: #22c55e; /* green-500 */ }
+        .negative-gain { color: #ef4444; /* red-500 */ }
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+<body class="text-white">
+    <div class="container mx-auto p-4 md:p-6">
+        <!-- Header with Navigation -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div class="flex flex-col md:flex-row items-center gap-2 w-full">
+                <h1 class="text-2xl md:text-3xl font-bold mr-4">AssetFlow</h1>
+                <nav class="flex flex-wrap gap-1">
+                    <a href="stocks.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Stocks</a>
+                    <a href="etfs.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">ETFs</a>
+                    <a href="crypto.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Crypto</a>
+                    <a href="static-assets.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Cash & Savings</a>
+                    <a href="cs2.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">CS2 Items</a>
+                    <a href="deposits-withdrawals.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">Deposits & Withdrawals</a>
+                    <a href="api-keys.html" class="bg-gray-700 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-medium transition">API Keys</a>
+                </nav>
+            </div>
+            <div class="flex flex-col md:flex-row w-full md:w-auto justify-between items-center gap-2">
+                <div class="flex items-center space-x-1">
+                    <input type="file" id="backup-import" class="hidden" accept=".json">
+                </div>
+                <div class="flex items-center space-x-1">
+                    <button id="backup-btn" class="bg-purple-700 hover:bg-purple-800 text-white font-medium py-1 px-2 rounded transition duration-300 text-xs">Backup Data</button>
+                    <button id="restore-btn" class="bg-orange-700 hover:bg-orange-800 text-white font-medium py-1 px-2 rounded transition duration-300 text-xs">Restore Data</button>
+                    <button id="delete-storage-btn" class="bg-red-700 hover:bg-red-800 text-white font-medium py-1 px-2 rounded transition duration-300 text-xs">Delete Local</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Total Portfolio Value (Multi-currency) -->
+        <div id="portfolio-total-value-bar" class="w-full flex justify-center items-center mb-4">
+            <div class="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white text-center px-6 md:px-10 py-6 rounded-2xl shadow-2xl border border-emerald-500/30 backdrop-blur-sm">
+                <div class="mb-2">
+                    <span class="text-sm md:text-base font-medium text-emerald-100">Total Portfolio Value</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+                    <div class="bg-emerald-500/20 rounded-lg px-3 py-2 backdrop-blur-sm">
+                        <div class="text-xs text-emerald-200 mb-1">EUR</div>
+                        <div id="portfolio-total-eur" class="text-lg md:text-xl font-bold">€0.00</div>
+                    </div>
+                    <div class="bg-blue-500/20 rounded-lg px-3 py-2 backdrop-blur-sm">
+                        <div class="text-xs text-blue-200 mb-1">USD</div>
+                        <div id="portfolio-total-usd" class="text-lg md:text-xl font-bold">$0.00</div>
+                    </div>
+                    <div class="bg-yellow-500/20 rounded-lg px-3 py-2 backdrop-blur-sm">
+                        <div class="text-xs text-yellow-200 mb-1">BTC</div>
+                        <div id="portfolio-total-btc" class="text-lg md:text-xl font-bold">₿0.0000</div>
+                    </div>
+                    <div class="bg-purple-500/20 rounded-lg px-3 py-2 backdrop-blur-sm">
+                        <div class="text-xs text-purple-200 mb-1">ETH</div>
+                        <div id="portfolio-total-eth" class="text-lg md:text-xl font-bold">Ξ0.0000</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exchange Rates Bar -->
+        <div class="w-full flex justify-center items-center mb-6">
+            <div class="bg-gray-800 text-white px-4 md:px-6 py-2 rounded-lg shadow-lg border border-gray-600 flex flex-col md:flex-row gap-2 md:gap-4 items-center justify-center">
+                <span class="text-sm font-medium text-gray-300">Exchange Rates:</span>
+                <span id="eur-usd-rate-label" class="text-emerald-400 font-medium text-sm">EUR/USD: --</span>
+                <span id="eur-btc-rate-label" class="text-yellow-400 font-medium text-sm">EUR/BTC: --</span>
+                <span id="eur-eth-rate-label" class="text-yellow-300 font-medium text-sm">EUR/ETH: --</span>
+                <button id="fetch-rates-btn" class="bg-blue-700 hover:bg-blue-800 text-white font-medium py-1 px-3 rounded transition duration-300 text-xs">Update All</button>
+                <div class="text-xs text-gray-400 border-l border-gray-600 pl-2">
+                    <span class="text-gray-300">Last Update:</span>
+                    <span id="last-update-time">Never</span>
+                    <div class="text-xs text-gray-500 mt-1">
+                        <span class="text-gray-400">Auto-updates:</span>
+                        <span class="text-emerald-400">Rates, Stocks, ETFs, Crypto</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            <!-- Portfolio History Chart (2/3 width on desktop) -->
+            <div class="lg:col-span-2">
+                <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold">Portfolio History</h2>
+                        <button id="validate-history-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 text-sm">Add to History</button>
+                    </div>
+                    <div class="h-72">
+                        <canvas id="portfolio-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Portfolio Breakdown Pie Chart (1/3 width on desktop) -->
+            <div class="lg:col-span-1">
+                <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+                    <h2 class="text-xl font-semibold mb-4">Portfolio Breakdown</h2>
+                    <div class="h-72">
+                        <canvas id="portfolio-breakdown-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <!-- Secondary Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Multi-Currency Comparison Chart -->
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-2">Portfolio Value Across Currencies</h2>
+                <p class="text-sm text-gray-400 mb-4">Normalized index starting at 100 - hover to see actual values. <span class="text-emerald-400 font-medium">EUR highlighted as main currency.</span></p>
+                <div class="h-64">
+                    <canvas id="portfolio-multicurrency-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Benchmark Comparison Chart -->
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-2">Portfolio vs Market Benchmarks</h2>
+                <p class="text-sm text-gray-400 mb-4">Compare your portfolio performance against S&P 500 and NASDAQ. <span class="text-emerald-400 font-medium">Normalized to starting point.</span></p>
+                <div class="h-64">
+                    <canvas id="benchmark-comparison-chart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Correlation Matrix and Retirement Chart Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Correlation Matrix Chart -->
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-2">Asset Correlation Matrix</h2>
+                <p class="text-sm text-gray-400 mb-4">See how your assets move together. <span class="text-emerald-400 font-medium">Red = negative correlation, Green = positive correlation.</span></p>
+                <div class="h-64">
+                    <canvas id="correlation-matrix-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Portfolio Growth Projections -->
+            <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg">
+                <h2 class="text-xl font-semibold mb-2">Portfolio Growth Projections</h2>
+                <p class="text-sm text-gray-400 mb-4">Projected growth until 2065 assuming 10% annual returns</p>
+                
+                <!-- Retirement Projection Controls -->
+                <div class="mb-4 p-3 bg-gray-700 rounded-lg">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Monthly Contributions -->
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-2">
+                                <label for="monthly-allocation-amount" class="text-sm font-medium text-gray-300">Monthly Contributions:</label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="monthly-allocation-amount" value="0" min="0" step="50" class="w-24 px-2 py-1 bg-gray-600 border border-gray-500 rounded text-sm text-white focus:outline-none focus:border-emerald-500">
+                                <span class="text-sm text-gray-400">€/month</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Annual Returns -->
+                        <div class="space-y-3">
+                            <div class="flex items-center gap-2">
+                                <label for="annual-return-rate" class="text-sm font-medium text-gray-300">Annual Return Rate:</label>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <input type="number" id="annual-return-rate" value="10" min="0" max="30" step="0.5" class="w-20 px-2 py-1 bg-gray-600 border border-gray-500 rounded text-sm text-white focus:outline-none focus:border-emerald-500">
+                                <span class="text-sm text-gray-400">%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="h-64">
+                    <canvas id="retirement-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+            <!-- Total Value Card -->
+            <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold text-emerald-400 mb-1">Total Value</h3>
+                <div class="text-lg font-bold" id="dashboard-total-value">€0.00</div>
+                <div class="text-xs text-gray-400" id="dashboard-total-change">+0.00%</div>
+            </div>
+            
+            <!-- Total P&L Card -->
+            <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold text-emerald-400 mb-1">Total P&L</h3>
+                <div class="text-lg font-bold" id="dashboard-total-pnl">€0.00</div>
+                <div class="text-xs text-gray-400" id="dashboard-pnl-percentage">+0.00%</div>
+            </div>
+            
+            <!-- Asset Count Card -->
+            <div class="bg-gray-800 p-4 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold text-emerald-400 mb-1">Assets</h3>
+                <div class="text-lg font-bold" id="dashboard-asset-count">0</div>
+                <div class="text-xs text-gray-400">Holdings</div>
+            </div>
+            
+            <!-- Monthly Performance Summary -->
+            <div class="bg-gray-800 p-5 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold mb-2">Monthly Performance</h3>
+                <div id="monthly-performance-list" class="space-y-1">
+                    <!-- Monthly summaries will be loaded here -->
+                </div>
+                <div class="text-xs text-gray-400 mt-2" id="monthly-performance-period">--</div>
+            </div>
+            
+            <!-- Yearly Performance Summary -->
+            <div class="bg-gray-800 p-5 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold mb-2">Yearly Performance</h3>
+                <div id="yearly-performance-list" class="space-y-1">
+                    <!-- Yearly summaries will be loaded here -->
+                </div>
+                <div class="text-xs text-gray-400 mt-2" id="yearly-performance-period">--</div>
+            </div>
+            
+        </div>
+        
+        
+        <!-- Performance Metrics Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+            <!-- Average Daily Return Card -->
+            <div class="bg-gray-800 p-3 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold text-cyan-400 mb-1">Avg Daily Return</h3>
+                <div class="text-lg font-bold" id="avg-daily-return">--</div>
+                <div class="text-xs text-gray-400" id="daily-return-period">--</div>
+            </div>
+            
+            <!-- Best Day Card -->
+            <div class="bg-gray-800 p-3 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold text-emerald-400 mb-1">Best Day</h3>
+                <div class="text-lg font-bold" id="best-day-return">--</div>
+                <div class="text-xs text-gray-400" id="best-day-date">--</div>
+            </div>
+            
+            <!-- Worst Day Card -->
+            <div class="bg-gray-800 p-3 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold text-red-400 mb-1">Worst Day</h3>
+                <div class="text-lg font-bold" id="worst-day-return">--</div>
+                <div class="text-xs text-gray-400" id="worst-day-date">--</div>
+            </div>
+            
+            <!-- Best Performer Card -->
+            <div class="bg-gray-800 p-3 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold text-emerald-400 mb-1">Best Asset</h3>
+                <div class="text-lg font-bold" id="dashboard-best-performer">-</div>
+                <div class="text-xs text-gray-400" id="dashboard-best-percentage">+0.00%</div>
+            </div>
+            
+            <!-- Worst Performer Card -->
+            <div class="bg-gray-800 p-3 rounded-xl shadow-lg">
+                <h3 class="text-sm font-semibold text-red-400 mb-1">Worst Asset</h3>
+                <div class="text-lg font-bold" id="dashboard-worst-performer">-</div>
+                <div class="text-xs text-gray-400" id="dashboard-worst-percentage">+0.00%</div>
+            </div>
+        </div>
+
+        <!-- Cash Flow Summary (Compact) -->
+        <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg mb-6">
+            <h2 class="text-xl font-semibold mb-4">Cash Flow Summary</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="text-center p-3 bg-gray-700 rounded-lg">
+                    <div class="text-sm text-gray-400 mb-1">Total Deposits</div>
+                    <div class="text-lg font-bold text-emerald-400" id="total-deposits">€0.00</div>
+                </div>
+                <div class="text-center p-3 bg-gray-700 rounded-lg">
+                    <div class="text-sm text-gray-400 mb-1">Total Withdrawals</div>
+                    <div class="text-lg font-bold text-red-400" id="total-withdrawals">€0.00</div>
+                </div>
+                <div class="text-center p-3 bg-gray-700 rounded-lg border-2 border-blue-500">
+                    <div class="text-sm text-gray-400 mb-1">Net Cash Flow</div>
+                    <div class="text-lg font-bold text-blue-400" id="net-cash-flow">€0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg mb-6">
+            <h2 class="text-xl font-semibold mb-4">Recent Activity</h2>
+            <div id="recent-activity-list" class="space-y-2">
+                <!-- Recent transactions and events will be populated here -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/shared.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
