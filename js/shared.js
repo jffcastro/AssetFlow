@@ -1499,6 +1499,85 @@ function getUpdateStatuses() {
     }
 }
 
+// Recalculate portfolio from transactions (source of truth)
+function calculatePortfolioFromTransactions() {
+    // Reset portfolio holdings
+    portfolio.stocks = [];
+    portfolio.etfs = [];
+    portfolio.crypto = [];
+
+    // Get all transactions
+    const transactions = loadTransactions();
+
+    // Group transactions by asset type and symbol
+    const holdings = {
+        stocks: {},
+        etfs: {},
+        crypto: {}
+    };
+
+    // Process each transaction
+    transactions.forEach(tx => {
+        if (tx.assetType === 'stock' || tx.assetType === 'etf' || tx.assetType === 'crypto') {
+            const assetType = tx.assetType;
+            const symbol = tx.symbol;
+
+            if (!holdings[assetType][symbol]) {
+                holdings[assetType][symbol] = {
+                    symbol: symbol,
+                    quantity: 0,
+                    totalCost: 0,
+                    transactions: []
+                };
+            }
+
+            const holding = holdings[assetType][symbol];
+
+            if (tx.type === 'buy') {
+                holding.quantity += tx.quantity;
+                holding.totalCost += tx.total;
+            } else if (tx.type === 'sell') {
+                // Reduce totalCost proportionally based on average cost per share
+                if (holding.quantity > 0) {
+                    const costToRemove = holding.totalCost * (tx.quantity / holding.quantity);
+                    holding.totalCost -= costToRemove;
+                }
+                holding.quantity -= tx.quantity;
+            }
+
+            holding.transactions.push(tx);
+        }
+    });
+
+    // Convert holdings to portfolio format
+    Object.keys(holdings).forEach(assetType => {
+        Object.keys(holdings[assetType]).forEach(symbol => {
+            const holding = holdings[assetType][symbol];
+
+            // Only include assets with positive quantity
+            if (holding.quantity > 0) {
+                const averagePrice = holding.totalCost / holding.quantity;
+
+                const asset = {
+                    id: Date.now() + Math.random(), // Generate new ID
+                    name: symbol,
+                    quantity: holding.quantity,
+                    purchasePrice: averagePrice,
+                    currency: 'EUR' // Default currency
+                };
+
+                portfolio[assetType].push(asset);
+            }
+        });
+    });
+
+    // Save the updated portfolio
+    saveData();
+
+    // Recalculate total value
+    calculateTotalValue();
+}
+
 // Export functions for use in other files
 window.fetchStockEarnings = fetchStockEarnings;
 window.fetchCryptoEvents = fetchCryptoEvents;
@@ -1512,3 +1591,4 @@ window.getCachedStockEarnings = getCachedStockEarnings;
 window.getCachedCryptoEventsForCoins = getCachedCryptoEventsForCoins;
 window.getCachedCryptoEvents = getCachedCryptoEvents;
 window.getUpdateStatuses = getUpdateStatuses;
+window.calculatePortfolioFromTransactions = calculatePortfolioFromTransactions;
