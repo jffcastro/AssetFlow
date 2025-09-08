@@ -584,6 +584,8 @@ function handleBuyCrypto() {
     
     addTransaction(transaction);
     saveData();
+    // Recalculate portfolio from transactions (source of truth)
+    calculatePortfolioFromTransactions();
     renderCrypto();
     renderCryptoTransactions();
     closeBuyCryptoModal();
@@ -632,6 +634,8 @@ function handleSellCrypto() {
     
     addTransaction(transaction);
     saveData();
+    // Recalculate portfolio from transactions (source of truth)
+    calculatePortfolioFromTransactions();
     renderCrypto();
     renderCryptoTransactions();
     closeSellCryptoModal();
@@ -718,8 +722,8 @@ function deleteCryptoTransaction(transactionId) {
     const updatedTransactions = transactions.filter(tx => tx.id !== transactionId);
     saveTransactions(updatedTransactions);
     
-    // Recalculate portfolio
-    calculateTotalValue();
+    // Recalculate portfolio from transactions (source of truth)
+    calculatePortfolioFromTransactions();
     renderCrypto();
     renderCryptoTransactions();
     
@@ -773,8 +777,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             saveTransactions(transactions);
             
-            // Recalculate portfolio
-            calculateTotalValue();
+            // Recalculate portfolio from transactions (source of truth)
+            calculatePortfolioFromTransactions();
             renderCrypto();
             renderCryptoTransactions();
             
