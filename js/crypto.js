@@ -740,7 +740,7 @@ document.addEventListener('DOMContentLoaded', () => {
         editCryptoTransactionForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
-            const transactionId = parseInt(document.getElementById('edit-crypto-transaction-id').value);
+            const transactionId = document.getElementById('edit-crypto-transaction-id').value;
             const type = document.getElementById('edit-crypto-transaction-type').value;
             const name = document.getElementById('edit-crypto-transaction-name').value;
             const quantity = parseFloat(document.getElementById('edit-crypto-transaction-quantity').value);
