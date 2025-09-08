@@ -11,7 +11,7 @@ let portfolio = {
 };
 
 let eurUsdRate = 1.0;
-let priceCache = { stocks: {}, crypto: {} };
+let priceCache = { stocks: {}, crypto: {}, etfs: {} };
 
 // Using full cryptocurrency names directly for CoinGecko API
 
@@ -787,7 +787,7 @@ function calculateTotalValue() {
     
     // Calculate ETFs value
     portfolio.etfs.forEach(etf => {
-        const price = priceCache.stocks[etf.name] || 0;
+        const price = priceCache.etfs[etf.name] || 0;
         let value = price * etf.quantity;
         if (etf.currency === 'USD') value = value / eurUsdRate;
         totalValue += value;

@@ -271,7 +271,7 @@ async function updateEtfPrices() {
         try {
             const price = await fetchStockPrice(etf.name);
             if (price) {
-                priceCache.stocks[etf.name] = price;
+                priceCache.etfs[etf.name] = price;
                 updatedCount++;
             }
         } catch (error) {
