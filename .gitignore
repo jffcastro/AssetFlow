@@ -1,0 +1,248 @@
+# AssetFlow .gitignore
+# This file specifies which files and directories should be ignored by Git
+
+# ===========================================
+# Operating System Files
+# ===========================================
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ===========================================
+# Development Environment
+# ===========================================
+
+# IDE and Editor Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+.classpath
+*.sublime-project
+*.sublime-workspace
+
+# ===========================================
+# Node.js (if using build tools)
+# ===========================================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# ===========================================
+# Build and Distribution
+# ===========================================
+
+# Build directories
+dist/
+build/
+out/
+
+# Compiled files
+*.min.js
+*.min.css
+*.bundle.js
+*.bundle.css
+
+# Source maps
+*.map
+
+# ===========================================
+# Testing
+# ===========================================
+
+# Test results
+test-results/
+coverage/
+*.test.js.snap
+junit.xml
+
+# Jest
+jest.config.js
+
+# ===========================================
+# Logs
+# ===========================================
+
+# Log files
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ===========================================
+# Environment and Configuration
+# ===========================================
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Configuration files with sensitive data
+config.json
+secrets.json
+api-keys.json
+
+# ===========================================
+# Temporary Files
+# ===========================================
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# ===========================================
+# Documentation
+# ===========================================
+
+# Generated documentation
+docs/build/
+docs/_build/
+
+# ===========================================
+# Backup Files
+# ===========================================
+
+# Backup files
+*.bak
+*.backup
+*.old
+backup/
+backups/
+
+# Portfolio backup files (user data)
+portfolio-backup-*.json
+*.portfolio-backup
+
+# ===========================================
+# User Data (Important for AssetFlow)
+# ===========================================
+
+# User's portfolio data exports
+exports/
+portfolio-export-*.csv
+portfolio_validated_history-*.csv
+
+# User's API key configurations (if stored in files)
+user-api-keys.json
+local-config.json
+
+# ===========================================
+# Web Server
+# ===========================================
+
+# Web server files
+.htaccess
+web.config
+
+# ===========================================
+# Miscellaneous
+# ===========================================
+
+# Archives
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# ===========================================
+# AssetFlow Specific
+# ===========================================
+
+# Test data files
+test-data/
+sample-portfolios/
+mock-data/
+
+# Development tools
+dev-tools/
+scripts/dev/
+
+# Performance monitoring
+performance-logs/
+*.perf
+
+# Browser extension files (if developing extensions)
+*.crx
+*.xpi
+
+# ===========================================
+# Comments and Notes
+# ===========================================
+
+# This .gitignore is designed for the AssetFlow portfolio management application
+# It covers common development files while preserving the core application files
+# 
+# Key considerations:
+# - Preserves all HTML, CSS, and JavaScript files in the main directory
+# - Ignores user data exports and backups
+# - Ignores development environment files
+# - Ignores build artifacts and temporary files
+# - Ignores sensitive configuration files
+#
+# If you need to include any of these ignored files, use:
+# git add -f <filename>
