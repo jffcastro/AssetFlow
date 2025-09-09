@@ -1,6 +1,17 @@
-// Database configuration and management using Supabase REST API
+// Combined API Keys and Database configuration functionality
 document.addEventListener('DOMContentLoaded', () => {
-    // DOM elements
+    // API Keys DOM elements
+    const fhApiKeyInput = document.getElementById('fh-api-key');
+    const fhStatus = document.getElementById('fh-status');
+    const saveFhBtn = document.getElementById('save-fh-btn');
+    const fhUsage = document.getElementById('fh-usage');
+    
+    const cmcApiKeyInput = document.getElementById('cmc-api-key');
+    const cmcStatus = document.getElementById('cmc-status');
+    const saveCmcBtn = document.getElementById('save-cmc-btn');
+    const cmcUsage = document.getElementById('cmc-usage');
+    
+    // Database DOM elements
     const databaseConfigForm = document.getElementById('database-config-form');
     const testConnectionBtn = document.getElementById('test-connection-btn');
     const clearConfigBtn = document.getElementById('clear-config-btn');
@@ -12,20 +23,145 @@ document.addEventListener('DOMContentLoaded', () => {
     const supabaseAnonKeyInput = document.getElementById('supabase-anon-key');
     const statusIndicator = document.getElementById('status-indicator');
     const statusText = document.getElementById('status-text');
-    const statusDescription = document.getElementById('status-description');
     const migrationStatus = document.getElementById('migration-status');
+    
+    // Notes elements
+    const configNotesTextarea = document.getElementById('config-notes');
+    const charCount = document.getElementById('notes-char-count');
 
     // Initialize page
+    loadApiKeys();
+    updateApiStatuses();
+    loadUsageStats();
     loadDatabaseConfig();
     updateDatabaseStatus();
+    initializeNotes();
 
-    // Event listeners
+    // API Keys Event listeners
+    saveFhBtn.addEventListener('click', saveFinnhubKey);
+    saveCmcBtn.addEventListener('click', saveCoinMarketCalKey);
+
+    // Database Event listeners
     databaseConfigForm.addEventListener('submit', saveDatabaseConfig);
     testConnectionBtn.addEventListener('click', testDatabaseConnection);
     clearConfigBtn.addEventListener('click', clearDatabaseConfig);
     migrateDataBtn.addEventListener('click', migrateDataToCloud);
     backupDataBtn.addEventListener('click', backupData);
     restoreDataBtn.addEventListener('click', restoreData);
+
+    // ==================== API KEYS FUNCTIONS ====================
+
+    // Finnhub API functions
+    function saveFinnhubKey() {
+        const apiKey = fhApiKeyInput.value.trim();
+        
+        if (!apiKey) {
+            showNotification('Please enter your Finnhub API key', 'error');
+            return;
+        }
+        
+        const fhConfig = {
+            apiKey: apiKey,
+            savedAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem('portfolioPilotFinnhub', JSON.stringify(fhConfig));
+        showNotification('Finnhub API key saved successfully!', 'success');
+        updateApiStatuses();
+    }
+
+    function loadFinnhubKey() {
+        const config = localStorage.getItem('portfolioPilotFinnhub');
+        if (config) {
+            const parsed = JSON.parse(config);
+            fhApiKeyInput.value = parsed.apiKey || '';
+            return parsed;
+        }
+        return null;
+    }
+
+    // CoinMarketCal API functions
+    function saveCoinMarketCalKey() {
+        const apiKey = cmcApiKeyInput.value.trim();
+        
+        if (!apiKey) {
+            showNotification('Please enter your CoinMarketCal API key', 'error');
+            return;
+        }
+        
+        const cmcConfig = {
+            apiKey: apiKey,
+            savedAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem('portfolioPilotCoinMarketCal', JSON.stringify(cmcConfig));
+        showNotification('CoinMarketCal API key saved successfully!', 'success');
+        updateApiStatuses();
+    }
+
+    function loadCoinMarketCalKey() {
+        const config = localStorage.getItem('portfolioPilotCoinMarketCal');
+        if (config) {
+            const parsed = JSON.parse(config);
+            cmcApiKeyInput.value = parsed.apiKey || '';
+            return parsed;
+        }
+        return null;
+    }
+
+    // Load all API keys
+    function loadApiKeys() {
+        loadFinnhubKey();
+        loadCoinMarketCalKey();
+    }
+
+    // Update API status indicators
+    function updateApiStatuses() {
+        const fhConfig = localStorage.getItem('portfolioPilotFinnhub');
+        const cmcConfig = localStorage.getItem('portfolioPilotCoinMarketCal');
+        
+        // Finnhub status
+        if (fhConfig) {
+            const parsed = JSON.parse(fhConfig);
+            if (parsed.apiKey) {
+                fhStatus.textContent = 'Configured';
+                fhStatus.className = 'text-xs px-2 py-1 rounded-full bg-green-700 text-green-100';
+            } else {
+                fhStatus.textContent = 'Incomplete';
+                fhStatus.className = 'text-xs px-2 py-1 rounded-full bg-yellow-700 text-yellow-100';
+            }
+        } else {
+            fhStatus.textContent = 'Not Configured';
+            fhStatus.className = 'text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300';
+        }
+        
+        // CoinMarketCal status
+        if (cmcConfig) {
+            const parsed = JSON.parse(cmcConfig);
+            if (parsed.apiKey) {
+                cmcStatus.textContent = 'Configured';
+                cmcStatus.className = 'text-xs px-2 py-1 rounded-full bg-green-700 text-green-100';
+            } else {
+                cmcStatus.textContent = 'Incomplete';
+                cmcStatus.className = 'text-xs px-2 py-1 rounded-full bg-yellow-700 text-yellow-100';
+            }
+        } else {
+            cmcStatus.textContent = 'Not Configured';
+            cmcStatus.className = 'text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300';
+        }
+    }
+
+    // Usage statistics functions
+    function loadUsageStats() {
+        const today = new Date().toDateString();
+        const fhUsageData = JSON.parse(localStorage.getItem('portfolioPilotFinnhubUsage') || '{}');
+        const cmcUsageData = JSON.parse(localStorage.getItem('portfolioPilotCoinMarketCalUsage') || '{}');
+        
+        fhUsage.textContent = `${fhUsageData[today] || 0} calls today`;
+        cmcUsage.textContent = `${cmcUsageData[today] || 0} calls today`;
+    }
+
+    // ==================== DATABASE FUNCTIONS ====================
 
     // Load saved database configuration
     function loadDatabaseConfig() {
@@ -440,26 +576,63 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'connected':
                 statusIndicator.className = 'w-3 h-3 rounded-full bg-green-500';
                 statusText.textContent = 'Connected';
-                statusDescription.textContent = 'Database connection is active and working properly.';
                 break;
             case 'error':
                 statusIndicator.className = 'w-3 h-3 rounded-full bg-red-500';
                 statusText.textContent = 'Connection Error';
-                statusDescription.textContent = 'Failed to connect to database. Please check your configuration.';
                 break;
             case 'not-configured':
                 statusIndicator.className = 'w-3 h-3 rounded-full bg-gray-500';
                 statusText.textContent = 'Not Configured';
-                statusDescription.textContent = 'Configure your database connection to enable cloud storage and multi-device sync.';
                 break;
             default:
                 statusIndicator.className = 'w-3 h-3 rounded-full bg-yellow-500';
                 statusText.textContent = 'Not Connected';
-                statusDescription.textContent = 'Database configuration saved but not tested. Click "Test Connection" to verify.';
         }
     }
 
-    // Helper functions
+    // ==================== NOTES FUNCTIONS ====================
+
+    function initializeNotes() {
+        if (configNotesTextarea && charCount) {
+            // Load existing notes
+            loadNotes();
+            
+            // Event listeners
+            configNotesTextarea.addEventListener('input', () => {
+                updateCharCount();
+                autoSaveNotes();
+            });
+            
+            // Auto-save on blur
+            configNotesTextarea.addEventListener('blur', autoSaveNotes);
+        }
+    }
+
+    function loadNotes() {
+        if (configNotesTextarea && charCount) {
+            const notes = localStorage.getItem('configNotes') || '';
+            configNotesTextarea.value = notes;
+            updateCharCount();
+        }
+    }
+
+    function autoSaveNotes() {
+        if (configNotesTextarea) {
+            const notes = configNotesTextarea.value;
+            localStorage.setItem('configNotes', notes);
+        }
+    }
+
+    function updateCharCount() {
+        if (configNotesTextarea && charCount) {
+            const count = configNotesTextarea.value.length;
+            charCount.textContent = count;
+        }
+    }
+
+    // ==================== HELPER FUNCTIONS ====================
+
     function getDatabaseConfig() {
         try {
             const config = localStorage.getItem('assetflow_database_config');
@@ -480,4 +653,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return userId;
     }
+
+    // Track API usage (called from other parts of the app)
+    function trackApiUsage(apiName) {
+        const today = new Date().toDateString();
+        const storageKey = `portfolioPilot${apiName}Usage`;
+        const usageData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        
+        usageData[today] = (usageData[today] || 0) + 1;
+        localStorage.setItem(storageKey, JSON.stringify(usageData));
+    }
+
+    // Get API key for use in other parts of the app
+    function getApiKey(apiName) {
+        const config = localStorage.getItem(`portfolioPilot${apiName}`);
+        if (config) {
+            const parsed = JSON.parse(config);
+            return parsed.apiKey;
+        }
+        return null;
+    }
+
+    // Export functions for use in other files
+    window.getApiKey = getApiKey;
+    window.trackApiUsage = trackApiUsage;
 });

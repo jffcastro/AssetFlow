@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurations - AssetFlow</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="css/glass-theme.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0f172a',
+                        'dark-card': '#1e293b',
+                        'dark-border': '#334155'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-white min-h-screen">
+    <div class="container mx-auto p-4 md:p-6">
+        <!-- Header with Navigation -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div class="flex flex-col md:flex-row items-center gap-2 w-full">
+                <h1 class="text-2xl md:text-3xl font-bold mr-4">AssetFlow</h1>
+                <nav class="flex flex-wrap gap-1">
+                    <a href="dashboard.html" class="nav-button text-xs">Dashboard</a>
+                    <a href="stocks.html" class="nav-button text-xs">Stocks</a>
+                    <a href="etfs.html" class="nav-button text-xs">ETFs</a>
+                    <a href="crypto.html" class="nav-button text-xs">Crypto</a>
+                    <a href="static-assets.html" class="nav-button text-xs">Cash & Savings</a>
+                    <a href="cs2.html" class="nav-button text-xs">CS2 Items</a>
+                    <a href="deposits-withdrawals.html" class="nav-button text-xs">Deposits & Withdrawals</a>
+                    <a href="configurations.html" class="nav-button text-xs bg-emerald-500/30">Configurations</a>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Page Title -->
+        <div class="mb-6">
+            <h2 class="text-3xl font-bold text-emerald-400 mb-2">Configurations</h2>
+            <p class="text-gray-400">Manage API keys and database settings for enhanced functionality</p>
+        </div>
+
+        <!-- API Keys Section -->
+        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-emerald-400">API Keys</h3>
+                <div class="text-sm text-gray-400">Secure storage for external API access</div>
+            </div>
+            
+            <!-- Finnhub API -->
+            <div class="mb-6 p-4 glass-effect rounded-lg">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <h4 class="text-lg font-semibold text-purple-400">Finnhub API</h4>
+                        <p class="text-gray-400 text-sm">Stock earnings calendar and upcoming earnings dates</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="fh-status" class="text-xs px-2 py-1 rounded-full glass-input text-gray-300">Not Configured</span>
+                        <span id="fh-usage" class="text-xs text-gray-400">0 calls today</span>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <input type="password" id="fh-api-key" placeholder="Enter your Finnhub API key" 
+                           class="flex-1 glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-purple-500 text-white">
+                    <button id="save-fh-btn" class="glass-button text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Save
+                    </button>
+                </div>
+                <div class="mt-2">
+                    <a href="https://finnhub.io/register" target="_blank" class="text-xs text-purple-400 hover:text-purple-300 underline">Get Finnhub API Key</a>
+                </div>
+            </div>
+
+            <!-- CoinMarketCal API -->
+            <div class="mb-4 p-4 glass-effect rounded-lg">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <h4 class="text-lg font-semibold text-orange-400">CoinMarketCal API</h4>
+                        <p class="text-gray-400 text-sm">Cryptocurrency events and upcoming announcements</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="cmc-status" class="text-xs px-2 py-1 rounded-full glass-input text-gray-300">Not Configured</span>
+                        <span id="cmc-usage" class="text-xs text-gray-400">0 calls today</span>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <input type="password" id="cmc-api-key" placeholder="Enter your CoinMarketCal API key" 
+                           class="flex-1 glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-orange-500 text-white">
+                    <button id="save-cmc-btn" class="glass-button text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Save
+                    </button>
+                </div>
+                <div class="mt-2">
+                    <a href="https://coinmarketcal.com/en/api" target="_blank" class="text-xs text-orange-400 hover:text-orange-300 underline">Get CoinMarketCal API Key</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Database Configuration Section -->
+        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-emerald-400">Database Configuration</h3>
+                <div id="database-status" class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-gray-500" id="status-indicator"></div>
+                    <span id="status-text" class="text-sm">Not Connected</span>
+                </div>
+            </div>
+            
+            <form id="database-config-form" class="space-y-4">
+                <div>
+                    <label for="supabase-url" class="block mb-2 text-sm font-medium">Supabase Project URL</label>
+                    <input type="url" id="supabase-url" placeholder="https://xxx.supabase.co" 
+                           class="w-full glass-input p-3 rounded-lg" required>
+                </div>
+                
+                <div>
+                    <label for="supabase-anon-key" class="block mb-2 text-sm font-medium">Supabase Anon Key</label>
+                    <input type="password" id="supabase-anon-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+                           class="w-full glass-input p-3 rounded-lg" required>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="submit" class="glass-button glass-button-primary flex-1">
+                        Save Configuration
+                    </button>
+                    <button type="button" id="test-connection-btn" class="glass-button glass-button-secondary">
+                        Test Connection
+                    </button>
+                    <button type="button" id="clear-config-btn" class="glass-button">
+                        Clear
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Data Management Section -->
+        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-emerald-400">Data Management</h3>
+                <div class="text-sm text-gray-400">
+                    <span id="migration-status">Ready to migrate</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 glass-effect rounded-lg">
+                    <h4 class="font-medium mb-2">Cloud Migration</h4>
+                    <p class="text-sm text-gray-400 mb-3">Migrate your local data to the cloud</p>
+                    <button id="migrate-data-btn" class="glass-button glass-button-secondary w-full">
+                        Migrate to Cloud
+                    </button>
+                </div>
+                
+                <div class="p-4 glass-effect rounded-lg">
+                    <h4 class="font-medium mb-2">Backup & Restore</h4>
+                    <p class="text-sm text-gray-400 mb-3">Create backups or restore from cloud</p>
+                    <div class="flex gap-2">
+                        <button id="backup-data-btn" class="glass-button flex-1">
+                            Backup
+                        </button>
+                        <button id="restore-data-btn" class="glass-button flex-1">
+                            Restore
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Notice -->
+        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
+            <div class="flex items-start space-x-3">
+                <div class="text-yellow-400 text-xl">⚠️</div>
+                <div>
+                    <h3 class="text-lg font-semibold text-yellow-400 mb-2">Security Notice</h3>
+                    <div class="text-gray-400 text-sm space-y-1">
+                        <p>• All API keys and database credentials are encrypted and stored locally</p>
+                        <p>• Keys are never transmitted to external servers except for their intended API calls</p>
+                        <p>• Clear your browser data to remove all stored credentials</p>
+                        <p>• Never share your API keys or database credentials with others</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Notes -->
+        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-emerald-400">Configuration Notes</h3>
+                <div class="text-xs text-gray-500">
+                    <span id="notes-char-count">0</span> characters • Auto-saved
+                </div>
+            </div>
+            <p class="text-gray-400 text-sm mb-4">Keep track of your API key configurations, database settings, and any important notes about your setup.</p>
+            <textarea id="config-notes" placeholder="Write your configuration notes here..." 
+                      class="w-full glass-input p-4 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500 text-white resize-none" 
+                      rows="4"></textarea>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/shared.js"></script>
+    <script src="js/configurations.js"></script>
+    <script src="js/theme-switcher.js"></script>
+</body>
+</html>
