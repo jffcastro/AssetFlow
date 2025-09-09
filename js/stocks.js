@@ -138,11 +138,45 @@ function saveStock() {
 }
 
 function deleteStock(id) {
-    if (confirm('Are you sure you want to delete this stock?')) {
+    if (confirm('Are you sure you want to delete this stock? This will also remove all associated transactions from the transaction history.')) {
+        // Find the stock to get its symbol
+        const stock = portfolio.stocks.find(s => s.id == id);
+        if (!stock) {
+            showNotification('Stock not found', 'error');
+            return;
+        }
+        
+        // Remove all transactions for this stock
+        const transactions = loadTransactions();
+        console.log('Before deletion - transactions count:', transactions.length);
+        console.log('Stock to delete:', stock);
+        console.log('All transactions:', transactions);
+        
+        // Filter out transactions for this stock
+        const updatedTransactions = transactions.filter(tx => {
+            const isStockTransaction = tx.assetType === 'stocks';
+            const isSameSymbol = tx.symbol === stock.name; // Use stock.name instead of stock.symbol
+            const shouldRemove = isStockTransaction && isSameSymbol;
+            
+            console.log(`Transaction ${tx.id}: assetType=${tx.assetType}, symbol=${tx.symbol}, stockName=${stock.name}, isStockTransaction=${isStockTransaction}, isSameSymbol=${isSameSymbol}, shouldRemove=${shouldRemove}`);
+            
+            return !shouldRemove;
+        });
+        
+        console.log('After deletion - transactions count:', updatedTransactions.length);
+        saveTransactions(updatedTransactions);
+        
+        // Remove the stock from portfolio
         portfolio.stocks = portfolio.stocks.filter(s => s.id != id);
         saveData();
+        
+        // Recalculate portfolio from transactions (source of truth)
+        console.log('Recalculating portfolio from transactions...');
+        calculatePortfolioFromTransactions();
+        console.log('Portfolio after recalculation:', portfolio);
         renderStocks();
-        showNotification('Stock deleted successfully!', 'success');
+        renderStockTransactions(); // Refresh transaction history
+        showNotification('Stock and all associated transactions deleted successfully!', 'success');
     }
 }
 
@@ -150,6 +184,8 @@ function renderStocks() {
     const stocksTbody = document.getElementById('stocks-tbody');
     const stocksCount = document.getElementById('stocks-count');
     if (!stocksTbody) return;
+    
+    console.log('Rendering stocks. Portfolio stocks:', portfolio.stocks);
     
     // Update count
     if (stocksCount) {
@@ -231,7 +267,6 @@ function renderStocks() {
                     ${currentPrice > 0 ? `${pnlSign}${formatCurrency(pnl, stock.currency)} (${pnlSign}${pnlPercentage.toFixed(2)}%)` : '--'}
                 </td>
                 <td class="py-2 px-2">
-                    <button onclick="editStock(${stock.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs mr-1">Edit</button>
                     <button onclick="deleteStock(${stock.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
                 </td>
             </tr>
@@ -551,6 +586,12 @@ function handleBuyStock() {
             return;
         }
         
+        // Validate exchange rate for USD transactions
+        if (currency === 'USD' && (isNaN(eurUsdRate) || eurUsdRate === 0 || eurUsdRate === 1.0)) {
+            showNotification('Exchange rate not available. Please update rates first by clicking "Update All" on the dashboard.', 'error');
+            return;
+        }
+        
         // Validate that either price or total is provided
         if (!price && !total) {
             showNotification('Please provide either price per share or total amount', 'error');
@@ -570,8 +611,11 @@ function handleBuyStock() {
         let priceInEur = finalPrice;
         let totalInEur = finalTotal;
         if (currency === 'USD') {
+            console.log(`Converting USD to EUR: eurUsdRate = ${eurUsdRate}`);
+            console.log(`Original USD values: price = ${finalPrice}, total = ${finalTotal}`);
             priceInEur = finalPrice / eurUsdRate;
             totalInEur = finalTotal / eurUsdRate;
+            console.log(`Converted EUR values: price = ${priceInEur}, total = ${totalInEur}`);
         }
         
         // Create transaction
@@ -694,7 +738,9 @@ function renderStockTransactions() {
         // Format price display with original USD if available
         let priceDisplay = formatCurrency(tx.price, 'EUR');
         if (tx.originalPrice && tx.originalCurrency === 'USD') {
-            priceDisplay = `€${tx.price.toFixed(2)} ($${tx.originalPrice.toFixed(2)})`;
+            const price = tx.price || 0;
+            const originalPrice = tx.originalPrice || 0;
+            priceDisplay = `€${price.toFixed(2)} ($${originalPrice.toFixed(2)})`;
         }
         
         html += `
@@ -704,8 +750,8 @@ function renderStockTransactions() {
                 <td class="py-2 px-2 text-white font-medium">${tx.symbol}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.quantity}</td>
                 <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
-                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, tx.currency)}</td>
-                <td class="py-2 px-2 text-gray-300">${tx.currency}</td>
+                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, 'EUR')}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.originalCurrency || 'EUR'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
                     <div class="flex gap-1">
@@ -739,8 +785,16 @@ function editStockTransaction(transactionId) {
     document.getElementById('edit-transaction-type').value = transaction.type;
     document.getElementById('edit-transaction-symbol').value = transaction.symbol;
     document.getElementById('edit-transaction-quantity').value = transaction.quantity;
-    document.getElementById('edit-transaction-price').value = transaction.price;
-    document.getElementById('edit-transaction-currency').value = transaction.currency;
+    // Set currency and price based on original currency
+    if (transaction.originalCurrency === 'USD') {
+        document.getElementById('edit-transaction-currency').value = 'USD';
+        document.getElementById('edit-transaction-price').value = transaction.originalPrice;
+        document.getElementById('edit-transaction-total').value = transaction.originalPrice * transaction.quantity;
+    } else {
+        document.getElementById('edit-transaction-currency').value = 'EUR';
+        document.getElementById('edit-transaction-price').value = transaction.price;
+        document.getElementById('edit-transaction-total').value = transaction.total;
+    }
     document.getElementById('edit-transaction-date').value = transaction.date;
     document.getElementById('edit-transaction-note').value = transaction.note || '';
     
@@ -772,6 +826,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const editCancelBtn = document.getElementById('edit-transaction-cancel-btn');
     
     if (editForm) {
+        // Setup auto-calculation for edit form
+        setupAutoCalculation('edit-transaction-quantity', 'edit-transaction-price', 'edit-transaction-total');
+        
         editForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
@@ -780,22 +837,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const symbol = document.getElementById('edit-transaction-symbol').value.toUpperCase();
             const quantity = parseFloat(document.getElementById('edit-transaction-quantity').value);
             const price = parseFloat(document.getElementById('edit-transaction-price').value);
+            const total = parseFloat(document.getElementById('edit-transaction-total').value);
             const currency = document.getElementById('edit-transaction-currency').value;
             const date = document.getElementById('edit-transaction-date').value;
             const note = document.getElementById('edit-transaction-note').value.trim();
             
-            if (!symbol || !quantity || !price || !date) {
+            if (!symbol || !quantity || !price || !total || !date) {
                 showNotification('Please fill in all fields', 'error');
                 return;
             }
             
             // Convert to EUR if needed
             let priceInEur = price;
+            let totalInEur = total;
             if (currency === 'USD') {
                 priceInEur = price / eurUsdRate;
+                totalInEur = total / eurUsdRate;
             }
-            
-            const total = quantity * priceInEur;
             
             // Update the transaction
             const transactions = loadTransactions();
@@ -812,7 +870,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 symbol,
                 quantity,
                 price: priceInEur,
-                total,
+                total: totalInEur,
                 currency: 'EUR', // Always store in EUR
                 originalPrice: currency === 'USD' ? price : null,
                 originalCurrency: currency === 'USD' ? 'USD' : null,

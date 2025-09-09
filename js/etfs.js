@@ -135,11 +135,28 @@ function saveEtf() {
 }
 
 function deleteEtf(id) {
-    if (confirm('Are you sure you want to delete this ETF?')) {
+    if (confirm('Are you sure you want to delete this ETF? This will also remove all associated transactions from the transaction history.')) {
+        // Find the ETF to get its symbol
+        const etf = portfolio.etfs.find(e => e.id == id);
+        if (!etf) {
+            showNotification('ETF not found', 'error');
+            return;
+        }
+        
+        // Remove all transactions for this ETF
+        const transactions = loadTransactions();
+        const updatedTransactions = transactions.filter(tx => !(tx.assetType === 'etfs' && tx.symbol === etf.name));
+        saveTransactions(updatedTransactions);
+        
+        // Remove the ETF from portfolio
         portfolio.etfs = portfolio.etfs.filter(e => e.id != id);
         saveData();
+        
+        // Recalculate portfolio from transactions (source of truth)
+        calculatePortfolioFromTransactions();
         renderEtfs();
-        showNotification('ETF deleted successfully!', 'success');
+        renderEtfTransactions(); // Refresh transaction history
+        showNotification('ETF and all associated transactions deleted successfully!', 'success');
     }
 }
 
@@ -228,7 +245,6 @@ function renderEtfs() {
                     ${currentPrice > 0 ? `${pnlSign}${formatCurrency(pnl, etf.currency)} (${pnlSign}${pnlPercentage.toFixed(2)}%)` : '--'}
                 </td>
                 <td class="py-2 px-2">
-                    <button onclick="editEtf(${etf.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs mr-1">Edit</button>
                     <button onclick="deleteEtf(${etf.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
                 </td>
             </tr>
@@ -406,6 +422,12 @@ function handleBuyEtf() {
         return;
     }
     
+    // Validate exchange rate for USD transactions
+    if (currency === 'USD' && (isNaN(eurUsdRate) || eurUsdRate === 0 || eurUsdRate === 1.0)) {
+        showNotification('Exchange rate not available. Please update rates first by clicking "Update All" on the dashboard.', 'error');
+        return;
+    }
+    
     // Validate that either price or total is provided
     if (!price && !total) {
         showNotification('Please provide either price per share or total amount', 'error');
@@ -573,7 +595,9 @@ function renderEtfTransactions() {
         // Format price display with original USD if available
         let priceDisplay = formatCurrency(tx.price, 'EUR');
         if (tx.originalPrice && tx.originalCurrency === 'USD') {
-            priceDisplay = `€${tx.price.toFixed(2)} ($${tx.originalPrice.toFixed(2)})`;
+            const price = tx.price || 0;
+            const originalPrice = tx.originalPrice || 0;
+            priceDisplay = `€${price.toFixed(2)} ($${originalPrice.toFixed(2)})`;
         }
         
         html += `
@@ -583,8 +607,8 @@ function renderEtfTransactions() {
                 <td class="py-2 px-2 text-white font-medium">${tx.symbol}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.quantity}</td>
                 <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
-                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, tx.currency)}</td>
-                <td class="py-2 px-2 text-gray-300">${tx.currency}</td>
+                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, 'EUR')}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.originalCurrency || 'EUR'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
                     <div class="flex gap-1">
@@ -618,8 +642,16 @@ function editEtfTransaction(transactionId) {
     document.getElementById('edit-etf-transaction-type').value = transaction.type;
     document.getElementById('edit-etf-transaction-symbol').value = transaction.symbol;
     document.getElementById('edit-etf-transaction-quantity').value = transaction.quantity;
-    document.getElementById('edit-etf-transaction-price').value = transaction.price;
-    document.getElementById('edit-etf-transaction-currency').value = transaction.currency;
+    // Set currency and price based on original currency
+    if (transaction.originalCurrency === 'USD') {
+        document.getElementById('edit-etf-transaction-currency').value = 'USD';
+        document.getElementById('edit-etf-transaction-price').value = transaction.originalPrice;
+        document.getElementById('edit-etf-transaction-total').value = transaction.originalPrice * transaction.quantity;
+    } else {
+        document.getElementById('edit-etf-transaction-currency').value = 'EUR';
+        document.getElementById('edit-etf-transaction-price').value = transaction.price;
+        document.getElementById('edit-etf-transaction-total').value = transaction.total;
+    }
     document.getElementById('edit-etf-transaction-date').value = transaction.date;
     document.getElementById('edit-etf-transaction-note').value = transaction.note || '';
     
@@ -651,6 +683,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const editCancelBtn = document.getElementById('edit-etf-transaction-cancel-btn');
     
     if (editForm) {
+        // Setup auto-calculation for edit form
+        setupAutoCalculation('edit-etf-transaction-quantity', 'edit-etf-transaction-price', 'edit-etf-transaction-total');
+        
         editForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
@@ -659,22 +694,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const symbol = document.getElementById('edit-etf-transaction-symbol').value.toUpperCase();
             const quantity = parseFloat(document.getElementById('edit-etf-transaction-quantity').value);
             const price = parseFloat(document.getElementById('edit-etf-transaction-price').value);
+            const total = parseFloat(document.getElementById('edit-etf-transaction-total').value);
             const currency = document.getElementById('edit-etf-transaction-currency').value;
             const date = document.getElementById('edit-etf-transaction-date').value;
             const note = document.getElementById('edit-etf-transaction-note').value.trim();
             
-            if (!symbol || !quantity || !price || !date) {
+            if (!symbol || !quantity || !price || !total || !date) {
                 showNotification('Please fill in all fields', 'error');
                 return;
             }
             
-    // Convert to EUR if needed
-    let priceInEur = finalPrice;
-    let totalInEur = finalTotal;
-    if (currency === 'USD') {
-        priceInEur = finalPrice / eurUsdRate;
-        totalInEur = finalTotal / eurUsdRate;
-    }
+            // Convert to EUR if needed
+            let priceInEur = price;
+            let totalInEur = total;
+            if (currency === 'USD') {
+                priceInEur = price / eurUsdRate;
+                totalInEur = total / eurUsdRate;
+            }
             
             // Update the transaction
             const transactions = loadTransactions();
@@ -691,7 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 symbol,
                 quantity,
                 price: priceInEur,
-                total,
+                total: totalInEur,
                 currency: 'EUR', // Always store in EUR
                 originalPrice: currency === 'USD' ? price : null,
                 originalCurrency: currency === 'USD' ? 'USD' : null,

@@ -326,8 +326,8 @@
                 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">ETF Symbol</label>
-                    <input type="text" id="edit-etf-transaction-symbol" placeholder="e.g., VWCE.DE" required
-                           class="w-full glass-input p-3 rounded-lg">
+                    <input type="text" id="edit-etf-transaction-symbol" placeholder="e.g., VWCE.DE" required readonly
+                           class="w-full glass-input p-3 rounded-lg bg-gray-700 cursor-not-allowed">
                 </div>
                 
                 <div class="mb-4">
@@ -339,6 +339,12 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share</label>
                     <input type="number" id="edit-etf-transaction-price" placeholder="Price per share" required min="0" step="0.01"
+                           class="w-full glass-input p-3 rounded-lg">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Total Amount</label>
+                    <input type="number" id="edit-etf-transaction-total" placeholder="Total amount" min="0" step="0.01"
                            class="w-full glass-input p-3 rounded-lg">
                 </div>
                 
