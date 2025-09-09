@@ -1782,3 +1782,20 @@ window.getCachedCryptoEventsForCoins = getCachedCryptoEventsForCoins;
 window.getCachedCryptoEvents = getCachedCryptoEvents;
 window.getUpdateStatuses = getUpdateStatuses;
 window.calculatePortfolioFromTransactions = calculatePortfolioFromTransactions;
+
+// Explicit encryption wrapper functions for sensitive data
+window.setEncryptedItem = function(key, value) {
+    // This function explicitly encrypts sensitive data before storage
+    // Use this for API keys, database credentials, and other sensitive information
+    // The encryption is handled by the localStorage.setItem override in shared.js
+    const encryptedValue = encryptData(value);
+    return originalSetItem.call(localStorage, key, encryptedValue);
+};
+
+window.getEncryptedItem = function(key) {
+    // This function explicitly decrypts sensitive data after retrieval
+    // Use this for API keys, database credentials, and other sensitive information
+    // The decryption is handled by the localStorage.getItem override in shared.js
+    const encryptedValue = originalGetItem.call(localStorage, key);
+    return encryptedValue ? decryptData(encryptedValue) : null;
+};
