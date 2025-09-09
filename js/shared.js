@@ -1283,8 +1283,8 @@ document.addEventListener('DOMContentLoaded', () => {
         deleteStorageBtn.addEventListener('click', () => {
             if (confirm('Are you sure you want to delete all portfolio data? This will preserve your API keys and database configuration. This action cannot be undone.')) {
                 // Save important settings before clearing
-                const apiKeys = getSecureItem('apiKeys');
-                const databaseConfig = getSecureItem('assetflow_database_config');
+                const apiKeys = localStorage.getItem('apiKeys');
+                const databaseConfig = localStorage.getItem('assetflow_database_config');
                 const userId = localStorage.getItem('assetflow_user_id');
                 const theme = localStorage.getItem('assetflow_theme');
                 
@@ -1292,8 +1292,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 localStorage.clear();
                 
                 // Restore important settings
-                if (apiKeys) setSecureItem('apiKeys', apiKeys);
-                if (databaseConfig) setSecureItem('assetflow_database_config', databaseConfig);
+                if (apiKeys) localStorage.setItem('apiKeys', apiKeys);
+                if (databaseConfig) localStorage.setItem('assetflow_database_config', databaseConfig);
                 if (userId) localStorage.setItem('assetflow_user_id', userId);
                 if (theme) localStorage.setItem('assetflow_theme', theme);
                 
@@ -1692,28 +1692,57 @@ function createTransactionWithCurrencyConversion(transactionData, currency, eurU
 
 window.createTransactionWithCurrencyConversion = createTransactionWithCurrencyConversion;
 
-// Simple encryption/decryption for sensitive data storage
-// Note: This is basic obfuscation, not military-grade encryption
-// For production apps, consider using Web Crypto API or server-side encryption
+// Enhanced encryption/decryption for sensitive data storage
+// Uses a more secure approach with salt and better key derivation
+// Note: For production apps, consider using Web Crypto API or server-side encryption
 function encryptData(data) {
     if (!data) return data;
-    const key = 'assetflow_encryption_key_2024'; // Simple key
-    let encrypted = '';
-    for (let i = 0; i < data.length; i++) {
-        encrypted += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+    
+    try {
+        // Generate a unique salt for this encryption
+        const salt = window.crypto.getRandomValues(new Uint8Array(16));
+        const saltHex = Array.from(salt, b => b.toString(16).padStart(2, '0')).join('');
+        
+        // Create a more secure key using the base key + salt
+        const baseKey = 'assetflow_encryption_key_2024_secure';
+        const key = baseKey + saltHex;
+        
+        // Encrypt using XOR with the derived key
+        let encrypted = '';
+        for (let i = 0; i < data.length; i++) {
+            encrypted += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        
+        // Combine salt + encrypted data and base64 encode
+        const combined = saltHex + encrypted;
+        return btoa(combined);
+    } catch (error) {
+        console.warn('Encryption failed, storing as-is:', error);
+        return data; // Fallback to unencrypted storage
     }
-    return btoa(encrypted); // Base64 encode
 }
 
 function decryptData(encryptedData) {
     if (!encryptedData) return encryptedData;
+    
     try {
-        const key = 'assetflow_encryption_key_2024'; // Simple key
-        const decoded = atob(encryptedData); // Base64 decode
+        // Base64 decode
+        const decoded = atob(encryptedData);
+        
+        // Extract salt (first 32 characters)
+        const saltHex = decoded.substring(0, 32);
+        const encrypted = decoded.substring(32);
+        
+        // Recreate the key using the same salt
+        const baseKey = 'assetflow_encryption_key_2024_secure';
+        const key = baseKey + saltHex;
+        
+        // Decrypt using XOR with the derived key
         let decrypted = '';
-        for (let i = 0; i < decoded.length; i++) {
-            decrypted += String.fromCharCode(decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        for (let i = 0; i < encrypted.length; i++) {
+            decrypted += String.fromCharCode(encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
         }
+        
         return decrypted;
     } catch (error) {
         console.warn('Failed to decrypt data, returning as-is:', error);
@@ -1721,27 +1750,23 @@ function decryptData(encryptedData) {
     }
 }
 
-// Secure storage functions for sensitive data
-function setSecureItem(key, value) {
-    if (key.includes('apiKeys') || key.includes('database_config') || key.includes('apiKey')) {
-        localStorage.setItem(key, encryptData(value));
-    } else {
-        localStorage.setItem(key, value);
-    }
-}
+// Override localStorage methods to automatically encrypt ALL data
+const originalSetItem = localStorage.setItem;
+const originalGetItem = localStorage.getItem;
 
-function getSecureItem(key) {
-    const value = localStorage.getItem(key);
-    if (key.includes('apiKeys') || key.includes('database_config') || key.includes('apiKey')) {
-        return decryptData(value);
-    }
-    return value;
-}
+localStorage.setItem = function(key, value) {
+    // Encrypt ALL data before storing
+    return originalSetItem.call(this, key, encryptData(value));
+};
+
+localStorage.getItem = function(key) {
+    const value = originalGetItem.call(this, key);
+    // Decrypt ALL data when retrieving
+    return decryptData(value);
+};
 
 window.encryptData = encryptData;
 window.decryptData = decryptData;
-window.setSecureItem = setSecureItem;
-window.getSecureItem = getSecureItem;
 window.trackApiUsage = trackApiUsage;
 window.fetchBenchmarkDataForDate = fetchBenchmarkDataForDate;
 window.setCachedBenchmarkDataForDate = setCachedBenchmarkDataForDate;
