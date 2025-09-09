@@ -423,7 +423,7 @@ function handleBuyEtf() {
     }
     
     // Validate exchange rate for USD transactions
-    if (currency === 'USD' && (isNaN(eurUsdRate) || eurUsdRate === 0 || eurUsdRate === 1.0)) {
+    if (currency === 'USD' && (isNaN(eurUsdRate) || eurUsdRate === 0)) {
         showNotification('Exchange rate not available. Please update rates first by clicking "Update All" on the dashboard.', 'error');
         return;
     }
