@@ -63,11 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Set up auto-calculation for buy form
     setupAutoCalculation('buy-etf-quantity', 'buy-etf-price', 'buy-etf-total');
-    setupAutoCalculation('buy-etf-quantity', 'buy-etf-total', 'buy-etf-price');
     
     // Set up auto-calculation for sell form
     setupAutoCalculation('sell-etf-quantity', 'sell-etf-price', 'sell-etf-total');
-    setupAutoCalculation('sell-etf-quantity', 'sell-etf-total', 'sell-etf-price');
     
     // Price updates are now handled automatically from the dashboard
     

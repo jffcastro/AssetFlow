@@ -65,11 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Set up auto-calculation for buy form
     setupAutoCalculation('buy-crypto-quantity', 'buy-crypto-price', 'buy-crypto-total');
-    setupAutoCalculation('buy-crypto-quantity', 'buy-crypto-total', 'buy-crypto-price');
     
     // Set up auto-calculation for sell form
     setupAutoCalculation('sell-crypto-quantity', 'sell-crypto-price', 'sell-crypto-total');
-    setupAutoCalculation('sell-crypto-quantity', 'sell-crypto-total', 'sell-crypto-price');
     
     // Price updates are now handled automatically from the dashboard
     
