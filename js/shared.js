@@ -1282,20 +1282,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if (deleteStorageBtn) {
         deleteStorageBtn.addEventListener('click', () => {
             if (confirm('Are you sure you want to delete all portfolio data? This will preserve your API keys and database configuration. This action cannot be undone.')) {
-                // Save important settings before clearing
-                const apiKeys = localStorage.getItem('apiKeys');
-                const databaseConfig = localStorage.getItem('assetflow_database_config');
-                const userId = localStorage.getItem('assetflow_user_id');
-                const theme = localStorage.getItem('assetflow_theme');
+                // Get list of keys to preserve (encrypted)
+                const keysToPreserve = ['apiKeys', 'assetflow_database_config', 'assetflow_user_id', 'assetflow_theme'];
+                const preservedData = {};
+                
+                // Store encrypted data temporarily
+                keysToPreserve.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value) {
+                        preservedData[key] = value; // Already encrypted by our override
+                    }
+                });
                 
                 // Clear all localStorage
                 localStorage.clear();
                 
-                // Restore important settings
-                if (apiKeys) localStorage.setItem('apiKeys', apiKeys);
-                if (databaseConfig) localStorage.setItem('assetflow_database_config', databaseConfig);
-                if (userId) localStorage.setItem('assetflow_user_id', userId);
-                if (theme) localStorage.setItem('assetflow_theme', theme);
+                // Restore preserved data (still encrypted)
+                Object.entries(preservedData).forEach(([key, value]) => {
+                    localStorage.setItem(key, value);
+                });
                 
                 location.reload();
             }
