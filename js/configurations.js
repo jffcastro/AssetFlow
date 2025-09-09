@@ -60,22 +60,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        const fhConfig = {
+        // Load existing API keys
+        const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
+        apiKeys.finnhub = {
             apiKey: apiKey,
             savedAt: new Date().toISOString()
         };
         
-        localStorage.setItem('portfolioPilotFinnhub', JSON.stringify(fhConfig));
+        localStorage.setItem('apiKeys', JSON.stringify(apiKeys));
         showNotification('Finnhub API key saved successfully!', 'success');
         updateApiStatuses();
     }
 
     function loadFinnhubKey() {
-        const config = localStorage.getItem('portfolioPilotFinnhub');
-        if (config) {
-            const parsed = JSON.parse(config);
-            fhApiKeyInput.value = parsed.apiKey || '';
-            return parsed;
+        const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
+        if (apiKeys.finnhub && apiKeys.finnhub.apiKey) {
+            fhApiKeyInput.value = apiKeys.finnhub.apiKey;
+            return apiKeys.finnhub;
         }
         return null;
     }
@@ -89,22 +90,23 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         
-        const cmcConfig = {
+        // Load existing API keys
+        const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
+        apiKeys.coinMarketCal = {
             apiKey: apiKey,
             savedAt: new Date().toISOString()
         };
         
-        localStorage.setItem('portfolioPilotCoinMarketCal', JSON.stringify(cmcConfig));
+        localStorage.setItem('apiKeys', JSON.stringify(apiKeys));
         showNotification('CoinMarketCal API key saved successfully!', 'success');
         updateApiStatuses();
     }
 
     function loadCoinMarketCalKey() {
-        const config = localStorage.getItem('portfolioPilotCoinMarketCal');
-        if (config) {
-            const parsed = JSON.parse(config);
-            cmcApiKeyInput.value = parsed.apiKey || '';
-            return parsed;
+        const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
+        if (apiKeys.coinMarketCal && apiKeys.coinMarketCal.apiKey) {
+            cmcApiKeyInput.value = apiKeys.coinMarketCal.apiKey;
+            return apiKeys.coinMarketCal;
         }
         return null;
     }
@@ -117,34 +119,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update API status indicators
     function updateApiStatuses() {
-        const fhConfig = localStorage.getItem('portfolioPilotFinnhub');
-        const cmcConfig = localStorage.getItem('portfolioPilotCoinMarketCal');
+        const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
         
         // Finnhub status
-        if (fhConfig) {
-            const parsed = JSON.parse(fhConfig);
-            if (parsed.apiKey) {
-                fhStatus.textContent = 'Configured';
-                fhStatus.className = 'text-xs px-2 py-1 rounded-full bg-green-700 text-green-100';
-            } else {
-                fhStatus.textContent = 'Incomplete';
-                fhStatus.className = 'text-xs px-2 py-1 rounded-full bg-yellow-700 text-yellow-100';
-            }
+        if (apiKeys.finnhub && apiKeys.finnhub.apiKey) {
+            fhStatus.textContent = 'Configured';
+            fhStatus.className = 'text-xs px-2 py-1 rounded-full bg-green-700 text-green-100';
         } else {
             fhStatus.textContent = 'Not Configured';
             fhStatus.className = 'text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300';
         }
         
         // CoinMarketCal status
-        if (cmcConfig) {
-            const parsed = JSON.parse(cmcConfig);
-            if (parsed.apiKey) {
-                cmcStatus.textContent = 'Configured';
-                cmcStatus.className = 'text-xs px-2 py-1 rounded-full bg-green-700 text-green-100';
-            } else {
-                cmcStatus.textContent = 'Incomplete';
-                cmcStatus.className = 'text-xs px-2 py-1 rounded-full bg-yellow-700 text-yellow-100';
-            }
+        if (apiKeys.coinMarketCal && apiKeys.coinMarketCal.apiKey) {
+            cmcStatus.textContent = 'Configured';
+            cmcStatus.className = 'text-xs px-2 py-1 rounded-full bg-green-700 text-green-100';
         } else {
             cmcStatus.textContent = 'Not Configured';
             cmcStatus.className = 'text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300';
@@ -154,11 +143,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // Usage statistics functions
     function loadUsageStats() {
         const today = new Date().toDateString();
-        const fhUsageData = JSON.parse(localStorage.getItem('portfolioPilotFinnhubUsage') || '{}');
-        const cmcUsageData = JSON.parse(localStorage.getItem('portfolioPilotCoinMarketCalUsage') || '{}');
+        const fhUsageData = JSON.parse(localStorage.getItem('apiUsage') || '{}');
+        const cmcUsageData = JSON.parse(localStorage.getItem('apiUsage') || '{}');
         
-        fhUsage.textContent = `${fhUsageData[today] || 0} calls today`;
-        cmcUsage.textContent = `${cmcUsageData[today] || 0} calls today`;
+        fhUsage.textContent = `${fhUsageData.finnhub?.[today] || 0} calls today`;
+        cmcUsage.textContent = `${cmcUsageData.coinMarketCal?.[today] || 0} calls today`;
     }
 
     // ==================== DATABASE FUNCTIONS ====================
@@ -657,19 +646,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Track API usage (called from other parts of the app)
     function trackApiUsage(apiName) {
         const today = new Date().toDateString();
-        const storageKey = `portfolioPilot${apiName}Usage`;
-        const usageData = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        const usageData = JSON.parse(localStorage.getItem('apiUsage') || '{}');
         
-        usageData[today] = (usageData[today] || 0) + 1;
-        localStorage.setItem(storageKey, JSON.stringify(usageData));
+        if (!usageData[apiName]) {
+            usageData[apiName] = {};
+        }
+        usageData[apiName][today] = (usageData[apiName][today] || 0) + 1;
+        localStorage.setItem('apiUsage', JSON.stringify(usageData));
     }
 
     // Get API key for use in other parts of the app
     function getApiKey(apiName) {
-        const config = localStorage.getItem(`portfolioPilot${apiName}`);
-        if (config) {
-            const parsed = JSON.parse(config);
-            return parsed.apiKey;
+        const apiKeys = JSON.parse(localStorage.getItem('apiKeys') || '{}');
+        if (apiKeys[apiName] && apiKeys[apiName].apiKey) {
+            return apiKeys[apiName].apiKey;
         }
         return null;
     }
