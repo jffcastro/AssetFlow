@@ -1613,6 +1613,84 @@ function calculatePortfolioFromTransactions() {
 window.fetchStockEarnings = fetchStockEarnings;
 window.fetchCryptoEvents = fetchCryptoEvents;
 window.getApiKey = getApiKey;
+
+// Auto-calculation utility function for price/total fields
+function setupAutoCalculation(quantityId, priceId, totalId) {
+    const quantityInput = document.getElementById(quantityId);
+    const priceInput = document.getElementById(priceId);
+    const totalInput = document.getElementById(totalId);
+    
+    if (!quantityInput || !priceInput || !totalInput) return;
+    
+    const calculatePriceFromTotal = () => {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const total = parseFloat(totalInput.value) || 0;
+        
+        if (quantity > 0 && total > 0) {
+            priceInput.value = (total / quantity).toFixed(2);
+        }
+    };
+    
+    const calculateTotalFromPrice = () => {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        
+        if (quantity > 0 && price > 0) {
+            totalInput.value = (quantity * price).toFixed(2);
+        }
+    };
+    
+    // When price changes, calculate total
+    priceInput.addEventListener('input', calculateTotalFromPrice);
+    
+    // When total changes, calculate price
+    totalInput.addEventListener('input', calculatePriceFromTotal);
+    
+    // When quantity changes, recalculate based on which field has a value
+    quantityInput.addEventListener('input', () => {
+        const price = parseFloat(priceInput.value) || 0;
+        const total = parseFloat(totalInput.value) || 0;
+        
+        if (price > 0) {
+            calculateTotalFromPrice();
+        } else if (total > 0) {
+            calculatePriceFromTotal();
+        }
+    });
+}
+
+window.setupAutoCalculation = setupAutoCalculation;
+
+// Utility function to create transaction with proper currency conversion and original price storage
+function createTransactionWithCurrencyConversion(transactionData, currency, eurUsdRate) {
+    const { type, assetType, symbol, quantity, finalPrice, finalTotal, date, note } = transactionData;
+    
+    // Convert to EUR if needed
+    let priceInEur = finalPrice;
+    let totalInEur = finalTotal;
+    if (currency === 'USD') {
+        priceInEur = finalPrice / eurUsdRate;
+        totalInEur = finalTotal / eurUsdRate;
+    }
+    
+    return {
+        id: Date.now().toString(),
+        type,
+        assetType,
+        symbol,
+        quantity,
+        price: priceInEur,
+        total: totalInEur,
+        currency: 'EUR',
+        originalPrice: currency === 'USD' ? finalPrice : null,
+        originalCurrency: currency === 'USD' ? 'USD' : null,
+        date,
+        note: note || `${type === 'buy' ? 'Bought' : 'Sold'} ${quantity} ${assetType === 'crypto' ? 'units' : 'shares'} of ${symbol} at €${priceInEur.toFixed(2)} per ${assetType === 'crypto' ? 'unit' : 'share'}`,
+        timestamp: new Date().toISOString()
+    };
+}
+
+window.createTransactionWithCurrencyConversion = createTransactionWithCurrencyConversion;
 window.trackApiUsage = trackApiUsage;
 window.fetchBenchmarkDataForDate = fetchBenchmarkDataForDate;
 window.setCachedBenchmarkDataForDate = setCachedBenchmarkDataForDate;

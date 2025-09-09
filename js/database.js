@@ -472,7 +472,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function getUserId() {
         let userId = localStorage.getItem('assetflow_user_id');
         if (!userId) {
-            userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            // Generate a cryptographically secure unique user ID
+            const randomArray = window.crypto.getRandomValues(new Uint8Array(9));
+            const randomString = Array.from(randomArray, b => b.toString(36)).join('').substr(0, 9);
+            userId = 'user_' + Date.now() + '_' + randomString;
             localStorage.setItem('assetflow_user_id', userId);
         }
         return userId;

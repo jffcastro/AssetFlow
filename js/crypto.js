@@ -532,49 +532,6 @@ function closeSellCryptoModal() {
     document.getElementById('sell-crypto-form').reset();
 }
 
-function setupAutoCalculation(quantityId, priceId, totalId) {
-    const quantityInput = document.getElementById(quantityId);
-    const priceInput = document.getElementById(priceId);
-    const totalInput = document.getElementById(totalId);
-    
-    if (!quantityInput || !priceInput || !totalInput) return;
-    
-    const calculatePriceFromTotal = () => {
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const total = parseFloat(totalInput.value) || 0;
-        
-        if (quantity > 0 && total > 0) {
-            priceInput.value = (total / quantity).toFixed(2);
-        }
-    };
-    
-    const calculateTotalFromPrice = () => {
-        const quantity = parseFloat(quantityInput.value) || 0;
-        const price = parseFloat(priceInput.value) || 0;
-        
-        if (quantity > 0 && price > 0) {
-            totalInput.value = (quantity * price).toFixed(2);
-        }
-    };
-    
-    // When price changes, calculate total
-    priceInput.addEventListener('input', calculateTotalFromPrice);
-    
-    // When total changes, calculate price
-    totalInput.addEventListener('input', calculatePriceFromTotal);
-    
-    // When quantity changes, recalculate based on which field has a value
-    quantityInput.addEventListener('input', () => {
-        const price = parseFloat(priceInput.value) || 0;
-        const total = parseFloat(totalInput.value) || 0;
-        
-        if (price > 0) {
-            calculateTotalFromPrice();
-        } else if (total > 0) {
-            calculatePriceFromTotal();
-        }
-    });
-}
 
 function handleBuyCrypto() {
     const name = document.getElementById('buy-crypto-name').value.trim();
