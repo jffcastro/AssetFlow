@@ -63,6 +63,14 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshTransactionsBtn.addEventListener('click', renderStockTransactions);
     refreshEventsBtn.addEventListener('click', loadStockEvents);
     
+    // Set up auto-calculation for buy form
+    setupAutoCalculation('buy-stock-quantity', 'buy-stock-price', 'buy-stock-total');
+    setupAutoCalculation('buy-stock-quantity', 'buy-stock-total', 'buy-stock-price');
+    
+    // Set up auto-calculation for sell form
+    setupAutoCalculation('sell-stock-quantity', 'sell-stock-price', 'sell-stock-total');
+    setupAutoCalculation('sell-stock-quantity', 'sell-stock-total', 'sell-stock-price');
+    
     // Price updates are now handled automatically from the dashboard
     
     // Initial render
@@ -161,7 +169,7 @@ function renderStocks() {
     
     // First pass: calculate total values
     portfolio.stocks.forEach(stock => {
-        const cachedData = priceCache.stocks[stock.name] || {};
+        const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
         const currentPrice = cachedData.price || 0;
         const value = currentPrice * stock.quantity;
         const purchaseValue = stock.purchasePrice * stock.quantity;
@@ -181,7 +189,7 @@ function renderStocks() {
     
     // Second pass: render rows with allocation percentages
     portfolio.stocks.forEach(stock => {
-        const cachedData = priceCache.stocks[stock.name] || {};
+        const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
         const currentPrice = cachedData.price || 0;
         const change24h = cachedData.change24h || 0;
         const value = currentPrice * stock.quantity;
@@ -274,6 +282,7 @@ async function updateStockPrices() {
         try {
             const price = await fetchStockPrice(stock.name);
             if (price) {
+                if (!priceCache.stocks) priceCache.stocks = {};
                 priceCache.stocks[stock.name] = price;
                 updatedCount++;
             }
@@ -527,116 +536,136 @@ function closeSellStockModal() {
     document.getElementById('sell-stock-form').reset();
 }
 
+
 function handleBuyStock() {
-    const symbol = document.getElementById('buy-stock-symbol').value.trim().toUpperCase();
-    const quantity = parseInt(document.getElementById('buy-stock-quantity').value);
-    const price = parseFloat(document.getElementById('buy-stock-price').value);
-    const currency = document.getElementById('buy-stock-currency').value;
-    const date = document.getElementById('buy-stock-date').value;
-    
-    if (!symbol || !quantity || !price || !date) {
-        showNotification('Please fill in all fields', 'error');
-        return;
-    }
-    
-    // Convert to EUR if needed
-    let priceInEur = price;
-    if (currency === 'USD') {
-        priceInEur = price * eurUsdRate;
-    }
-    
-    // Add to portfolio
-    if (!portfolio.stocks) portfolio.stocks = [];
-    
-    const existingStockIndex = portfolio.stocks.findIndex(stock => stock.name === symbol);
-    
-    if (existingStockIndex !== -1) {
-        // Update existing stock
-        const existingStock = portfolio.stocks[existingStockIndex];
-        const totalQuantity = existingStock.quantity + quantity;
-        const totalCost = (existingStock.quantity * existingStock.purchasePrice) + (quantity * price);
-        const averagePrice = totalCost / totalQuantity;
+    try {
+        const symbol = document.getElementById('buy-stock-symbol').value.trim().toUpperCase();
+        const quantity = parseFloat(document.getElementById('buy-stock-quantity').value);
+        const price = parseFloat(document.getElementById('buy-stock-price').value);
+        const total = parseFloat(document.getElementById('buy-stock-total').value);
+        const currency = document.getElementById('buy-stock-currency').value;
+        const date = document.getElementById('buy-stock-date').value;
+        const note = document.getElementById('buy-stock-note').value.trim();
         
-        portfolio.stocks[existingStockIndex] = {
-            ...existingStock,
-            quantity: totalQuantity,
-            purchasePrice: averagePrice
-        };
-    } else {
-        // Add new stock
-        portfolio.stocks.push({
-            name: symbol,
+        // Validate required fields
+        if (!symbol || !quantity || !date) {
+            showNotification('Please fill in all required fields', 'error');
+            return;
+        }
+        
+        // Validate that either price or total is provided
+        if (!price && !total) {
+            showNotification('Please provide either price per share or total amount', 'error');
+            return;
+        }
+        
+        // Calculate missing value
+        let finalPrice = price;
+        let finalTotal = total;
+        if (price && !total) {
+            finalTotal = quantity * price;
+        } else if (total && !price) {
+            finalPrice = total / quantity;
+        }
+    
+        // Convert to EUR if needed
+        let priceInEur = finalPrice;
+        let totalInEur = finalTotal;
+        if (currency === 'USD') {
+            priceInEur = finalPrice / eurUsdRate;
+            totalInEur = finalTotal / eurUsdRate;
+        }
+        
+        // Create transaction
+        const transaction = {
+            id: Date.now().toString(),
+            type: 'buy',
+            assetType: 'stocks',
+            symbol: symbol,
             quantity: quantity,
-            purchasePrice: priceInEur,
+            price: priceInEur,
+            total: totalInEur,
             currency: 'EUR',
-            dividend: 0
-        });
+            originalPrice: currency === 'USD' ? finalPrice : null,
+            originalCurrency: currency === 'USD' ? 'USD' : null,
+            date: date,
+            note: note || `Bought ${quantity} shares of ${symbol} at €${priceInEur.toFixed(2)} per share`,
+            timestamp: new Date().toISOString()
+        };
+        
+        addTransaction(transaction);
+        saveData();
+        calculatePortfolioFromTransactions();
+        renderStocks();
+        renderStockTransactions();
+        closeBuyStockModal();
+        
+        showNotification(`Successfully bought ${quantity} shares of ${symbol}`, 'success');
+        
+    } catch (error) {
+        console.error('Error in handleBuyStock:', error);
+        showNotification(`Error buying stock: ${error.message}`, 'error');
     }
-    
-    // Record transaction
-    const transaction = {
-        id: Date.now().toString(),
-        type: 'buy',
-        assetType: 'stock',
-        symbol: symbol,
-        quantity: quantity,
-        price: price,
-        total: quantity * price,
-        currency: currency,
-        date: date,
-        timestamp: new Date().toISOString()
-    };
-    
-    addTransaction(transaction);
-    saveData();
-    renderStocks();
-    renderStockTransactions();
-    closeBuyStockModal();
-    
-    showNotification(`Successfully bought ${quantity} shares of ${symbol}`, 'success');
 }
 
 function handleSellStock() {
     const symbol = document.getElementById('sell-stock-symbol').value;
-    const quantity = parseInt(document.getElementById('sell-stock-quantity').value);
+    const quantity = parseFloat(document.getElementById('sell-stock-quantity').value);
     const price = parseFloat(document.getElementById('sell-stock-price').value);
+    const total = parseFloat(document.getElementById('sell-stock-total').value);
+    const currency = document.getElementById('sell-stock-currency').value;
     const date = document.getElementById('sell-stock-date').value;
+    const note = document.getElementById('sell-stock-note').value.trim();
     
-    if (!symbol || !quantity || !price || !date) {
-        showNotification('Please fill in all fields', 'error');
+    // Validate required fields
+    if (!symbol || !quantity || !date) {
+        showNotification('Please fill in all required fields', 'error');
         return;
     }
     
-    const stockIndex = portfolio.stocks.findIndex(stock => stock.name === symbol);
-    const stock = portfolio.stocks[stockIndex];
-    
-    if (!stock || stock.quantity < quantity) {
-        showNotification(`Insufficient shares. You only have ${stock ? stock.quantity : 0} shares of ${symbol}`, 'error');
+    // Validate that either price or total is provided
+    if (!price && !total) {
+        showNotification('Please provide either price per share or total amount', 'error');
         return;
     }
     
-    // Update portfolio
-    stock.quantity -= quantity;
-    if (stock.quantity === 0) {
-        portfolio.stocks.splice(stockIndex, 1);
+    // Calculate missing value
+    let finalPrice = price;
+    let finalTotal = total;
+    if (price && !total) {
+        finalTotal = quantity * price;
+    } else if (total && !price) {
+        finalPrice = total / quantity;
+    }
+    
+    // Convert to EUR if needed
+    let priceInEur = finalPrice;
+    let totalInEur = finalTotal;
+    if (currency === 'USD') {
+        priceInEur = finalPrice / eurUsdRate;
+        totalInEur = finalTotal / eurUsdRate;
     }
     
     // Record transaction
     const transaction = {
         id: Date.now().toString(),
         type: 'sell',
-        assetType: 'stock',
+        assetType: 'stocks',
         symbol: symbol,
         quantity: quantity,
-        price: price,
-        total: quantity * price,
+        price: priceInEur,
+        total: totalInEur,
         currency: 'EUR',
+        originalPrice: currency === 'USD' ? finalPrice : null,
+        originalCurrency: currency === 'USD' ? 'USD' : null,
         date: date,
+        note: note || `Sold ${quantity} shares of ${symbol} at €${priceInEur.toFixed(2)} per share`,
         timestamp: new Date().toISOString()
     };
     
     addTransaction(transaction);
     saveData();
+    calculatePortfolioFromTransactions();
     renderStocks();
     renderStockTransactions();
     closeSellStockModal();
@@ -649,10 +678,10 @@ function renderStockTransactions() {
     const tbody = document.getElementById('stock-transactions-tbody');
     if (!tbody) return;
     
-    const transactions = loadTransactions().filter(tx => tx.assetType === 'stock');
+    const transactions = loadTransactions().filter(tx => tx.assetType === 'stocks');
     
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">No stock transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No stock transactions yet.</td></tr>';
         return;
     }
     
@@ -664,15 +693,22 @@ function renderStockTransactions() {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
         const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
         
+        // Format price display with original USD if available
+        let priceDisplay = formatCurrency(tx.price, 'EUR');
+        if (tx.originalPrice && tx.originalCurrency === 'USD') {
+            priceDisplay = `€${tx.price.toFixed(2)} ($${tx.originalPrice.toFixed(2)})`;
+        }
+        
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 text-gray-300">${new Date(tx.date).toLocaleDateString()}</td>
                 <td class="py-2 px-2 ${typeColor}">${typeText}</td>
                 <td class="py-2 px-2 text-white font-medium">${tx.symbol}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.quantity}</td>
-                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.price, tx.currency)}</td>
+                <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, tx.currency)}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.currency}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
                     <div class="flex gap-1">
                         <button onclick="editStockTransaction('${tx.id}')" class="glass-button text-xs px-2 py-1" title="Edit">
@@ -708,6 +744,7 @@ function editStockTransaction(transactionId) {
     document.getElementById('edit-transaction-price').value = transaction.price;
     document.getElementById('edit-transaction-currency').value = transaction.currency;
     document.getElementById('edit-transaction-date').value = transaction.date;
+    document.getElementById('edit-transaction-note').value = transaction.note || '';
     
     // Show the modal
     document.getElementById('edit-stock-transaction-modal').classList.remove('hidden');
@@ -723,7 +760,7 @@ function deleteStockTransaction(transactionId) {
     const updatedTransactions = transactions.filter(tx => tx.id !== transactionId);
     saveTransactions(updatedTransactions);
     
-    // Recalculate portfolio
+    // Recalculate portfolio from transactions (source of truth)
     calculatePortfolioFromTransactions();
     renderStocks();
     renderStockTransactions();
@@ -743,17 +780,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const transactionId = document.getElementById('edit-transaction-id').value;
             const type = document.getElementById('edit-transaction-type').value;
             const symbol = document.getElementById('edit-transaction-symbol').value.toUpperCase();
-            const quantity = parseInt(document.getElementById('edit-transaction-quantity').value);
+            const quantity = parseFloat(document.getElementById('edit-transaction-quantity').value);
             const price = parseFloat(document.getElementById('edit-transaction-price').value);
             const currency = document.getElementById('edit-transaction-currency').value;
             const date = document.getElementById('edit-transaction-date').value;
+            const note = document.getElementById('edit-transaction-note').value.trim();
             
             if (!symbol || !quantity || !price || !date) {
                 showNotification('Please fill in all fields', 'error');
                 return;
             }
             
-            const total = quantity * price;
+            // Convert to EUR if needed
+            let priceInEur = price;
+            if (currency === 'USD') {
+                priceInEur = price / eurUsdRate;
+            }
+            
+            const total = quantity * priceInEur;
             
             // Update the transaction
             const transactions = loadTransactions();
@@ -769,16 +813,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 type,
                 symbol,
                 quantity,
-                price,
+                price: priceInEur,
                 total,
-                currency,
+                currency: 'EUR', // Always store in EUR
+                originalPrice: currency === 'USD' ? price : null,
+                originalCurrency: currency === 'USD' ? 'USD' : null,
                 date,
+                note: note || transactions[transactionIndex].note,
                 timestamp: new Date().toISOString()
             };
             
             saveTransactions(transactions);
             
-            // Recalculate portfolio
+            // Recalculate portfolio from transactions (source of truth)
             calculatePortfolioFromTransactions();
             renderStocks();
             renderStockTransactions();

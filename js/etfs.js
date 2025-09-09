@@ -61,6 +61,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     refreshEtfTransactionsBtn.addEventListener('click', renderEtfTransactions);
     
+    // Set up auto-calculation for buy form
+    setupAutoCalculation('buy-etf-quantity', 'buy-etf-price', 'buy-etf-total');
+    setupAutoCalculation('buy-etf-quantity', 'buy-etf-total', 'buy-etf-price');
+    
+    // Set up auto-calculation for sell form
+    setupAutoCalculation('sell-etf-quantity', 'sell-etf-price', 'sell-etf-total');
+    setupAutoCalculation('sell-etf-quantity', 'sell-etf-total', 'sell-etf-price');
+    
     // Price updates are now handled automatically from the dashboard
     
     // Initial render
@@ -158,7 +166,7 @@ function renderEtfs() {
     
     // First pass: calculate total values
     portfolio.etfs.forEach(etf => {
-        const cachedData = priceCache.etfs[etf.name] || {};
+        const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
         const currentPrice = cachedData.price || 0;
         const value = currentPrice * etf.quantity;
         const purchaseValue = etf.purchasePrice * etf.quantity;
@@ -178,7 +186,7 @@ function renderEtfs() {
     
     // Second pass: render rows with allocation percentages
     portfolio.etfs.forEach(etf => {
-        const cachedData = priceCache.etfs[etf.name] || {};
+        const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
         const currentPrice = cachedData.price || 0;
         const change24h = cachedData.change24h || 0;
         const value = currentPrice * etf.quantity;
@@ -271,6 +279,7 @@ async function updateEtfPrices() {
         try {
             const price = await fetchStockPrice(etf.name);
             if (price) {
+                if (!priceCache.etfs) priceCache.etfs = {};
                 priceCache.etfs[etf.name] = price;
                 updatedCount++;
             }
@@ -383,22 +392,43 @@ function closeSellEtfModal() {
     document.getElementById('sell-etf-form').reset();
 }
 
+
 function handleBuyEtf() {
     const symbol = document.getElementById('buy-etf-symbol').value.trim().toUpperCase();
-    const quantity = parseInt(document.getElementById('buy-etf-quantity').value);
+    const quantity = parseFloat(document.getElementById('buy-etf-quantity').value);
     const price = parseFloat(document.getElementById('buy-etf-price').value);
+    const total = parseFloat(document.getElementById('buy-etf-total').value);
     const currency = document.getElementById('buy-etf-currency').value;
     const date = document.getElementById('buy-etf-date').value;
+    const note = document.getElementById('buy-etf-note').value.trim();
     
-    if (!symbol || !quantity || !price || !date) {
-        showNotification('Please fill in all fields', 'error');
+    // Validate required fields
+    if (!symbol || !quantity || !date) {
+        showNotification('Please fill in all required fields', 'error');
         return;
     }
     
+    // Validate that either price or total is provided
+    if (!price && !total) {
+        showNotification('Please provide either price per share or total amount', 'error');
+        return;
+    }
+    
+    // Calculate missing value
+    let finalPrice = price;
+    let finalTotal = total;
+    if (price && !total) {
+        finalTotal = quantity * price;
+    } else if (total && !price) {
+        finalPrice = total / quantity;
+    }
+    
     // Convert to EUR if needed
-    let priceInEur = price;
+    let priceInEur = finalPrice;
+    let totalInEur = finalTotal;
     if (currency === 'USD') {
-        priceInEur = price * eurUsdRate;
+        priceInEur = finalPrice / eurUsdRate;
+        totalInEur = finalTotal / eurUsdRate;
     }
     
     // Add to portfolio
@@ -432,18 +462,23 @@ function handleBuyEtf() {
     const transaction = {
         id: Date.now().toString(),
         type: 'buy',
-        assetType: 'etf',
+        assetType: 'etfs',
         symbol: symbol,
         quantity: quantity,
-        price: price,
-        total: quantity * price,
-        currency: currency,
+        price: priceInEur,
+        total: totalInEur,
+        currency: 'EUR',
+        originalPrice: currency === 'USD' ? finalPrice : null,
+        originalCurrency: currency === 'USD' ? 'USD' : null,
         date: date,
+        note: note || `Bought ${quantity} shares of ${symbol} at €${priceInEur.toFixed(2)} per share`,
         timestamp: new Date().toISOString()
     };
     
     addTransaction(transaction);
     saveData();
+    // Recalculate portfolio from transactions (source of truth)
+    calculatePortfolioFromTransactions();
     renderEtfs();
     renderEtfTransactions();
     closeBuyEtfModal();
@@ -453,45 +488,63 @@ function handleBuyEtf() {
 
 function handleSellEtf() {
     const symbol = document.getElementById('sell-etf-symbol').value;
-    const quantity = parseInt(document.getElementById('sell-etf-quantity').value);
+    const quantity = parseFloat(document.getElementById('sell-etf-quantity').value);
     const price = parseFloat(document.getElementById('sell-etf-price').value);
+    const total = parseFloat(document.getElementById('sell-etf-total').value);
+    const currency = document.getElementById('sell-etf-currency').value;
     const date = document.getElementById('sell-etf-date').value;
+    const note = document.getElementById('sell-etf-note').value.trim();
     
-    if (!symbol || !quantity || !price || !date) {
-        showNotification('Please fill in all fields', 'error');
+    // Validate required fields
+    if (!symbol || !quantity || !date) {
+        showNotification('Please fill in all required fields', 'error');
         return;
     }
     
-    const etfIndex = portfolio.etfs.findIndex(etf => etf.name === symbol);
-    const etf = portfolio.etfs[etfIndex];
-    
-    if (!etf || etf.quantity < quantity) {
-        showNotification(`Insufficient shares. You only have ${etf ? etf.quantity : 0} shares of ${symbol}`, 'error');
+    // Validate that either price or total is provided
+    if (!price && !total) {
+        showNotification('Please provide either price per share or total amount', 'error');
         return;
     }
     
-    // Update portfolio
-    etf.quantity -= quantity;
-    if (etf.quantity === 0) {
-        portfolio.etfs.splice(etfIndex, 1);
+    // Calculate missing value
+    let finalPrice = price;
+    let finalTotal = total;
+    if (price && !total) {
+        finalTotal = quantity * price;
+    } else if (total && !price) {
+        finalPrice = total / quantity;
+    }
+    
+    // Convert to EUR if needed
+    let priceInEur = finalPrice;
+    let totalInEur = finalTotal;
+    if (currency === 'USD') {
+        priceInEur = finalPrice / eurUsdRate;
+        totalInEur = finalTotal / eurUsdRate;
     }
     
     // Record transaction
     const transaction = {
         id: Date.now().toString(),
         type: 'sell',
-        assetType: 'etf',
+        assetType: 'etfs',
         symbol: symbol,
         quantity: quantity,
-        price: price,
-        total: quantity * price,
+        price: priceInEur,
+        total: totalInEur,
         currency: 'EUR',
+        originalPrice: currency === 'USD' ? finalPrice : null,
+        originalCurrency: currency === 'USD' ? 'USD' : null,
         date: date,
+        note: note || `Sold ${quantity} shares of ${symbol} at €${priceInEur.toFixed(2)} per share`,
         timestamp: new Date().toISOString()
     };
     
     addTransaction(transaction);
     saveData();
+    // Recalculate portfolio from transactions (source of truth)
+    calculatePortfolioFromTransactions();
     renderEtfs();
     renderEtfTransactions();
     closeSellEtfModal();
@@ -504,10 +557,10 @@ function renderEtfTransactions() {
     const tbody = document.getElementById('etf-transactions-tbody');
     if (!tbody) return;
     
-    const transactions = loadTransactions().filter(tx => tx.assetType === 'etf');
+    const transactions = loadTransactions().filter(tx => tx.assetType === 'etfs');
     
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">No ETF transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No ETF transactions yet.</td></tr>';
         return;
     }
     
@@ -519,15 +572,22 @@ function renderEtfTransactions() {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
         const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
         
+        // Format price display with original USD if available
+        let priceDisplay = formatCurrency(tx.price, 'EUR');
+        if (tx.originalPrice && tx.originalCurrency === 'USD') {
+            priceDisplay = `€${tx.price.toFixed(2)} ($${tx.originalPrice.toFixed(2)})`;
+        }
+        
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 text-gray-300">${new Date(tx.date).toLocaleDateString()}</td>
                 <td class="py-2 px-2 ${typeColor}">${typeText}</td>
                 <td class="py-2 px-2 text-white font-medium">${tx.symbol}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.quantity}</td>
-                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.price, tx.currency)}</td>
+                <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, tx.currency)}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.currency}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
                     <div class="flex gap-1">
                         <button onclick="editEtfTransaction('${tx.id}')" class="glass-button text-xs px-2 py-1" title="Edit">
@@ -563,6 +623,7 @@ function editEtfTransaction(transactionId) {
     document.getElementById('edit-etf-transaction-price').value = transaction.price;
     document.getElementById('edit-etf-transaction-currency').value = transaction.currency;
     document.getElementById('edit-etf-transaction-date').value = transaction.date;
+    document.getElementById('edit-etf-transaction-note').value = transaction.note || '';
     
     // Show the modal
     document.getElementById('edit-etf-transaction-modal').classList.remove('hidden');
@@ -598,17 +659,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const transactionId = document.getElementById('edit-etf-transaction-id').value;
             const type = document.getElementById('edit-etf-transaction-type').value;
             const symbol = document.getElementById('edit-etf-transaction-symbol').value.toUpperCase();
-            const quantity = parseInt(document.getElementById('edit-etf-transaction-quantity').value);
+            const quantity = parseFloat(document.getElementById('edit-etf-transaction-quantity').value);
             const price = parseFloat(document.getElementById('edit-etf-transaction-price').value);
             const currency = document.getElementById('edit-etf-transaction-currency').value;
             const date = document.getElementById('edit-etf-transaction-date').value;
+            const note = document.getElementById('edit-etf-transaction-note').value.trim();
             
             if (!symbol || !quantity || !price || !date) {
                 showNotification('Please fill in all fields', 'error');
                 return;
             }
             
-            const total = quantity * price;
+    // Convert to EUR if needed
+    let priceInEur = finalPrice;
+    let totalInEur = finalTotal;
+    if (currency === 'USD') {
+        priceInEur = finalPrice / eurUsdRate;
+        totalInEur = finalTotal / eurUsdRate;
+    }
             
             // Update the transaction
             const transactions = loadTransactions();
@@ -624,10 +692,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 type,
                 symbol,
                 quantity,
-                price,
+                price: priceInEur,
                 total,
-                currency,
+                currency: 'EUR', // Always store in EUR
+                originalPrice: currency === 'USD' ? price : null,
+                originalCurrency: currency === 'USD' ? 'USD' : null,
                 date,
+                note: note || transactions[transactionIndex].note,
                 timestamp: new Date().toISOString()
             };
             

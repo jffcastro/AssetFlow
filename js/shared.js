@@ -516,10 +516,16 @@ function loadPriceCache() {
     try {
         const cache = localStorage.getItem('portfolioPilotPriceCache');
         if (cache) {
-            priceCache = JSON.parse(cache);
+            const parsedCache = JSON.parse(cache);
+            // Ensure all required properties exist
+            priceCache = {
+                stocks: parsedCache.stocks || {},
+                crypto: parsedCache.crypto || {},
+                etfs: parsedCache.etfs || {}
+            };
         }
     } catch (e) {
-        priceCache = { stocks: {}, crypto: {} };
+        priceCache = { stocks: {}, crypto: {}, etfs: {} };
     }
 }
 
@@ -532,6 +538,11 @@ function savePriceCache() {
 }
 
 function setCachedPrice(type, name, priceData) {
+    // Ensure priceCache has the proper structure
+    if (!priceCache.stocks) priceCache.stocks = {};
+    if (!priceCache.crypto) priceCache.crypto = {};
+    if (!priceCache.etfs) priceCache.etfs = {};
+    
     if (!priceCache[type]) {
         priceCache[type] = {};
     }
@@ -779,7 +790,7 @@ function calculateTotalValue() {
     
     // Calculate stocks value
     portfolio.stocks.forEach(stock => {
-        const price = priceCache.stocks[stock.name] || 0;
+        const price = (priceCache.stocks && priceCache.stocks[stock.name]) || 0;
         let value = price * stock.quantity;
         if (stock.currency === 'USD') value = value / eurUsdRate;
         totalValue += value;
@@ -787,7 +798,7 @@ function calculateTotalValue() {
     
     // Calculate ETFs value
     portfolio.etfs.forEach(etf => {
-        const price = priceCache.etfs[etf.name] || 0;
+        const price = (priceCache.etfs && priceCache.etfs[etf.name]) || 0;
         let value = price * etf.quantity;
         if (etf.currency === 'USD') value = value / eurUsdRate;
         totalValue += value;
@@ -795,7 +806,7 @@ function calculateTotalValue() {
     
     // Calculate crypto value
     portfolio.crypto.forEach(crypto => {
-        const price = priceCache.crypto[crypto.name] || 0;
+        const price = (priceCache.crypto && priceCache.crypto[crypto.name]) || 0;
         let value = price * crypto.quantity;
         if (crypto.currency === 'USD') value = value / eurUsdRate;
         totalValue += value;
@@ -1270,12 +1281,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteStorageBtn = document.getElementById('delete-storage-btn');
     if (deleteStorageBtn) {
         deleteStorageBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to delete all local data? This action cannot be undone.')) {
-                localStorage.removeItem('portfolioPilotData');
-                localStorage.removeItem('portfolioPilotTransactions');
-                localStorage.removeItem('portfolioPilotValidatedHistory');
-                localStorage.removeItem('portfolioPilotPriceCache');
-                localStorage.removeItem('eurUsdRate');
+            if (confirm('Are you sure you want to delete all portfolio data? This will preserve your API keys and database configuration. This action cannot be undone.')) {
+                // Get list of keys to preserve (encrypted)
+                const keysToPreserve = ['apiKeys', 'assetflow_database_config', 'assetflow_user_id', 'assetflow_theme'];
+                const preservedData = {};
+                
+                // Store encrypted data temporarily
+                keysToPreserve.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    if (value) {
+                        preservedData[key] = value; // Already encrypted by our override
+                    }
+                });
+                
+                // Clear all localStorage
+                localStorage.clear();
+                
+                // Restore preserved data (still encrypted)
+                Object.entries(preservedData).forEach(([key, value]) => {
+                    localStorage.setItem(key, value);
+                });
+                
                 location.reload();
             }
         });
@@ -1518,9 +1544,14 @@ function calculatePortfolioFromTransactions() {
 
     // Process each transaction
     transactions.forEach(tx => {
-        if (tx.assetType === 'stock' || tx.assetType === 'etf' || tx.assetType === 'crypto') {
+        if (tx.assetType === 'stocks' || tx.assetType === 'etfs' || tx.assetType === 'crypto') {
             const assetType = tx.assetType;
             const symbol = tx.symbol;
+
+            // Ensure the asset type exists in holdings
+            if (!holdings[assetType]) {
+                holdings[assetType] = {};
+            }
 
             if (!holdings[assetType][symbol]) {
                 holdings[assetType][symbol] = {
@@ -1566,6 +1597,11 @@ function calculatePortfolioFromTransactions() {
                     currency: 'EUR' // Default currency
                 };
 
+                // Ensure portfolio[assetType] exists and is an array
+                if (!portfolio[assetType]) {
+                    portfolio[assetType] = [];
+                }
+                
                 portfolio[assetType].push(asset);
             }
         });
@@ -1582,6 +1618,160 @@ function calculatePortfolioFromTransactions() {
 window.fetchStockEarnings = fetchStockEarnings;
 window.fetchCryptoEvents = fetchCryptoEvents;
 window.getApiKey = getApiKey;
+
+// Auto-calculation utility function for price/total fields
+function setupAutoCalculation(quantityId, priceId, totalId) {
+    const quantityInput = document.getElementById(quantityId);
+    const priceInput = document.getElementById(priceId);
+    const totalInput = document.getElementById(totalId);
+    
+    if (!quantityInput || !priceInput || !totalInput) return;
+    
+    const calculatePriceFromTotal = () => {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const total = parseFloat(totalInput.value) || 0;
+        
+        if (quantity > 0 && total > 0) {
+            priceInput.value = (total / quantity).toFixed(2);
+        }
+    };
+    
+    const calculateTotalFromPrice = () => {
+        const quantity = parseFloat(quantityInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        
+        if (quantity > 0 && price > 0) {
+            totalInput.value = (quantity * price).toFixed(2);
+        }
+    };
+    
+    // When price changes, calculate total
+    priceInput.addEventListener('input', calculateTotalFromPrice);
+    
+    // When total changes, calculate price
+    totalInput.addEventListener('input', calculatePriceFromTotal);
+    
+    // When quantity changes, recalculate based on which field has a value
+    quantityInput.addEventListener('input', () => {
+        const price = parseFloat(priceInput.value) || 0;
+        const total = parseFloat(totalInput.value) || 0;
+        
+        if (price > 0) {
+            calculateTotalFromPrice();
+        } else if (total > 0) {
+            calculatePriceFromTotal();
+        }
+    });
+}
+
+window.setupAutoCalculation = setupAutoCalculation;
+
+// Utility function to create transaction with proper currency conversion and original price storage
+function createTransactionWithCurrencyConversion(transactionData, currency, eurUsdRate) {
+    const { type, assetType, symbol, quantity, finalPrice, finalTotal, date, note } = transactionData;
+    
+    // Convert to EUR if needed
+    let priceInEur = finalPrice;
+    let totalInEur = finalTotal;
+    if (currency === 'USD') {
+        priceInEur = finalPrice / eurUsdRate;
+        totalInEur = finalTotal / eurUsdRate;
+    }
+    
+    return {
+        id: Date.now().toString(),
+        type,
+        assetType,
+        symbol,
+        quantity,
+        price: priceInEur,
+        total: totalInEur,
+        currency: 'EUR',
+        originalPrice: currency === 'USD' ? finalPrice : null,
+        originalCurrency: currency === 'USD' ? 'USD' : null,
+        date,
+        note: note || `${type === 'buy' ? 'Bought' : 'Sold'} ${quantity} ${assetType === 'crypto' ? 'units' : 'shares'} of ${symbol} at €${priceInEur.toFixed(2)} per ${assetType === 'crypto' ? 'unit' : 'share'}`,
+        timestamp: new Date().toISOString()
+    };
+}
+
+window.createTransactionWithCurrencyConversion = createTransactionWithCurrencyConversion;
+
+// Enhanced encryption/decryption for sensitive data storage
+// Uses a more secure approach with salt and better key derivation
+// Note: For production apps, consider using Web Crypto API or server-side encryption
+function encryptData(data) {
+    if (!data) return data;
+    
+    try {
+        // Generate a unique salt for this encryption
+        const salt = window.crypto.getRandomValues(new Uint8Array(16));
+        const saltHex = Array.from(salt, b => b.toString(16).padStart(2, '0')).join('');
+        
+        // Create a more secure key using the base key + salt
+        const baseKey = 'assetflow_encryption_key_2024_secure';
+        const key = baseKey + saltHex;
+        
+        // Encrypt using XOR with the derived key
+        let encrypted = '';
+        for (let i = 0; i < data.length; i++) {
+            encrypted += String.fromCharCode(data.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        
+        // Combine salt + encrypted data and base64 encode
+        const combined = saltHex + encrypted;
+        return btoa(combined);
+    } catch (error) {
+        console.warn('Encryption failed, storing as-is:', error);
+        return data; // Fallback to unencrypted storage
+    }
+}
+
+function decryptData(encryptedData) {
+    if (!encryptedData) return encryptedData;
+    
+    try {
+        // Base64 decode
+        const decoded = atob(encryptedData);
+        
+        // Extract salt (first 32 characters)
+        const saltHex = decoded.substring(0, 32);
+        const encrypted = decoded.substring(32);
+        
+        // Recreate the key using the same salt
+        const baseKey = 'assetflow_encryption_key_2024_secure';
+        const key = baseKey + saltHex;
+        
+        // Decrypt using XOR with the derived key
+        let decrypted = '';
+        for (let i = 0; i < encrypted.length; i++) {
+            decrypted += String.fromCharCode(encrypted.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+        }
+        
+        return decrypted;
+    } catch (error) {
+        console.warn('Failed to decrypt data, returning as-is:', error);
+        return encryptedData; // Return original if decryption fails
+    }
+}
+
+// Override localStorage methods to automatically encrypt ALL data
+const originalSetItem = localStorage.setItem;
+const originalGetItem = localStorage.getItem;
+
+localStorage.setItem = function(key, value) {
+    // Encrypt ALL data before storing
+    return originalSetItem.call(this, key, encryptData(value));
+};
+
+localStorage.getItem = function(key) {
+    const value = originalGetItem.call(this, key);
+    // Decrypt ALL data when retrieving
+    return decryptData(value);
+};
+
+window.encryptData = encryptData;
+window.decryptData = decryptData;
 window.trackApiUsage = trackApiUsage;
 window.fetchBenchmarkDataForDate = fetchBenchmarkDataForDate;
 window.setCachedBenchmarkDataForDate = setCachedBenchmarkDataForDate;

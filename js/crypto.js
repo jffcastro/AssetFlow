@@ -63,6 +63,14 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshCryptoTransactionsBtn.addEventListener('click', renderCryptoTransactions);
     refreshCryptoEventsBtn.addEventListener('click', loadCryptoEvents);
     
+    // Set up auto-calculation for buy form
+    setupAutoCalculation('buy-crypto-quantity', 'buy-crypto-price', 'buy-crypto-total');
+    setupAutoCalculation('buy-crypto-quantity', 'buy-crypto-total', 'buy-crypto-price');
+    
+    // Set up auto-calculation for sell form
+    setupAutoCalculation('sell-crypto-quantity', 'sell-crypto-price', 'sell-crypto-total');
+    setupAutoCalculation('sell-crypto-quantity', 'sell-crypto-total', 'sell-crypto-price');
+    
     // Price updates are now handled automatically from the dashboard
     
     // Initial render
@@ -161,7 +169,7 @@ function renderCrypto() {
     
     // First pass: calculate total values
     portfolio.crypto.forEach(crypto => {
-        const cachedData = priceCache.crypto[crypto.name] || {};
+        const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
         const currentPrice = cachedData.price || 0;
         const value = currentPrice * crypto.quantity;
         const purchaseValue = crypto.purchasePrice * crypto.quantity;
@@ -181,7 +189,7 @@ function renderCrypto() {
     
     // Second pass: render rows with allocation percentages
     portfolio.crypto.forEach(crypto => {
-        const cachedData = priceCache.crypto[crypto.name] || {};
+        const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
         const currentPrice = cachedData.price || 0;
         const change24h = cachedData.change24h || 0;
         const value = currentPrice * crypto.quantity;
@@ -274,6 +282,7 @@ async function updateCryptoPrices() {
         try {
             const price = await fetchCryptoPrice(crypto.name, crypto.currency || 'USD');
             if (price) {
+                if (!priceCache.crypto) priceCache.crypto = {};
                 priceCache.crypto[crypto.name] = price;
                 updatedCount++;
             }
@@ -523,49 +532,43 @@ function closeSellCryptoModal() {
     document.getElementById('sell-crypto-form').reset();
 }
 
+
 function handleBuyCrypto() {
     const name = document.getElementById('buy-crypto-name').value.trim();
     const quantity = parseFloat(document.getElementById('buy-crypto-quantity').value);
     const price = parseFloat(document.getElementById('buy-crypto-price').value);
+    const total = parseFloat(document.getElementById('buy-crypto-total').value);
     const currency = document.getElementById('buy-crypto-currency').value;
     const date = document.getElementById('buy-crypto-date').value;
+    const note = document.getElementById('buy-crypto-note').value.trim();
     
-    if (!name || !quantity || !price || !date) {
-        showNotification('Please fill in all fields', 'error');
+    // Validate required fields
+    if (!name || !quantity || !date) {
+        showNotification('Please fill in all required fields', 'error');
         return;
     }
     
-    // Convert to EUR if needed
-    let priceInEur = price;
-    if (currency === 'USD') {
-        priceInEur = price * eurUsdRate;
+    // Validate that either price or total is provided
+    if (!price && !total) {
+        showNotification('Please provide either price per unit or total amount', 'error');
+        return;
     }
     
-    // Add to portfolio
-    if (!portfolio.crypto) portfolio.crypto = [];
+    // Calculate missing value
+    let finalPrice = price;
+    let finalTotal = total;
+    if (price && !total) {
+        finalTotal = quantity * price;
+    } else if (total && !price) {
+        finalPrice = total / quantity;
+    }
     
-    const existingCryptoIndex = portfolio.crypto.findIndex(c => c.name.toLowerCase() === name.toLowerCase());
-    
-    if (existingCryptoIndex !== -1) {
-        // Update existing crypto
-        const existingCrypto = portfolio.crypto[existingCryptoIndex];
-        const totalQuantity = existingCrypto.quantity + quantity;
-        const totalCost = (existingCrypto.quantity * existingCrypto.purchasePrice) + (quantity * price);
-        const averagePrice = totalCost / totalQuantity;
-        
-        portfolio.crypto[existingCryptoIndex] = {
-            ...existingCrypto,
-            quantity: totalQuantity,
-            purchasePrice: averagePrice
-        };
-    } else {
-        // Add new crypto
-        portfolio.crypto.push({
-            name: name,
-            quantity: quantity,
-            purchasePrice: priceInEur,
-            currency: 'EUR'
-        });
+    // Convert to EUR if needed
+    let priceInEur = finalPrice;
+    let totalInEur = finalTotal;
+    if (currency === 'USD') {
+        priceInEur = finalPrice / eurUsdRate;
+        totalInEur = finalTotal / eurUsdRate;
     }
     
     // Record transaction
@@ -575,10 +578,13 @@ function handleBuyCrypto() {
         assetType: 'crypto',
         symbol: name,
         quantity: quantity,
-        price: price,
-        total: quantity * price,
-        currency: currency,
+        price: priceInEur,
+        total: totalInEur,
+        currency: 'EUR',
+        originalPrice: currency === 'USD' ? finalPrice : null,
+        originalCurrency: currency === 'USD' ? 'USD' : null,
         date: date,
+        note: note || `Bought ${quantity} units of ${name} at €${priceInEur.toFixed(2)} per unit`,
         timestamp: new Date().toISOString()
     };
     
@@ -597,25 +603,38 @@ function handleSellCrypto() {
     const name = document.getElementById('sell-crypto-name').value;
     const quantity = parseFloat(document.getElementById('sell-crypto-quantity').value);
     const price = parseFloat(document.getElementById('sell-crypto-price').value);
+    const total = parseFloat(document.getElementById('sell-crypto-total').value);
+    const currency = document.getElementById('sell-crypto-currency').value;
     const date = document.getElementById('sell-crypto-date').value;
+    const note = document.getElementById('sell-crypto-note').value.trim();
     
-    if (!name || !quantity || !price || !date) {
-        showNotification('Please fill in all fields', 'error');
+    // Validate required fields
+    if (!name || !quantity || !date) {
+        showNotification('Please fill in all required fields', 'error');
         return;
     }
     
-    const cryptoIndex = portfolio.crypto.findIndex(c => c.name === name);
-    const crypto = portfolio.crypto[cryptoIndex];
-    
-    if (!crypto || crypto.quantity < quantity) {
-        showNotification(`Insufficient amount. You only have ${crypto ? crypto.quantity : 0} units of ${name}`, 'error');
+    // Validate that either price or total is provided
+    if (!price && !total) {
+        showNotification('Please provide either price per unit or total amount', 'error');
         return;
     }
     
-    // Update portfolio
-    crypto.quantity -= quantity;
-    if (crypto.quantity === 0) {
-        portfolio.crypto.splice(cryptoIndex, 1);
+    // Calculate missing value
+    let finalPrice = price;
+    let finalTotal = total;
+    if (price && !total) {
+        finalTotal = quantity * price;
+    } else if (total && !price) {
+        finalPrice = total / quantity;
+    }
+    
+    // Convert to EUR if needed
+    let priceInEur = finalPrice;
+    let totalInEur = finalTotal;
+    if (currency === 'USD') {
+        priceInEur = finalPrice / eurUsdRate;
+        totalInEur = finalTotal / eurUsdRate;
     }
     
     // Record transaction
@@ -625,10 +644,13 @@ function handleSellCrypto() {
         assetType: 'crypto',
         symbol: name,
         quantity: quantity,
-        price: price,
-        total: quantity * price,
+        price: priceInEur,
+        total: totalInEur,
         currency: 'EUR',
+        originalPrice: currency === 'USD' ? finalPrice : null,
+        originalCurrency: currency === 'USD' ? 'USD' : null,
         date: date,
+        note: note || `Sold ${quantity} units of ${name} at €${priceInEur.toFixed(2)} per unit`,
         timestamp: new Date().toISOString()
     };
     
@@ -651,7 +673,7 @@ function renderCryptoTransactions() {
     const transactions = loadTransactions().filter(tx => tx.assetType === 'crypto');
     
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center py-4 text-gray-400">No crypto transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No crypto transactions yet.</td></tr>';
         return;
     }
     
@@ -663,15 +685,22 @@ function renderCryptoTransactions() {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
         const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
         
+        // Format price display with original USD if available
+        let priceDisplay = formatCurrency(tx.price, 'EUR');
+        if (tx.originalPrice && tx.originalCurrency === 'USD') {
+            priceDisplay = `€${tx.price.toFixed(2)} ($${tx.originalPrice.toFixed(2)})`;
+        }
+        
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 text-gray-300">${new Date(tx.date).toLocaleDateString()}</td>
                 <td class="py-2 px-2 ${typeColor}">${typeText}</td>
                 <td class="py-2 px-2 text-white font-medium">${tx.symbol}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.quantity.toFixed(8)}</td>
-                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.price, tx.currency)}</td>
+                <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, tx.currency)}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.currency}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
                     <button onclick="editCryptoTransaction('${tx.id}')" class="glass-button text-xs px-2 py-1 mr-1">✏️</button>
                     <button onclick="deleteCryptoTransaction('${tx.id}')" class="glass-button glass-button-danger text-xs px-2 py-1">🗑️</button>
@@ -700,6 +729,7 @@ function editCryptoTransaction(transactionId) {
     document.getElementById('edit-crypto-transaction-quantity').value = transaction.quantity;
     document.getElementById('edit-crypto-transaction-price').value = transaction.price;
     document.getElementById('edit-crypto-transaction-date').value = transaction.date;
+    document.getElementById('edit-crypto-transaction-note').value = transaction.note || '';
     
     // Show the modal
     document.getElementById('edit-crypto-transaction-modal').classList.remove('hidden');
@@ -750,6 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const quantity = parseFloat(document.getElementById('edit-crypto-transaction-quantity').value);
             const price = parseFloat(document.getElementById('edit-crypto-transaction-price').value);
             const date = document.getElementById('edit-crypto-transaction-date').value;
+            const note = document.getElementById('edit-crypto-transaction-note').value.trim();
             
             if (!name || !quantity || !price || !date) {
                 showNotification('Please fill in all fields', 'error');
@@ -772,7 +803,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 quantity: quantity,
                 price: price,
                 total: quantity * price,
-                date: date
+                date: date,
+                note: note || transactions[transactionIndex].note
             };
             
             saveTransactions(transactions);
