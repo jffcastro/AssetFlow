@@ -65,11 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Set up auto-calculation for buy form
     setupAutoCalculation('buy-stock-quantity', 'buy-stock-price', 'buy-stock-total');
-    setupAutoCalculation('buy-stock-quantity', 'buy-stock-total', 'buy-stock-price');
     
     // Set up auto-calculation for sell form
     setupAutoCalculation('sell-stock-quantity', 'sell-stock-price', 'sell-stock-total');
-    setupAutoCalculation('sell-stock-quantity', 'sell-stock-total', 'sell-stock-price');
     
     // Price updates are now handled automatically from the dashboard
     
