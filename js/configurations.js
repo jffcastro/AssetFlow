@@ -65,13 +65,13 @@ document.addEventListener('DOMContentLoaded', () => {
             savedAt: new Date().toISOString()
         };
         
-        localStorage.setItem('portfolioPilotFinnhub', JSON.stringify(fhConfig));
+        setEncryptedItem('portfolioPilotFinnhub', JSON.stringify(fhConfig));
         showNotification('Finnhub API key saved successfully!', 'success');
         updateApiStatuses();
     }
 
     function loadFinnhubKey() {
-        const config = localStorage.getItem('portfolioPilotFinnhub');
+        const config = getEncryptedItem('portfolioPilotFinnhub');
         if (config) {
             const parsed = JSON.parse(config);
             fhApiKeyInput.value = parsed.apiKey || '';
@@ -94,13 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
             savedAt: new Date().toISOString()
         };
         
-        localStorage.setItem('portfolioPilotCoinMarketCal', JSON.stringify(cmcConfig));
+        setEncryptedItem('portfolioPilotCoinMarketCal', JSON.stringify(cmcConfig));
         showNotification('CoinMarketCal API key saved successfully!', 'success');
         updateApiStatuses();
     }
 
     function loadCoinMarketCalKey() {
-        const config = localStorage.getItem('portfolioPilotCoinMarketCal');
+        const config = getEncryptedItem('portfolioPilotCoinMarketCal');
         if (config) {
             const parsed = JSON.parse(config);
             cmcApiKeyInput.value = parsed.apiKey || '';
@@ -117,8 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update API status indicators
     function updateApiStatuses() {
-        const fhConfig = localStorage.getItem('portfolioPilotFinnhub');
-        const cmcConfig = localStorage.getItem('portfolioPilotCoinMarketCal');
+        const fhConfig = getEncryptedItem('portfolioPilotFinnhub');
+        const cmcConfig = getEncryptedItem('portfolioPilotCoinMarketCal');
         
         // Finnhub status
         if (fhConfig) {
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Save configuration
-        localStorage.setItem('assetflow_database_config', JSON.stringify(config));
+        setEncryptedItem('assetflow_database_config', JSON.stringify(config));
         
         showNotification('Database configuration saved successfully!', 'success');
         updateDatabaseStatus();
@@ -635,7 +635,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getDatabaseConfig() {
         try {
-            const config = localStorage.getItem('assetflow_database_config');
+            const config = getEncryptedItem('assetflow_database_config');
             return config ? JSON.parse(config) : null;
         } catch {
             return null;
@@ -666,7 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Get API key for use in other parts of the app
     function getApiKey(apiName) {
-        const config = localStorage.getItem(`portfolioPilot${apiName}`);
+        const config = getEncryptedItem(`portfolioPilot${apiName}`);
         if (config) {
             const parsed = JSON.parse(config);
             return parsed.apiKey;
