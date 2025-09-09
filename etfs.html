@@ -163,7 +163,7 @@
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
-                    <input type="number" id="buy-etf-quantity" placeholder="Number of shares" required min="1" step="1"
+                    <input type="number" id="buy-etf-quantity" placeholder="Number of shares" required min="0" step="0.00000001"
                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
                 </div>
                 <div class="mb-4">
@@ -175,12 +175,22 @@
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share</label>
-                    <input type="number" id="buy-etf-price" placeholder="Price per share" required min="0" step="0.01"
+                    <input type="number" id="buy-etf-price" placeholder="Price per share" min="0" step="0.01"
+                           class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Total Amount</label>
+                    <input type="number" id="buy-etf-total" placeholder="Total amount" min="0" step="0.01"
                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
                     <input type="date" id="buy-etf-date" required
+                           class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Note (Optional)</label>
+                    <input type="text" id="buy-etf-note" placeholder="e.g., Broker name, exchange"
                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500 text-white">
                 </div>
                 <div class="flex gap-3">
@@ -209,17 +219,35 @@
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
-                    <input type="number" id="sell-etf-quantity" placeholder="Number of shares" required min="1" step="1"
+                    <input type="number" id="sell-etf-quantity" placeholder="Number of shares" required min="0" step="0.00000001"
                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
                 </div>
                 <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share (EUR)</label>
-                    <input type="number" id="sell-etf-price" placeholder="Price per share" required min="0" step="0.01"
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share</label>
+                    <input type="number" id="sell-etf-price" placeholder="Price per share" min="0" step="0.01"
                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Total Amount</label>
+                    <input type="number" id="sell-etf-total" placeholder="Total amount" min="0" step="0.01"
+                           class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Currency</label>
+                    <select id="sell-etf-currency" required
+                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                        <option value="EUR">EUR</option>
+                        <option value="USD">USD</option>
+                    </select>
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
                     <input type="date" id="sell-etf-date" required
+                           class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Note (Optional)</label>
+                    <input type="text" id="sell-etf-note" placeholder="e.g., Broker name, exchange"
                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
                 </div>
                 <div class="flex gap-3">
@@ -253,12 +281,13 @@
                         <th class="text-left py-2 px-2 text-gray-300">Price</th>
                         <th class="text-left py-2 px-2 text-gray-300">Total</th>
                         <th class="text-left py-2 px-2 text-gray-300">Currency</th>
+                        <th class="text-left py-2 px-2 text-gray-300">Note</th>
                         <th class="text-left py-2 px-2 text-gray-300">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="etf-transactions-tbody">
                     <tr>
-                        <td colspan="8" class="text-center py-4 text-gray-400">No ETF transactions yet.</td>
+                        <td colspan="9" class="text-center py-4 text-gray-400">No ETF transactions yet.</td>
                     </tr>
                 </tbody>
             </table>
@@ -302,7 +331,7 @@
                 
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
-                    <input type="number" id="edit-etf-transaction-quantity" placeholder="Number of shares" required min="1" step="1"
+                    <input type="number" id="edit-etf-transaction-quantity" placeholder="Number of shares" required min="0" step="0.00000001"
                            class="w-full glass-input p-3 rounded-lg">
                 </div>
                 
@@ -323,6 +352,12 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
                     <input type="date" id="edit-etf-transaction-date" required
+                           class="w-full glass-input p-3 rounded-lg">
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Note (Optional)</label>
+                    <input type="text" id="edit-etf-transaction-note" placeholder="e.g., Broker name, exchange"
                            class="w-full glass-input p-3 rounded-lg">
                 </div>
                 

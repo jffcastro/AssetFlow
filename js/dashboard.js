@@ -836,7 +836,7 @@ function calculatePortfolioBreakdown() {
     
     // Calculate stocks value
     portfolio.stocks.forEach(stock => {
-        const price = priceCache.stocks[stock.name] || 0;
+        const price = (priceCache.stocks && priceCache.stocks[stock.name]) || 0;
         let value = price * stock.quantity;
         if (stock.currency === 'USD') value = value / eurUsdRate;
         breakdown['Stocks'] += value;
@@ -844,7 +844,7 @@ function calculatePortfolioBreakdown() {
     
     // Calculate ETFs value
     portfolio.etfs.forEach(etf => {
-        const price = priceCache.etfs[etf.name] || 0;
+        const price = (priceCache.etfs && priceCache.etfs[etf.name]) || 0;
         let value = price * etf.quantity;
         if (etf.currency === 'USD') value = value / eurUsdRate;
         breakdown['ETFs'] += value;
@@ -852,7 +852,7 @@ function calculatePortfolioBreakdown() {
     
     // Calculate crypto value
     portfolio.crypto.forEach(crypto => {
-        const price = priceCache.crypto[crypto.name] || 0;
+        const price = (priceCache.crypto && priceCache.crypto[crypto.name]) || 0;
         let value = price * crypto.quantity;
         if (crypto.currency === 'USD') value = value / eurUsdRate;
         breakdown['Crypto'] += value;
@@ -915,7 +915,7 @@ function calculateBestPerformer() {
     
     // Check stocks
     portfolio.stocks.forEach(stock => {
-        const currentPrice = priceCache.stocks[stock.name] || 0;
+        const currentPrice = (priceCache.stocks && priceCache.stocks[stock.name]) || 0;
         if (currentPrice > 0 && stock.purchasePrice > 0) {
             const pnlPercentage = ((currentPrice - stock.purchasePrice) / stock.purchasePrice) * 100;
             if (pnlPercentage > bestPercentage) {
@@ -930,7 +930,7 @@ function calculateBestPerformer() {
     
     // Check ETFs
     portfolio.etfs.forEach(etf => {
-        const currentPrice = priceCache.etfs[etf.name] || 0;
+        const currentPrice = (priceCache.etfs && priceCache.etfs[etf.name]) || 0;
         if (currentPrice > 0 && etf.purchasePrice > 0) {
             const pnlPercentage = ((currentPrice - etf.purchasePrice) / etf.purchasePrice) * 100;
             if (pnlPercentage > bestPercentage) {
@@ -945,7 +945,7 @@ function calculateBestPerformer() {
     
     // Check crypto
     portfolio.crypto.forEach(crypto => {
-        const currentPrice = priceCache.crypto[crypto.name] || 0;
+        const currentPrice = (priceCache.crypto && priceCache.crypto[crypto.name]) || 0;
         if (currentPrice > 0 && crypto.purchasePrice > 0) {
             const pnlPercentage = ((currentPrice - crypto.purchasePrice) / crypto.purchasePrice) * 100;
             if (pnlPercentage > bestPercentage) {
@@ -967,7 +967,7 @@ function calculateWorstPerformer() {
     
     // Check stocks
     portfolio.stocks.forEach(stock => {
-        const currentPrice = priceCache.stocks[stock.name] || 0;
+        const currentPrice = (priceCache.stocks && priceCache.stocks[stock.name]) || 0;
         if (currentPrice > 0 && stock.purchasePrice > 0) {
             const pnlPercentage = ((currentPrice - stock.purchasePrice) / stock.purchasePrice) * 100;
             if (pnlPercentage < worstPercentage) {
@@ -982,7 +982,7 @@ function calculateWorstPerformer() {
     
     // Check ETFs
     portfolio.etfs.forEach(etf => {
-        const currentPrice = priceCache.etfs[etf.name] || 0;
+        const currentPrice = (priceCache.etfs && priceCache.etfs[etf.name]) || 0;
         if (currentPrice > 0 && etf.purchasePrice > 0) {
             const pnlPercentage = ((currentPrice - etf.purchasePrice) / etf.purchasePrice) * 100;
             if (pnlPercentage < worstPercentage) {
@@ -997,7 +997,7 @@ function calculateWorstPerformer() {
     
     // Check crypto
     portfolio.crypto.forEach(crypto => {
-        const currentPrice = priceCache.crypto[crypto.name] || 0;
+        const currentPrice = (priceCache.crypto && priceCache.crypto[crypto.name]) || 0;
         if (currentPrice > 0 && crypto.purchasePrice > 0) {
             const pnlPercentage = ((currentPrice - crypto.purchasePrice) / crypto.purchasePrice) * 100;
             if (pnlPercentage < worstPercentage) {
@@ -1018,7 +1018,7 @@ function calculateTotalPnL() {
     
     // Calculate stocks P&L
     portfolio.stocks.forEach(stock => {
-        const currentPrice = priceCache.stocks[stock.name] || 0;
+        const currentPrice = (priceCache.stocks && priceCache.stocks[stock.name]) || 0;
         if (currentPrice > 0 && stock.purchasePrice > 0) {
             const currentValue = currentPrice * stock.quantity;
             const purchaseValue = stock.purchasePrice * stock.quantity;
@@ -1034,7 +1034,7 @@ function calculateTotalPnL() {
     
     // Calculate ETFs P&L
     portfolio.etfs.forEach(etf => {
-        const currentPrice = priceCache.etfs[etf.name] || 0;
+        const currentPrice = (priceCache.etfs && priceCache.etfs[etf.name]) || 0;
         if (currentPrice > 0 && etf.purchasePrice > 0) {
             const currentValue = currentPrice * etf.quantity;
             const purchaseValue = etf.purchasePrice * etf.quantity;
@@ -1050,7 +1050,7 @@ function calculateTotalPnL() {
     
     // Calculate crypto P&L
     portfolio.crypto.forEach(crypto => {
-        const currentPrice = priceCache.crypto[crypto.name] || 0;
+        const currentPrice = (priceCache.crypto && priceCache.crypto[crypto.name]) || 0;
         if (currentPrice > 0 && crypto.purchasePrice > 0) {
             const currentValue = currentPrice * crypto.quantity;
             const purchaseValue = crypto.purchasePrice * crypto.quantity;
@@ -1075,7 +1075,7 @@ function calculateTotalPnLPercentage() {
     
     // Calculate stocks
     portfolio.stocks.forEach(stock => {
-        const currentPrice = priceCache.stocks[stock.name] || 0;
+        const currentPrice = (priceCache.stocks && priceCache.stocks[stock.name]) || 0;
         if (currentPrice > 0 && stock.purchasePrice > 0) {
             const currentValue = currentPrice * stock.quantity;
             const purchaseValue = stock.purchasePrice * stock.quantity;
@@ -1093,7 +1093,7 @@ function calculateTotalPnLPercentage() {
     
     // Calculate ETFs
     portfolio.etfs.forEach(etf => {
-        const currentPrice = priceCache.etfs[etf.name] || 0;
+        const currentPrice = (priceCache.etfs && priceCache.etfs[etf.name]) || 0;
         if (currentPrice > 0 && etf.purchasePrice > 0) {
             const currentValue = currentPrice * etf.quantity;
             const purchaseValue = etf.purchasePrice * etf.quantity;
@@ -1111,7 +1111,7 @@ function calculateTotalPnLPercentage() {
     
     // Calculate crypto
     portfolio.crypto.forEach(crypto => {
-        const currentPrice = priceCache.crypto[crypto.name] || 0;
+        const currentPrice = (priceCache.crypto && priceCache.crypto[crypto.name]) || 0;
         if (currentPrice > 0 && crypto.purchasePrice > 0) {
             const currentValue = currentPrice * crypto.quantity;
             const purchaseValue = crypto.purchasePrice * crypto.quantity;
@@ -1739,9 +1739,12 @@ function initializeRetirementChart() {
 function setupRetirementControls() {
     const amountInput = document.getElementById('monthly-allocation-amount');
     const returnRateInput = document.getElementById('annual-return-rate');
-    const descriptionElement = document.querySelector('#retirement-chart').closest('.bg-gray-800').querySelector('.text-sm.text-gray-400.mb-4');
     
     if (!amountInput || !returnRateInput) return;
+    
+    // Safely get the description element
+    const retirementChart = document.querySelector('#retirement-chart');
+    const descriptionElement = retirementChart?.closest('.bg-gray-800')?.querySelector('.text-sm.text-gray-400.mb-4');
     
     // Update chart when amount changes
     amountInput.addEventListener('input', function() {

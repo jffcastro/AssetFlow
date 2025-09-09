@@ -516,10 +516,16 @@ function loadPriceCache() {
     try {
         const cache = localStorage.getItem('portfolioPilotPriceCache');
         if (cache) {
-            priceCache = JSON.parse(cache);
+            const parsedCache = JSON.parse(cache);
+            // Ensure all required properties exist
+            priceCache = {
+                stocks: parsedCache.stocks || {},
+                crypto: parsedCache.crypto || {},
+                etfs: parsedCache.etfs || {}
+            };
         }
     } catch (e) {
-        priceCache = { stocks: {}, crypto: {} };
+        priceCache = { stocks: {}, crypto: {}, etfs: {} };
     }
 }
 
@@ -532,6 +538,11 @@ function savePriceCache() {
 }
 
 function setCachedPrice(type, name, priceData) {
+    // Ensure priceCache has the proper structure
+    if (!priceCache.stocks) priceCache.stocks = {};
+    if (!priceCache.crypto) priceCache.crypto = {};
+    if (!priceCache.etfs) priceCache.etfs = {};
+    
     if (!priceCache[type]) {
         priceCache[type] = {};
     }
@@ -779,7 +790,7 @@ function calculateTotalValue() {
     
     // Calculate stocks value
     portfolio.stocks.forEach(stock => {
-        const price = priceCache.stocks[stock.name] || 0;
+        const price = (priceCache.stocks && priceCache.stocks[stock.name]) || 0;
         let value = price * stock.quantity;
         if (stock.currency === 'USD') value = value / eurUsdRate;
         totalValue += value;
@@ -787,7 +798,7 @@ function calculateTotalValue() {
     
     // Calculate ETFs value
     portfolio.etfs.forEach(etf => {
-        const price = priceCache.etfs[etf.name] || 0;
+        const price = (priceCache.etfs && priceCache.etfs[etf.name]) || 0;
         let value = price * etf.quantity;
         if (etf.currency === 'USD') value = value / eurUsdRate;
         totalValue += value;
@@ -795,7 +806,7 @@ function calculateTotalValue() {
     
     // Calculate crypto value
     portfolio.crypto.forEach(crypto => {
-        const price = priceCache.crypto[crypto.name] || 0;
+        const price = (priceCache.crypto && priceCache.crypto[crypto.name]) || 0;
         let value = price * crypto.quantity;
         if (crypto.currency === 'USD') value = value / eurUsdRate;
         totalValue += value;
@@ -1270,12 +1281,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteStorageBtn = document.getElementById('delete-storage-btn');
     if (deleteStorageBtn) {
         deleteStorageBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to delete all local data? This action cannot be undone.')) {
-                localStorage.removeItem('portfolioPilotData');
-                localStorage.removeItem('portfolioPilotTransactions');
-                localStorage.removeItem('portfolioPilotValidatedHistory');
-                localStorage.removeItem('portfolioPilotPriceCache');
-                localStorage.removeItem('eurUsdRate');
+            if (confirm('Are you sure you want to delete all portfolio data? This will preserve your API keys and database configuration. This action cannot be undone.')) {
+                // Save important settings before clearing
+                const apiKeys = localStorage.getItem('apiKeys');
+                const databaseConfig = localStorage.getItem('assetflow_database_config');
+                const userId = localStorage.getItem('assetflow_user_id');
+                const theme = localStorage.getItem('assetflow_theme');
+                
+                // Clear all localStorage
+                localStorage.clear();
+                
+                // Restore important settings
+                if (apiKeys) localStorage.setItem('apiKeys', apiKeys);
+                if (databaseConfig) localStorage.setItem('assetflow_database_config', databaseConfig);
+                if (userId) localStorage.setItem('assetflow_user_id', userId);
+                if (theme) localStorage.setItem('assetflow_theme', theme);
+                
                 location.reload();
             }
         });
@@ -1518,9 +1539,14 @@ function calculatePortfolioFromTransactions() {
 
     // Process each transaction
     transactions.forEach(tx => {
-        if (tx.assetType === 'stock' || tx.assetType === 'etf' || tx.assetType === 'crypto') {
+        if (tx.assetType === 'stocks' || tx.assetType === 'etfs' || tx.assetType === 'crypto') {
             const assetType = tx.assetType;
             const symbol = tx.symbol;
+
+            // Ensure the asset type exists in holdings
+            if (!holdings[assetType]) {
+                holdings[assetType] = {};
+            }
 
             if (!holdings[assetType][symbol]) {
                 holdings[assetType][symbol] = {
@@ -1566,6 +1592,11 @@ function calculatePortfolioFromTransactions() {
                     currency: 'EUR' // Default currency
                 };
 
+                // Ensure portfolio[assetType] exists and is an array
+                if (!portfolio[assetType]) {
+                    portfolio[assetType] = [];
+                }
+                
                 portfolio[assetType].push(asset);
             }
         });
