@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Save configuration
-        localStorage.setItem('assetflow_database_config', JSON.stringify(config));
+        setSecureItem('assetflow_database_config', JSON.stringify(config));
         
         showNotification('Database configuration saved successfully!', 'success');
         updateDatabaseStatus();
@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper functions
     function getDatabaseConfig() {
         try {
-            const config = localStorage.getItem('assetflow_database_config');
+            const config = getSecureItem('assetflow_database_config');
             return config ? JSON.parse(config) : null;
         } catch {
             return null;

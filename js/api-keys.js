@@ -40,13 +40,13 @@ function saveFinnhubKey() {
         savedAt: new Date().toISOString()
     };
     
-    localStorage.setItem('portfolioPilotFinnhub', JSON.stringify(fhConfig));
+    setSecureItem('portfolioPilotFinnhub', JSON.stringify(fhConfig));
     showNotification('Finnhub API key saved successfully!', 'success');
     updateApiStatuses();
 }
 
 function loadFinnhubKey() {
-    const config = localStorage.getItem('portfolioPilotFinnhub');
+    const config = getSecureItem('portfolioPilotFinnhub');
     if (config) {
         const parsed = JSON.parse(config);
         document.getElementById('fh-api-key').value = parsed.apiKey || '';
@@ -69,13 +69,13 @@ function saveCoinMarketCalKey() {
         savedAt: new Date().toISOString()
     };
     
-    localStorage.setItem('portfolioPilotCoinMarketCal', JSON.stringify(cmcConfig));
+    setSecureItem('portfolioPilotCoinMarketCal', JSON.stringify(cmcConfig));
     showNotification('CoinMarketCal API key saved successfully!', 'success');
     updateApiStatuses();
 }
 
 function loadCoinMarketCalKey() {
-    const config = localStorage.getItem('portfolioPilotCoinMarketCal');
+    const config = getSecureItem('portfolioPilotCoinMarketCal');
     if (config) {
         const parsed = JSON.parse(config);
         document.getElementById('cmc-api-key').value = parsed.apiKey || '';
@@ -92,8 +92,8 @@ function loadApiKeys() {
 
 // Update API status indicators
 function updateApiStatuses() {
-    const fhConfig = localStorage.getItem('portfolioPilotFinnhub');
-    const cmcConfig = localStorage.getItem('portfolioPilotCoinMarketCal');
+    const fhConfig = getSecureItem('portfolioPilotFinnhub');
+    const cmcConfig = getSecureItem('portfolioPilotCoinMarketCal');
     
     // Finnhub status
     if (fhConfig) {
@@ -153,7 +153,7 @@ function trackApiUsage(apiName) {
 
 // Get API key for use in other parts of the app
 function getApiKey(apiName) {
-    const config = localStorage.getItem(`portfolioPilot${apiName}`);
+    const config = getSecureItem(`portfolioPilot${apiName}`);
     if (config) {
         const parsed = JSON.parse(config);
         return parsed.apiKey;
