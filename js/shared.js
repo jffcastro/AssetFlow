@@ -1542,7 +1542,7 @@ async function fetchStockEarnings(symbol) {
 
 // Get API key for use in other parts of the app
 function getApiKey(apiName) {
-    const config = localStorage.getItem(`portfolioPilot${apiName}`);
+    const config = getEncryptedItem(`portfolioPilot${apiName}`);
     if (config) {
         const parsed = JSON.parse(config);
         return parsed.apiKey;
@@ -1634,7 +1634,8 @@ async function fetchCryptoEvents(coins = [], maxEvents = 20) {
         }
         
         const apiUrl = `https://developers.coinmarketcal.com/v1/events?${params.toString()}`;
-        const url = `https://cors-anywhere.herokuapp.com/${apiUrl}`;
+        // Use a CORS proxy that can handle custom headers
+        const url = `https://corsproxy.io/?${encodeURIComponent(apiUrl)}`;
         
         const response = await fetch(url, {
             headers: {

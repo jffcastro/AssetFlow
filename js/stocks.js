@@ -366,7 +366,7 @@ async function loadStockEvents() {
                 <div class="text-yellow-400 mb-2">⚠️ Finnhub API key not configured</div>
                 <div class="text-gray-400 mb-2">Configure your Finnhub API key to view earnings dates.</div>
                 <div class="mt-2">
-                    <a href="api-keys.html" class="text-blue-400 hover:text-blue-300 underline">Configure API Keys</a>
+                    <a href="configurations.html" class="text-blue-400 hover:text-blue-300 underline">Configure API Keys</a>
                 </div>
             `;
             return;
@@ -412,18 +412,23 @@ async function loadStockEvents() {
                     }
                     
                     eventsHtml += `
-                        <div class="mb-4 p-3 bg-gray-700 rounded-lg">
-                            <div class="flex justify-between items-center mb-2">
-                                <h4 class="font-semibold text-emerald-400">${ticker}</h4>
-                                ${lastFetchedTime ? `<div class="text-xs text-gray-400">Last fetched: ${lastFetchedTime.toLocaleString()}</div>` : ''}
+                        <div class="mb-2 p-2 bg-gray-700 rounded">
+                            <div class="flex justify-between items-center mb-1">
+                                <h4 class="text-sm font-semibold text-emerald-400">${ticker}</h4>
+                                ${lastFetchedTime ? `<div class="text-xs text-gray-400">${lastFetchedTime.toLocaleString()}</div>` : ''}
                             </div>
-                            <div class="space-y-2">
+                            <div class="space-y-1">
                     `;
                     
                     earningsData.earningsCalendar.forEach(event => {
                         const eventDate = new Date(event.date);
                         const today = new Date();
                         const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
+                        
+                        // Skip past events
+                        if (daysUntil < 0) {
+                            return;
+                        }
                         
                         let dateText = '';
                         if (daysUntil === 0) {
@@ -443,19 +448,19 @@ async function loadStockEvents() {
                         const quarterText = event.quarter ? `Q${event.quarter} ${event.year}` : '';
                         
                         eventsHtml += `
-                            <div class="mb-3 p-3 bg-gray-600 rounded-lg">
-                                <div class="flex justify-between items-start mb-2">
-                                    <span class="text-gray-300 font-medium">Earnings Report</span>
+                            <div class="mb-1 p-2 bg-gray-600 rounded">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs text-gray-300">Earnings Report</span>
                                     <div class="text-right">
-                                        <div class="text-emerald-400 font-semibold">${eventDate.toLocaleDateString()}</div>
+                                        <div class="text-xs text-emerald-400 font-semibold">${eventDate.toLocaleDateString()}</div>
                                         <div class="text-xs text-gray-400">${dateText}</div>
                                     </div>
                                 </div>
-                                <div class="text-xs text-gray-400 space-y-1">
-                                    <div>Time: ${timeText}</div>
-                                    ${quarterText ? `<div>Period: ${quarterText}</div>` : ''}
-                                    ${event.epsEstimate ? `<div>EPS Estimate: $${event.epsEstimate.toFixed(2)}</div>` : ''}
-                                    ${event.revenueEstimate ? `<div>Revenue Estimate: $${(event.revenueEstimate / 1000000000).toFixed(1)}B</div>` : ''}
+                                <div class="text-xs text-gray-400">
+                                    <span>${timeText}</span>
+                                    ${quarterText ? `<span class="ml-2">${quarterText}</span>` : ''}
+                                    ${event.epsEstimate ? `<span class="ml-2">EPS: $${event.epsEstimate.toFixed(2)}</span>` : ''}
+                                    ${event.revenueEstimate ? `<span class="ml-2">Rev: $${(event.revenueEstimate / 1000000000).toFixed(1)}B</span>` : ''}
                                 </div>
                             </div>
                         `;
@@ -468,6 +473,15 @@ async function loadStockEvents() {
                 }
             }
         });
+        
+        // Handle rejected promises
+        const rejectedResults = results.filter(result => result.status === 'rejected');
+        if (rejectedResults.length > 0) {
+            console.warn('Some stock earnings requests failed:', rejectedResults);
+            if (!hasEvents) {
+                eventsHtml += '<div class="text-yellow-400 mb-2">⚠️ Some earnings data could not be loaded.</div>';
+            }
+        }
         
         if (!hasEvents) {
             eventsHtml = `
