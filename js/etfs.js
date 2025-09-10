@@ -173,7 +173,7 @@ function renderEtfs() {
     }
     
     if (portfolio.etfs.length === 0) {
-        etfsTbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No ETFs added yet.</td></tr>';
+        etfsTbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No ETFs added yet.</td></tr>';
         return;
     }
     
@@ -214,6 +214,13 @@ function renderEtfs() {
         const change24hSign = change24h >= 0 ? '+' : '';
         const change24hDisplay = currentPrice > 0 ? `${change24hSign}${change24h.toFixed(2)}%` : '--';
         
+        // Calculate realized P&L
+        const realizedData = calculateRealizedPnL('etfs', etf.name);
+        const realizedPnL = realizedData.realizedPnL;
+        const realizedPercentage = realizedData.realizedPercentage;
+        const realizedSign = realizedPnL >= 0 ? '+' : '';
+        const realizedClass = realizedPnL >= 0 ? 'text-green-400' : 'text-red-400';
+        
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 font-semibold">
@@ -230,6 +237,9 @@ function renderEtfs() {
                 <td class="py-2 px-2 ${pnlClass}">
                     ${currentPrice > 0 ? `${pnlSign}${formatCurrency(pnl, etf.currency)} (${pnlSign}${pnlPercentage.toFixed(2)}%)` : '--'}
                 </td>
+                <td class="py-2 px-2 ${realizedClass}">
+                    ${realizedPnL !== 0 ? `${realizedSign}${formatCurrency(realizedPnL, 'EUR')} (${realizedSign}${realizedPercentage.toFixed(2)}%)` : '--'}
+                </td>
                 <td class="py-2 px-2">
                     <button onclick="deleteEtf(${etf.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
                 </td>
@@ -243,6 +253,16 @@ function renderEtfs() {
         const totalPnlSign = totalPnl >= 0 ? '+' : '';
         const totalPnlPercentage = totalValue > 0 ? (totalPnl / (totalValue - totalPnl)) * 100 : 0;
         
+        // Calculate total realized P&L
+        let totalRealizedPnL = 0;
+        portfolio.etfs.forEach(etf => {
+            const realizedData = calculateRealizedPnL('etfs', etf.name);
+            totalRealizedPnL += realizedData.realizedPnL;
+        });
+        
+        const totalRealizedClass = totalRealizedPnL >= 0 ? 'text-green-400' : 'text-red-400';
+        const totalRealizedSign = totalRealizedPnL >= 0 ? '+' : '';
+        
         html += `
             <tr class="border-t-2 border-emerald-500 bg-gray-900">
                 <td colspan="4" class="py-2 px-2 font-bold text-emerald-300">Total</td>
@@ -251,6 +271,9 @@ function renderEtfs() {
                 <td class="py-2 px-2 font-bold text-emerald-300">100.0%</td>
                 <td class="py-2 px-2 font-bold ${totalPnlClass}">
                     ${totalPnlSign}${formatCurrency(totalPnl, 'EUR')} (${totalPnlSign}${totalPnlPercentage.toFixed(2)}%)
+                </td>
+                <td class="py-2 px-2 font-bold ${totalRealizedClass}">
+                    ${totalRealizedPnL !== 0 ? `${totalRealizedSign}${formatCurrency(totalRealizedPnL, 'EUR')}` : '--'}
                 </td>
                 <td class="py-2 px-2"></td>
             </tr>
@@ -476,6 +499,7 @@ function handleBuyEtf() {
         currency: 'EUR',
         originalPrice: currency === 'USD' ? finalPrice : null,
         originalCurrency: currency === 'USD' ? 'USD' : null,
+        exchangeRate: currency === 'USD' ? eurUsdRate : null,
         date: date,
         note: note || `Bought ${quantity} shares of ${symbol} at €${priceInEur.toFixed(2)} per share`,
         timestamp: new Date().toISOString()
@@ -542,6 +566,7 @@ function handleSellEtf() {
         currency: 'EUR',
         originalPrice: currency === 'USD' ? finalPrice : null,
         originalCurrency: currency === 'USD' ? 'USD' : null,
+        exchangeRate: currency === 'USD' ? eurUsdRate : null,
         date: date,
         note: note || `Sold ${quantity} shares of ${symbol} at €${priceInEur.toFixed(2)} per share`,
         timestamp: new Date().toISOString()
@@ -578,12 +603,34 @@ function renderEtfTransactions() {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
         const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
         
-        // Format price display with original USD if available
+        // Format price display with historical and current values
         let priceDisplay = formatCurrency(tx.price, 'EUR');
+        let totalDisplay = formatCurrency(tx.total, 'EUR');
+        
         if (tx.originalPrice && tx.originalCurrency === 'USD') {
-            const price = tx.price || 0;
+            const historicalPrice = tx.price || 0;
+            const historicalTotal = tx.total || 0;
             const originalPrice = tx.originalPrice || 0;
-            priceDisplay = `€${price.toFixed(2)} ($${originalPrice.toFixed(2)})`;
+            const originalTotal = tx.originalPrice * tx.quantity || 0;
+            
+            // Calculate current values using today's exchange rate
+            const currentPrice = originalPrice / eurUsdRate;
+            const currentTotal = originalTotal / eurUsdRate;
+            
+            priceDisplay = `€${historicalPrice.toFixed(2)} ($${originalPrice.toFixed(2)})`;
+            totalDisplay = `€${historicalTotal.toFixed(2)} ($${originalTotal.toFixed(2)})`;
+            
+            // Add current value tooltip
+            const priceChange = currentPrice - historicalPrice;
+            const totalChange = currentTotal - historicalTotal;
+            const priceChangePercent = historicalPrice > 0 ? (priceChange / historicalPrice * 100) : 0;
+            const totalChangePercent = historicalTotal > 0 ? (totalChange / historicalTotal * 100) : 0;
+            
+            const priceChangeColor = priceChange >= 0 ? 'text-green-400' : 'text-red-400';
+            const totalChangeColor = totalChange >= 0 ? 'text-green-400' : 'text-red-400';
+            
+            priceDisplay += `<br><span class="text-xs ${priceChangeColor}">Today: €${currentPrice.toFixed(2)} (${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toFixed(1)}%)</span>`;
+            totalDisplay += `<br><span class="text-xs ${totalChangeColor}">Today: €${currentTotal.toFixed(2)} (${totalChangePercent >= 0 ? '+' : ''}${totalChangePercent.toFixed(1)}%)</span>`;
         }
         
         html += `
@@ -593,7 +640,7 @@ function renderEtfTransactions() {
                 <td class="py-2 px-2 text-white font-medium">${tx.symbol}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.quantity}</td>
                 <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
-                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, 'EUR')}</td>
+                <td class="py-2 px-2 text-gray-300">${totalDisplay}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.originalCurrency || 'EUR'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
@@ -717,6 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currency: 'EUR', // Always store in EUR
                 originalPrice: currency === 'USD' ? price : null,
                 originalCurrency: currency === 'USD' ? 'USD' : null,
+        exchangeRate: currency === 'USD' ? eurUsdRate : null,
                 date,
                 note: note || transactions[transactionIndex].note,
                 timestamp: new Date().toISOString()

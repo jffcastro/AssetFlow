@@ -29,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadExchangeRate();
     updateExchangeRateLabel();
     
+    // Calculate and display currency impact
+    calculateCurrencyImpact();
+    
     // Start scheduled updates
     startScheduledUpdates();
     
@@ -1862,4 +1865,52 @@ function updateCashFlowSummary() {
             netCashFlowEl.className = 'text-2xl font-bold text-red-400';
         }
     }
+}
+
+// Calculate and display currency impact from exchange rate changes
+function calculateCurrencyImpact() {
+    const transactions = loadTransactions();
+    const usdTransactions = transactions.filter(tx => 
+        tx.originalCurrency === 'USD' && tx.originalPrice
+    );
+    
+    if (usdTransactions.length === 0) {
+        document.getElementById('currency-impact-total').textContent = '€0.00';
+        document.getElementById('currency-impact-percentage').textContent = '+0.00%';
+        document.getElementById('currency-impact-details').textContent = 'No USD transactions';
+        return;
+    }
+    
+    let totalHistoricalValue = 0;
+    let totalCurrentValue = 0;
+    let totalOriginalValue = 0;
+    
+    usdTransactions.forEach(tx => {
+        const historicalTotal = tx.total || 0;
+        const originalTotal = tx.originalPrice * tx.quantity || 0;
+        const currentTotal = originalTotal / eurUsdRate;
+        
+        totalHistoricalValue += historicalTotal;
+        totalCurrentValue += currentTotal;
+        totalOriginalValue += originalTotal;
+    });
+    
+    const currencyImpact = totalCurrentValue - totalHistoricalValue;
+    const currencyImpactPercent = totalHistoricalValue > 0 ? 
+        (currencyImpact / totalHistoricalValue * 100) : 0;
+    
+    const impactColor = currencyImpact >= 0 ? 'text-green-400' : 'text-red-400';
+    
+    document.getElementById('currency-impact-total').textContent = 
+        `${currencyImpact >= 0 ? '+' : ''}€${currencyImpact.toFixed(2)}`;
+    document.getElementById('currency-impact-total').className = 
+        `text-lg font-bold ${impactColor}`;
+    
+    document.getElementById('currency-impact-percentage').textContent = 
+        `${currencyImpactPercent >= 0 ? '+' : ''}${currencyImpactPercent.toFixed(2)}%`;
+    document.getElementById('currency-impact-percentage').className = 
+        `text-xs text-gray-400 ${impactColor}`;
+    
+    document.getElementById('currency-impact-details').textContent = 
+        `${usdTransactions.length} USD transactions`;
 }

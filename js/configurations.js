@@ -48,6 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
     migrateDataBtn.addEventListener('click', migrateDataToCloud);
     backupDataBtn.addEventListener('click', backupData);
     restoreDataBtn.addEventListener('click', restoreData);
+    
+    // Migration Event listener
+    const migrateRatesBtn = document.getElementById('migrate-rates-btn');
+    if (migrateRatesBtn) {
+        migrateRatesBtn.addEventListener('click', migrateHistoricalRates);
+    }
 
     // ==================== API KEYS FUNCTIONS ====================
 
@@ -434,7 +440,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 timestamp: new Date().toISOString(),
                 portfolio: portfolio,
                 transactions: transactions,
-                settings: settings[0] || {}
+                settings: settings[0] || {},
+                // Include local data that's not in the database
+                localData: {
+                    historicalExchangeRates: JSON.parse(localStorage.getItem('historicalExchangeRates') || '{}'),
+                    eurUsdRate: localStorage.getItem('eurUsdRate') || '1.0',
+                    priceCache: JSON.parse(localStorage.getItem('portfolioPilotPriceCache') || '{}'),
+                    cryptoRates: localStorage.getItem('portfolioPilotCryptoRates'),
+                    notes: {
+                        stocks: localStorage.getItem('stocksNotes') || '',
+                        etfs: localStorage.getItem('etfsNotes') || '',
+                        crypto: localStorage.getItem('cryptoNotes') || '',
+                        cs2: localStorage.getItem('cs2Notes') || ''
+                    }
+                }
             };
 
             // Download backup file
@@ -553,6 +572,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                // Restore local data (historical exchange rates, notes, etc.)
+                if (backup.localData) {
+                    if (backup.localData.historicalExchangeRates) {
+                        localStorage.setItem('historicalExchangeRates', JSON.stringify(backup.localData.historicalExchangeRates));
+                    }
+                    if (backup.localData.eurUsdRate) {
+                        localStorage.setItem('eurUsdRate', backup.localData.eurUsdRate);
+                    }
+                    if (backup.localData.priceCache) {
+                        localStorage.setItem('portfolioPilotPriceCache', JSON.stringify(backup.localData.priceCache));
+                    }
+                    if (backup.localData.cryptoRates) {
+                        localStorage.setItem('portfolioPilotCryptoRates', backup.localData.cryptoRates);
+                    }
+                    if (backup.localData.notes) {
+                        if (backup.localData.notes.stocks) localStorage.setItem('stocksNotes', backup.localData.notes.stocks);
+                        if (backup.localData.notes.etfs) localStorage.setItem('etfsNotes', backup.localData.notes.etfs);
+                        if (backup.localData.notes.crypto) localStorage.setItem('cryptoNotes', backup.localData.notes.crypto);
+                        if (backup.localData.notes.cs2) localStorage.setItem('cs2Notes', backup.localData.notes.cs2);
+                    }
+                }
+
                 showNotification('Data restored successfully!', 'success');
                 updateDatabaseStatus('connected');
 
@@ -632,6 +673,63 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ==================== HELPER FUNCTIONS ====================
+
+    // Migration function for historical exchange rates
+    async function migrateHistoricalRates() {
+        const migrateRatesBtn = document.getElementById('migrate-rates-btn');
+        const progressDiv = document.getElementById('migration-progress');
+        const statusSpan = document.getElementById('migration-status');
+        
+        if (!migrateRatesBtn || !progressDiv) {
+            showNotification('Migration UI elements not found', 'error');
+            return;
+        }
+        
+        // Confirm migration
+        if (!confirm('This will update all your existing USD transactions with historical exchange rates. This may take a few minutes. Continue?')) {
+            return;
+        }
+        
+        try {
+            // Update UI
+            migrateRatesBtn.disabled = true;
+            migrateRatesBtn.textContent = 'Migrating...';
+            progressDiv.classList.remove('hidden');
+            if (statusSpan) statusSpan.textContent = 'Migration in progress...';
+            
+            // Run migration
+            const result = await migrateExistingTransactionsToHistoricalRates();
+            
+            if (result.success) {
+                showNotification(result.message, 'success');
+                if (statusSpan) statusSpan.textContent = `Migration completed: ${result.updated} transactions updated`;
+                
+                // Update progress bar to 100%
+                const progressBar = progressDiv.querySelector('.bg-emerald-400');
+                const progressText = progressDiv.querySelector('.text-center');
+                if (progressBar) progressBar.style.width = '100%';
+                if (progressText) progressText.textContent = 'Migration completed!';
+                
+                // Hide progress after 3 seconds
+                setTimeout(() => {
+                    progressDiv.classList.add('hidden');
+                }, 3000);
+                
+            } else {
+                showNotification(result.message, 'error');
+                if (statusSpan) statusSpan.textContent = 'Migration failed';
+            }
+            
+        } catch (error) {
+            console.error('Migration error:', error);
+            showNotification(`Migration failed: ${error.message}`, 'error');
+            if (statusSpan) statusSpan.textContent = 'Migration failed';
+        } finally {
+            // Reset button
+            migrateRatesBtn.disabled = false;
+            migrateRatesBtn.textContent = 'Migrate Exchange Rates';
+        }
+    }
 
     function getDatabaseConfig() {
         try {

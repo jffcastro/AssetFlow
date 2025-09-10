@@ -12,6 +12,7 @@ let portfolio = {
 
 let eurUsdRate = 1.0;
 let priceCache = { stocks: {}, crypto: {}, etfs: {} };
+let historicalExchangeRates = {}; // Store historical EUR/USD rates by date
 
 // Using full cryptocurrency names directly for CoinGecko API
 
@@ -78,7 +79,79 @@ function saveExchangeRate(rate) {
     eurUsdRate = rate;
     localStorage.setItem('eurUsdRate', rate);
     console.log('Saved eurUsdRate to storage:', eurUsdRate);
+    
+    // Also save today's rate to historical data
+    const today = new Date().toISOString().split('T')[0];
+    saveHistoricalExchangeRate(today, rate);
+    
     updateExchangeRateLabel();
+}
+
+// Save historical exchange rate for a specific date
+function saveHistoricalExchangeRate(date, rate) {
+    try {
+        const historicalRates = JSON.parse(localStorage.getItem('historicalExchangeRates') || '{}');
+        historicalRates[date] = rate;
+        localStorage.setItem('historicalExchangeRates', JSON.stringify(historicalRates));
+        historicalExchangeRates = historicalRates;
+        console.log(`Saved historical exchange rate for ${date}: ${rate}`);
+    } catch (e) {
+        console.error('Error saving historical exchange rate:', e);
+    }
+}
+
+// Get historical exchange rate for a specific date
+function getHistoricalExchangeRate(date) {
+    try {
+        if (!historicalExchangeRates || Object.keys(historicalExchangeRates).length === 0) {
+            const stored = localStorage.getItem('historicalExchangeRates');
+            if (stored) {
+                historicalExchangeRates = JSON.parse(stored);
+            }
+        }
+        
+        // Try exact date first
+        if (historicalExchangeRates[date]) {
+            return historicalExchangeRates[date];
+        }
+        
+        // If not found, try to find the closest previous date
+        const sortedDates = Object.keys(historicalExchangeRates).sort();
+        for (let i = sortedDates.length - 1; i >= 0; i--) {
+            if (sortedDates[i] <= date) {
+                return historicalExchangeRates[sortedDates[i]];
+            }
+        }
+        
+        // If no historical data found, use current rate
+        console.warn(`No historical exchange rate found for ${date}, using current rate: ${eurUsdRate}`);
+        return eurUsdRate;
+    } catch (e) {
+        console.error('Error getting historical exchange rate:', e);
+        return eurUsdRate;
+    }
+}
+
+// Fetch historical exchange rate for a specific date
+async function fetchHistoricalExchangeRate(date) {
+    try {
+        console.log(`Fetching historical exchange rate for ${date}...`);
+        const response = await fetch(`https://api.frankfurter.app/${date}?from=EUR&to=USD`);
+        const data = await response.json();
+        
+        if (data && data.rates && data.rates.USD) {
+            const rate = data.rates.USD;
+            saveHistoricalExchangeRate(date, rate);
+            console.log(`Fetched historical EUR/USD rate for ${date}: ${rate}`);
+            return rate;
+        } else {
+            console.error(`Failed to fetch historical exchange rate for ${date}:`, data);
+            return null;
+        }
+    } catch (e) {
+        console.error(`Error fetching historical exchange rate for ${date}:`, e);
+        return null;
+    }
 }
 
 function updateExchangeRateLabel() {
@@ -1135,6 +1208,7 @@ function exportAllData() {
                 // Market data and rates
                 priceCache: JSON.parse(localStorage.getItem('portfolioPilotPriceCache') || '{}'),
                 eurUsdRate: localStorage.getItem('eurUsdRate') || '1.0',
+                historicalExchangeRates: JSON.parse(localStorage.getItem('historicalExchangeRates') || '{}'),
                 cryptoRates: localStorage.getItem('portfolioPilotCryptoRates'),
                 benchmarkData: localStorage.getItem('portfolioPilotBenchmarkData'),
                 benchmarkHistory: localStorage.getItem('portfolioPilotBenchmarkHistory'),
@@ -1231,6 +1305,9 @@ function importAllData(event) {
             }
             if (backupData.data.eurUsdRate) {
                 localStorage.setItem('eurUsdRate', backupData.data.eurUsdRate);
+            }
+            if (backupData.data.historicalExchangeRates) {
+                localStorage.setItem('historicalExchangeRates', JSON.stringify(backupData.data.historicalExchangeRates));
             }
             if (backupData.data.cryptoRates) {
                 localStorage.setItem('portfolioPilotCryptoRates', backupData.data.cryptoRates);
@@ -1770,6 +1847,7 @@ function createTransactionWithCurrencyConversion(transactionData, currency, eurU
         currency: 'EUR',
         originalPrice: currency === 'USD' ? finalPrice : null,
         originalCurrency: currency === 'USD' ? 'USD' : null,
+        exchangeRate: currency === 'USD' ? eurUsdRate : null, // Store the exchange rate used
         date,
         note: note || `${type === 'buy' ? 'Bought' : 'Sold'} ${quantity} ${assetType === 'crypto' ? 'units' : 'shares'} of ${symbol} at €${priceInEur.toFixed(2)} per ${assetType === 'crypto' ? 'unit' : 'share'}`,
         timestamp: new Date().toISOString()
@@ -1777,6 +1855,329 @@ function createTransactionWithCurrencyConversion(transactionData, currency, eurU
 }
 
 window.createTransactionWithCurrencyConversion = createTransactionWithCurrencyConversion;
+
+// Helper function to format transaction values with historical and current exchange rates
+function formatTransactionWithCurrentRates(transaction) {
+    const result = {
+        priceDisplay: formatCurrency(transaction.price, 'EUR'),
+        totalDisplay: formatCurrency(transaction.total, 'EUR'),
+        hasCurrencyImpact: false,
+        currencyImpact: {
+            priceChange: 0,
+            totalChange: 0,
+            priceChangePercent: 0,
+            totalChangePercent: 0
+        }
+    };
+    
+    if (transaction.originalPrice && transaction.originalCurrency === 'USD') {
+        const historicalPrice = transaction.price || 0;
+        const historicalTotal = transaction.total || 0;
+        const originalPrice = transaction.originalPrice || 0;
+        const originalTotal = transaction.originalPrice * transaction.quantity || 0;
+        
+        // Use the exchange rate from the transaction date if available, otherwise use current rate
+        const transactionDate = transaction.date;
+        const historicalRate = transaction.exchangeRate || getHistoricalExchangeRate(transactionDate);
+        
+        // Calculate current values using today's exchange rate
+        const currentPrice = originalPrice / eurUsdRate;
+        const currentTotal = originalTotal / eurUsdRate;
+        
+        result.priceDisplay = `€${historicalPrice.toFixed(2)} ($${originalPrice.toFixed(2)})`;
+        result.totalDisplay = `€${historicalTotal.toFixed(2)} ($${originalTotal.toFixed(2)})`;
+        
+        // Calculate currency impact
+        const priceChange = currentPrice - historicalPrice;
+        const totalChange = currentTotal - historicalTotal;
+        const priceChangePercent = historicalPrice > 0 ? (priceChange / historicalPrice * 100) : 0;
+        const totalChangePercent = historicalTotal > 0 ? (totalChange / historicalTotal * 100) : 0;
+        
+        result.hasCurrencyImpact = true;
+        result.currencyImpact = {
+            priceChange,
+            totalChange,
+            priceChangePercent,
+            totalChangePercent,
+            currentPrice,
+            currentTotal,
+            historicalRate,
+            currentRate: eurUsdRate
+        };
+        
+        // Add current value display
+        const priceChangeColor = priceChange >= 0 ? 'text-green-400' : 'text-red-400';
+        const totalChangeColor = totalChange >= 0 ? 'text-green-400' : 'text-red-400';
+        
+        result.priceDisplay += `<br><span class="text-xs ${priceChangeColor}">Today: €${currentPrice.toFixed(2)} (${priceChangePercent >= 0 ? '+' : ''}${priceChangePercent.toFixed(1)}%)</span>`;
+        result.totalDisplay += `<br><span class="text-xs ${totalChangeColor}">Today: €${currentTotal.toFixed(2)} (${totalChangePercent >= 0 ? '+' : ''}${totalChangePercent.toFixed(1)}%)</span>`;
+    }
+    
+    return result;
+}
+
+window.formatTransactionWithCurrentRates = formatTransactionWithCurrentRates;
+
+// Calculate realized P&L for a specific asset (completed buy/sell pairs)
+function calculateRealizedPnL(assetType, symbol) {
+    const transactions = loadTransactions();
+    const assetTransactions = transactions.filter(tx => 
+        tx.assetType === assetType && tx.symbol === symbol
+    );
+    
+    if (assetTransactions.length === 0) return { realizedPnL: 0, realizedPercentage: 0 };
+    
+    // Sort transactions by date
+    assetTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    let realizedPnL = 0;
+    let totalCostBasis = 0;
+    let totalProceeds = 0;
+    
+    // Track quantity and average cost for FIFO calculation
+    let remainingQuantity = 0;
+    let averageCost = 0;
+    
+    assetTransactions.forEach(tx => {
+        if (tx.type === 'buy') {
+            // Add to position - use historical exchange rate for accurate cost basis
+            let totalCost = tx.total;
+            if (tx.originalCurrency === 'USD' && tx.exchangeRate) {
+                // Recalculate using the historical exchange rate from transaction date
+                const historicalRate = tx.exchangeRate;
+                const originalTotal = tx.originalPrice * tx.quantity;
+                totalCost = originalTotal / historicalRate;
+            }
+            
+            const newQuantity = remainingQuantity + tx.quantity;
+            
+            if (newQuantity > 0) {
+                averageCost = ((remainingQuantity * averageCost) + totalCost) / newQuantity;
+            } else {
+                averageCost = tx.price;
+            }
+            
+            remainingQuantity = newQuantity;
+            totalCostBasis += totalCost;
+            
+        } else if (tx.type === 'sell') {
+            // Sell from position - use historical exchange rate for accurate proceeds
+            let sellTotal = tx.total;
+            if (tx.originalCurrency === 'USD' && tx.exchangeRate) {
+                // Recalculate using the historical exchange rate from transaction date
+                const historicalRate = tx.exchangeRate;
+                const originalTotal = tx.originalPrice * tx.quantity;
+                sellTotal = originalTotal / historicalRate;
+            }
+            
+            if (remainingQuantity > 0) {
+                const sellQuantity = Math.min(tx.quantity, remainingQuantity);
+                const sellProceeds = (sellQuantity / tx.quantity) * sellTotal;
+                const costBasis = sellQuantity * averageCost;
+                
+                const tradePnL = sellProceeds - costBasis;
+                realizedPnL += tradePnL;
+                totalProceeds += sellProceeds;
+                
+                remainingQuantity -= sellQuantity;
+                
+                // If we sold more than we had, adjust average cost for remaining
+                if (tx.quantity > sellQuantity) {
+                    const excessQuantity = tx.quantity - sellQuantity;
+                    const excessProceeds = (excessQuantity / tx.quantity) * sellTotal;
+                    // This represents a short position - we'll handle it as a negative cost basis
+                    totalCostBasis -= excessProceeds;
+                }
+            } else {
+                // Short sale - add to proceeds but no cost basis
+                totalProceeds += sellTotal;
+            }
+        }
+    });
+    
+    const realizedPercentage = totalCostBasis > 0 ? (realizedPnL / totalCostBasis) * 100 : 0;
+    
+    return {
+        realizedPnL,
+        realizedPercentage,
+        totalCostBasis,
+        totalProceeds,
+        remainingQuantity
+    };
+}
+
+window.calculateRealizedPnL = calculateRealizedPnL;
+
+// Function to ensure historical exchange rate is available for a transaction
+async function ensureHistoricalExchangeRate(transactionDate) {
+    const rate = getHistoricalExchangeRate(transactionDate);
+    if (rate === eurUsdRate) {
+        // No historical rate found, try to fetch it
+        console.log(`Fetching historical exchange rate for ${transactionDate}...`);
+        const fetchedRate = await fetchHistoricalExchangeRate(transactionDate);
+        if (fetchedRate) {
+            return fetchedRate;
+        }
+    }
+    return rate;
+}
+
+window.ensureHistoricalExchangeRate = ensureHistoricalExchangeRate;
+
+// Migration function to update existing USD transactions with historical exchange rates
+async function migrateExistingTransactionsToHistoricalRates() {
+    try {
+        console.log('Starting migration of existing USD transactions to historical exchange rates...');
+        
+        const transactions = loadTransactions();
+        const usdTransactions = transactions.filter(tx => 
+            tx.originalCurrency === 'USD' && 
+            (!tx.exchangeRate || tx.exchangeRate === eurUsdRate)
+        );
+        
+        if (usdTransactions.length === 0) {
+            console.log('No USD transactions found that need migration.');
+            return { success: true, message: 'No transactions need migration.', updated: 0 };
+        }
+        
+        console.log(`Found ${usdTransactions.length} USD transactions to migrate.`);
+        
+        let updatedCount = 0;
+        let errorCount = 0;
+        const errors = [];
+        
+        // Process transactions in batches to avoid overwhelming the API
+        const batchSize = 5;
+        for (let i = 0; i < usdTransactions.length; i += batchSize) {
+            const batch = usdTransactions.slice(i, i + batchSize);
+            
+            // Process batch in parallel
+            const batchPromises = batch.map(async (tx) => {
+                try {
+                    const transactionDate = tx.date;
+                    console.log(`Migrating transaction ${tx.id} from ${transactionDate}...`);
+                    
+                    // Fetch historical exchange rate for the transaction date
+                    const historicalRate = await fetchHistoricalExchangeRate(transactionDate);
+                    
+                    if (!historicalRate) {
+                        console.warn(`Could not fetch historical rate for ${transactionDate}, using current rate`);
+                        return { success: false, error: `No historical rate available for ${transactionDate}` };
+                    }
+                    
+                    // Recalculate EUR values using the historical rate
+                    const originalTotal = tx.originalPrice * tx.quantity;
+                    const historicalPriceInEur = tx.originalPrice / historicalRate;
+                    const historicalTotalInEur = originalTotal / historicalRate;
+                    
+                    // Update the transaction
+                    const txIndex = transactions.findIndex(t => t.id === tx.id);
+                    if (txIndex !== -1) {
+                        transactions[txIndex] = {
+                            ...transactions[txIndex],
+                            exchangeRate: historicalRate,
+                            price: historicalPriceInEur,
+                            total: historicalTotalInEur
+                        };
+                        
+                        console.log(`Updated transaction ${tx.id}: Rate ${historicalRate}, Price €${historicalPriceInEur.toFixed(2)}, Total €${historicalTotalInEur.toFixed(2)}`);
+                        return { success: true };
+                    }
+                    
+                    return { success: false, error: 'Transaction not found in array' };
+                    
+                } catch (error) {
+                    console.error(`Error migrating transaction ${tx.id}:`, error);
+                    return { success: false, error: error.message };
+                }
+            });
+            
+            // Wait for batch to complete
+            const batchResults = await Promise.all(batchPromises);
+            
+            // Count results
+            batchResults.forEach(result => {
+                if (result.success) {
+                    updatedCount++;
+                } else {
+                    errorCount++;
+                    errors.push(result.error);
+                }
+            });
+            
+            // Save progress after each batch
+            saveTransactions(transactions);
+            
+            // Small delay between batches to be respectful to the API
+            if (i + batchSize < usdTransactions.length) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+        
+        // Recalculate portfolio from updated transactions
+        calculatePortfolioFromTransactions();
+        
+        const result = {
+            success: true,
+            message: `Migration completed. Updated ${updatedCount} transactions.`,
+            updated: updatedCount,
+            errors: errorCount,
+            errorDetails: errors
+        };
+        
+        if (errorCount > 0) {
+            result.message += ` ${errorCount} transactions had errors.`;
+            console.warn('Migration completed with errors:', errors);
+        }
+        
+        console.log('Migration completed:', result);
+        return result;
+        
+    } catch (error) {
+        console.error('Migration failed:', error);
+        return {
+            success: false,
+            message: `Migration failed: ${error.message}`,
+            updated: 0,
+            errors: 1,
+            errorDetails: [error.message]
+        };
+    }
+}
+
+// Helper function to show migration progress
+function showMigrationProgress(current, total, message = '') {
+    const progress = Math.round((current / total) * 100);
+    console.log(`Migration Progress: ${progress}% (${current}/${total}) ${message}`);
+    
+    // You could also show a progress bar in the UI here
+    const progressElement = document.getElementById('migration-progress');
+    if (progressElement) {
+        progressElement.textContent = `${progress}% - ${message}`;
+        progressElement.style.width = `${progress}%`;
+    }
+}
+
+window.migrateExistingTransactionsToHistoricalRates = migrateExistingTransactionsToHistoricalRates;
+window.showMigrationProgress = showMigrationProgress;
+
+// Console command for easy migration
+window.migrateRates = async function() {
+    console.log('🚀 Starting migration of existing USD transactions to historical exchange rates...');
+    const result = await migrateExistingTransactionsToHistoricalRates();
+    
+    if (result.success) {
+        console.log('✅ Migration completed successfully!');
+        console.log(`📊 Updated ${result.updated} transactions`);
+        if (result.errors > 0) {
+            console.warn(`⚠️ ${result.errors} transactions had errors:`, result.errorDetails);
+        }
+    } else {
+        console.error('❌ Migration failed:', result.message);
+    }
+    
+    return result;
+};
 
 // Enhanced encryption/decryption for sensitive data storage
 // Uses a more secure approach with salt and better key derivation
