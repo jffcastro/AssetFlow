@@ -29,9 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadExchangeRate();
     updateExchangeRateLabel();
     
-    // Update realized P&L display
-    updateDashboardRealizedPnL();
-    
     // Start scheduled updates
     startScheduledUpdates();
     
