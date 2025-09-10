@@ -279,7 +279,8 @@ function renderCrypto() {
         
         html += `
             <tr class="border-t-2 border-emerald-500 bg-gray-900">
-                <td colspan="5" class="py-2 px-2 font-bold text-emerald-300">Total</td>
+                <td colspan="4" class="py-2 px-2 font-bold text-emerald-300">Total</td>
+                <td class="py-2 px-2 font-bold text-emerald-300">--</td>
                 <td class="py-2 px-2 font-bold text-emerald-300">${formatCurrency(totalValue, 'EUR')}</td>
                 <td class="py-2 px-2 font-bold text-emerald-300">100.0%</td>
                 <td class="py-2 px-2 font-bold ${totalPnlClass}">

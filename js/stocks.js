@@ -300,7 +300,6 @@ function renderStocks() {
     }
     
     stocksTbody.innerHTML = html;
-    document.getElementById('stocks-count').textContent = portfolio.stocks.length;
     
     // Update realized P&L display
     updateRealizedPnLDisplay();
