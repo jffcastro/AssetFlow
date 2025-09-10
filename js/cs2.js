@@ -63,6 +63,7 @@ function initializePortfolios() {
     
     renderPortfolios();
     updateCombinedDisplay();
+    updateCS2RealizedPnLDisplay();
 }
 
 function migrateOldStructure() {
@@ -171,10 +172,38 @@ function savePortfolio(id) {
     const input = document.getElementById(`${id}-input`);
     const value = parseFloat(input.value) || 0;
     
+    // Track value change for realized P&L calculation
+    const previousValue = portfolio.cs2.portfolios[id].value || 0;
+    const valueChange = value - previousValue;
+    
+    // Create transaction record for value change
+    if (valueChange !== 0) {
+        const transaction = {
+            id: Date.now().toString(),
+            type: 'value_update',
+            assetType: 'cs2',
+            symbol: id,
+            quantity: 1, // CS2 doesn't use quantity
+            price: value,
+            total: value,
+            currency: 'USD',
+            originalPrice: value,
+            originalCurrency: 'USD',
+            previousValue: previousValue,
+            currentValue: value,
+            date: new Date().toISOString().split('T')[0],
+            note: `Updated ${portfolio.cs2.portfolios[id].name} value from $${previousValue.toFixed(2)} to $${value.toFixed(2)}`,
+            timestamp: new Date().toISOString()
+        };
+        
+        addTransaction(transaction);
+    }
+    
     portfolio.cs2.portfolios[id].value = value;
     updateCombinedTotal();
     saveData();
     updateCombinedDisplay();
+    updateCS2RealizedPnLDisplay();
     
     showNotification(`${portfolio.cs2.portfolios[id].name} value saved successfully!`, 'success');
 }
@@ -298,6 +327,57 @@ function updatePortfolioBreakdown() {
     `;
     
     portfolioBreakdown.innerHTML = breakdownHtml;
+}
+
+function updateCS2RealizedPnLDisplay() {
+    const transactions = loadTransactions();
+    const realizedPnL = calculateRealizedPnL(transactions);
+    
+    // Calculate CS2 realized P&L by portfolio
+    const cs2Transactions = transactions.filter(tx => tx.assetType === 'cs2');
+    const portfolioPnL = {};
+    
+    cs2Transactions.forEach(tx => {
+        if (!portfolioPnL[tx.symbol]) {
+            portfolioPnL[tx.symbol] = 0;
+        }
+        portfolioPnL[tx.symbol] += (tx.currentValue || 0) - (tx.previousValue || 0);
+    });
+    
+    // Update individual portfolio P&L displays
+    const playItemsElement = document.getElementById('play-items-realized-pnl');
+    const investmentItemsElement = document.getElementById('investment-items-realized-pnl');
+    const totalUsdElement = document.getElementById('cs2-total-realized-pnl-usd');
+    const totalEurElement = document.getElementById('cs2-total-realized-pnl-eur');
+    
+    const playItemsPnL = portfolioPnL['playItems'] || 0;
+    const investmentItemsPnL = portfolioPnL['investmentItems'] || 0;
+    const totalPnLUsd = playItemsPnL + investmentItemsPnL;
+    const totalPnLEur = totalPnLUsd / eurUsdRate;
+    
+    if (playItemsElement) {
+        const playItemsClass = playItemsPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+        playItemsElement.className = `text-lg font-semibold ${playItemsClass}`;
+        playItemsElement.textContent = formatCurrency(playItemsPnL, 'USD');
+    }
+    
+    if (investmentItemsElement) {
+        const investmentItemsClass = investmentItemsPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+        investmentItemsElement.className = `text-lg font-semibold ${investmentItemsClass}`;
+        investmentItemsElement.textContent = formatCurrency(investmentItemsPnL, 'USD');
+    }
+    
+    if (totalUsdElement) {
+        const totalUsdClass = totalPnLUsd >= 0 ? 'text-emerald-400' : 'text-red-400';
+        totalUsdElement.className = `text-lg font-semibold ${totalUsdClass}`;
+        totalUsdElement.textContent = formatCurrency(totalPnLUsd, 'USD');
+    }
+    
+    if (totalEurElement) {
+        const totalEurClass = totalPnLEur >= 0 ? 'text-emerald-400' : 'text-red-400';
+        totalEurElement.className = `text-lg font-semibold ${totalEurClass}`;
+        totalEurElement.textContent = formatCurrency(totalPnLEur, 'EUR');
+    }
 }
 
 // Make functions globally available for onclick handlers

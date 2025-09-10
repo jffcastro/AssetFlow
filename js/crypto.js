@@ -233,6 +233,13 @@ function renderCrypto() {
         const change24hSign = change24h >= 0 ? '+' : '';
         const change24hDisplay = currentPrice > 0 ? `${change24hSign}${change24h.toFixed(2)}%` : '--';
         
+        // Calculate holding time
+        const transactions = loadTransactions();
+        const holdingTime = calculateHoldingTime(transactions, 'crypto', crypto.name);
+        const holdingTimeDisplay = holdingTime ? 
+            `${holdingTime.years > 0 ? holdingTime.years + 'y ' : ''}${holdingTime.months > 0 ? holdingTime.months + 'm ' : ''}${holdingTime.daysRemainder}d` : 
+            '--';
+        
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 font-semibold">
@@ -249,6 +256,7 @@ function renderCrypto() {
                 <td class="py-2 px-2 ${pnlClass}">
                     ${currentPrice > 0 ? `${pnlSign}${formatCurrency(pnl, crypto.currency)} (${pnlSign}${pnlPercentage.toFixed(2)}%)` : '--'}
                 </td>
+                <td class="py-2 px-2 text-gray-300">${holdingTimeDisplay}</td>
                 <td class="py-2 px-2">
                     <button onclick="deleteCrypto(${crypto.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
                 </td>
@@ -271,6 +279,7 @@ function renderCrypto() {
                 <td class="py-2 px-2 font-bold ${totalPnlClass}">
                     ${totalPnlSign}${formatCurrency(totalPnl, 'EUR')} (${totalPnlSign}${totalPnlPercentage.toFixed(2)}%)
                 </td>
+                <td class="py-2 px-2 font-bold text-emerald-300">--</td>
                 <td class="py-2 px-2"></td>
             </tr>
         `;

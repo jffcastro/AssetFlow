@@ -12,6 +12,7 @@ let portfolio = {
 
 let eurUsdRate = 1.0;
 let priceCache = { stocks: {}, crypto: {}, etfs: {} };
+let historicalRates = {}; // Store historical EUR/USD rates by date
 
 // Using full cryptocurrency names directly for CoinGecko API
 
@@ -23,6 +24,7 @@ function loadData() {
             const parsed = JSON.parse(data);
             portfolio = { ...portfolio, ...parsed };
         }
+        loadHistoricalRates();
     } catch (e) {
         console.error('Error loading portfolio data:', e);
     }
@@ -79,6 +81,237 @@ function saveExchangeRate(rate) {
     localStorage.setItem('eurUsdRate', rate);
     console.log('Saved eurUsdRate to storage:', eurUsdRate);
     updateExchangeRateLabel();
+}
+
+// --- HISTORICAL EXCHANGE RATES ---
+function loadHistoricalRates() {
+    try {
+        const data = localStorage.getItem('historicalRates');
+        if (data) {
+            historicalRates = JSON.parse(data);
+        }
+    } catch (e) {
+        console.error('Error loading historical rates:', e);
+        historicalRates = {};
+    }
+}
+
+function saveHistoricalRates() {
+    try {
+        localStorage.setItem('historicalRates', JSON.stringify(historicalRates));
+    } catch (e) {
+        console.error('Error saving historical rates:', e);
+    }
+}
+
+async function fetchHistoricalExchangeRate(date) {
+    try {
+        const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        // Check if we already have this rate
+        if (historicalRates[dateStr]) {
+            return historicalRates[dateStr];
+        }
+        
+        console.log(`Fetching historical EUR/USD rate for ${dateStr}...`);
+        
+        // Use Frankfurter API for historical rates
+        const response = await fetch(`https://api.frankfurter.app/${dateStr}?from=EUR&to=USD`);
+        const data = await response.json();
+        
+        if (data && data.rates && data.rates.USD) {
+            const rate = data.rates.USD;
+            historicalRates[dateStr] = rate;
+            saveHistoricalRates();
+            console.log(`Historical rate for ${dateStr}: ${rate}`);
+            return rate;
+        } else {
+            console.warn(`No historical rate found for ${dateStr}, using current rate`);
+            return eurUsdRate;
+        }
+    } catch (error) {
+        console.error(`Error fetching historical rate for ${date}:`, error);
+        return eurUsdRate; // Fallback to current rate
+    }
+}
+
+function getHistoricalRateForDate(date) {
+    const dateStr = date.toISOString().split('T')[0];
+    return historicalRates[dateStr] || eurUsdRate;
+}
+
+// --- REALIZED P&L CALCULATIONS ---
+function calculateRealizedPnL(transactions) {
+    const realizedPnL = {
+        stocks: 0,
+        etfs: 0,
+        crypto: 0,
+        cs2: 0,
+        total: 0
+    };
+    
+    // Group transactions by asset type and symbol
+    const assetGroups = {};
+    
+    transactions.forEach(tx => {
+        if (tx.assetType === 'stocks' || tx.assetType === 'etfs' || tx.assetType === 'crypto') {
+            const key = `${tx.assetType}_${tx.symbol}`;
+            if (!assetGroups[key]) {
+                assetGroups[key] = {
+                    assetType: tx.assetType,
+                    symbol: tx.symbol,
+                    buys: [],
+                    sells: []
+                };
+            }
+            
+            if (tx.type === 'buy') {
+                assetGroups[key].buys.push(tx);
+            } else if (tx.type === 'sell') {
+                assetGroups[key].sells.push(tx);
+            }
+        } else if (tx.assetType === 'cs2') {
+            // CS2 transactions are handled differently - they track portfolio value changes
+            if (tx.type === 'value_update') {
+                // For CS2, we track the difference between current value and previous value
+                const previousValue = tx.previousValue || 0;
+                const currentValue = tx.currentValue || 0;
+                const realizedGain = currentValue - previousValue;
+                realizedPnL.cs2 += realizedGain;
+            }
+        }
+    });
+    
+    // Calculate realized P&L for each asset
+    Object.values(assetGroups).forEach(asset => {
+        let remainingBuys = [...asset.buys];
+        
+        asset.sells.forEach(sell => {
+            let sellQuantity = sell.quantity;
+            let sellTotal = sell.total; // Already in EUR
+            
+            while (sellQuantity > 0 && remainingBuys.length > 0) {
+                const buy = remainingBuys[0];
+                const buyQuantity = buy.quantity;
+                const buyTotal = buy.total; // Already in EUR
+                
+                if (buyQuantity <= sellQuantity) {
+                    // This buy is completely sold
+                    const realizedGain = (sellTotal * (buyQuantity / sell.quantity)) - buyTotal;
+                    realizedPnL[asset.assetType] += realizedGain;
+                    
+                    sellQuantity -= buyQuantity;
+                    remainingBuys.shift();
+                } else {
+                    // Partial sell of this buy
+                    const partialSellTotal = sellTotal * (sellQuantity / sell.quantity);
+                    const partialBuyTotal = buyTotal * (sellQuantity / buyQuantity);
+                    const realizedGain = partialSellTotal - partialBuyTotal;
+                    realizedPnL[asset.assetType] += realizedGain;
+                    
+                    // Update remaining buy
+                    remainingBuys[0].quantity -= sellQuantity;
+                    remainingBuys[0].total -= partialBuyTotal;
+                    sellQuantity = 0;
+                }
+            }
+        });
+    });
+    
+    // Calculate total realized P&L
+    realizedPnL.total = realizedPnL.stocks + realizedPnL.etfs + realizedPnL.crypto + realizedPnL.cs2;
+    
+    return realizedPnL;
+}
+
+function calculateHoldingTime(transactions, assetType, symbol) {
+    const assetTransactions = transactions.filter(tx => 
+        tx.assetType === assetType && tx.symbol === symbol
+    ).sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    if (assetTransactions.length === 0) return null;
+    
+    const firstBuy = assetTransactions.find(tx => tx.type === 'buy');
+    if (!firstBuy) return null;
+    
+    const now = new Date();
+    const firstBuyDate = new Date(firstBuy.date);
+    const diffTime = Math.abs(now - firstBuyDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return {
+        days: diffDays,
+        years: Math.floor(diffDays / 365),
+        months: Math.floor((diffDays % 365) / 30),
+        daysRemainder: diffDays % 30
+    };
+}
+
+// --- MIGRATION TOOLS ---
+async function migrateExistingUSDTransactions() {
+    console.log('Starting migration of existing USD transactions...');
+    
+    const transactions = loadTransactions();
+    const usdTransactions = transactions.filter(tx => 
+        tx.originalCurrency === 'USD' && !tx.historicalRate
+    );
+    
+    if (usdTransactions.length === 0) {
+        console.log('No USD transactions found that need migration.');
+        return { migrated: 0, errors: 0 };
+    }
+    
+    console.log(`Found ${usdTransactions.length} USD transactions to migrate.`);
+    
+    let migrated = 0;
+    let errors = 0;
+    
+    for (const tx of usdTransactions) {
+        try {
+            const txDate = new Date(tx.date);
+            const historicalRate = await fetchHistoricalExchangeRate(txDate);
+            
+            // Update the transaction with historical rate
+            tx.historicalRate = historicalRate;
+            
+            // Recalculate EUR values using historical rate
+            if (tx.originalPrice && tx.originalCurrency === 'USD') {
+                tx.price = tx.originalPrice / historicalRate;
+                tx.total = tx.originalPrice * tx.quantity / historicalRate;
+            }
+            
+            migrated++;
+            console.log(`Migrated transaction ${tx.id}: ${tx.symbol} - Rate: ${historicalRate}`);
+            
+            // Add a small delay to avoid overwhelming the API
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+        } catch (error) {
+            console.error(`Error migrating transaction ${tx.id}:`, error);
+            errors++;
+        }
+    }
+    
+    // Save updated transactions
+    if (migrated > 0) {
+        saveTransactions(transactions);
+        console.log(`Migration completed: ${migrated} transactions migrated, ${errors} errors.`);
+    }
+    
+    return { migrated, errors };
+}
+
+function getMigrationStatus() {
+    const transactions = loadTransactions();
+    const usdTransactions = transactions.filter(tx => 
+        tx.originalCurrency === 'USD' && !tx.historicalRate
+    );
+    
+    return {
+        totalUSDTransactions: transactions.filter(tx => tx.originalCurrency === 'USD').length,
+        unmigratedUSDTransactions: usdTransactions.length,
+        needsMigration: usdTransactions.length > 0
+    };
 }
 
 function updateExchangeRateLabel() {
@@ -1135,6 +1368,7 @@ function exportAllData() {
                 // Market data and rates
                 priceCache: JSON.parse(localStorage.getItem('portfolioPilotPriceCache') || '{}'),
                 eurUsdRate: localStorage.getItem('eurUsdRate') || '1.0',
+                historicalRates: JSON.parse(localStorage.getItem('historicalRates') || '{}'),
                 cryptoRates: localStorage.getItem('portfolioPilotCryptoRates'),
                 benchmarkData: localStorage.getItem('portfolioPilotBenchmarkData'),
                 benchmarkHistory: localStorage.getItem('portfolioPilotBenchmarkHistory'),
@@ -1231,6 +1465,9 @@ function importAllData(event) {
             }
             if (backupData.data.eurUsdRate) {
                 localStorage.setItem('eurUsdRate', backupData.data.eurUsdRate);
+            }
+            if (backupData.data.historicalRates) {
+                localStorage.setItem('historicalRates', JSON.stringify(backupData.data.historicalRates));
             }
             if (backupData.data.cryptoRates) {
                 localStorage.setItem('portfolioPilotCryptoRates', backupData.data.cryptoRates);
@@ -1749,15 +1986,22 @@ function setupAutoCalculation(quantityId, priceId, totalId) {
 window.setupAutoCalculation = setupAutoCalculation;
 
 // Utility function to create transaction with proper currency conversion and original price storage
-function createTransactionWithCurrencyConversion(transactionData, currency, eurUsdRate) {
+async function createTransactionWithCurrencyConversion(transactionData, currency, transactionDate = null) {
     const { type, assetType, symbol, quantity, finalPrice, finalTotal, date, note } = transactionData;
     
-    // Convert to EUR if needed
+    // Use transaction date or current date
+    const txDate = transactionDate || new Date(date);
+    
+    // Convert to EUR if needed using historical rate
     let priceInEur = finalPrice;
     let totalInEur = finalTotal;
+    let historicalRate = eurUsdRate;
+    
     if (currency === 'USD') {
-        priceInEur = finalPrice / eurUsdRate;
-        totalInEur = finalTotal / eurUsdRate;
+        // Fetch historical rate for the transaction date
+        historicalRate = await fetchHistoricalExchangeRate(txDate);
+        priceInEur = finalPrice / historicalRate;
+        totalInEur = finalTotal / historicalRate;
     }
     
     return {
@@ -1771,6 +2015,7 @@ function createTransactionWithCurrencyConversion(transactionData, currency, eurU
         currency: 'EUR',
         originalPrice: currency === 'USD' ? finalPrice : null,
         originalCurrency: currency === 'USD' ? 'USD' : null,
+        historicalRate: currency === 'USD' ? historicalRate : null,
         date,
         note: note || `${type === 'buy' ? 'Bought' : 'Sold'} ${quantity} ${assetType === 'crypto' ? 'units' : 'shares'} of ${symbol} at €${priceInEur.toFixed(2)} per ${assetType === 'crypto' ? 'unit' : 'share'}`,
         timestamp: new Date().toISOString()

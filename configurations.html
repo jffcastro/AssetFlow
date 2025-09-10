@@ -188,6 +188,31 @@
             </div>
         </div>
 
+        <!-- Migration Tools Section -->
+        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-emerald-400">Migration Tools</h3>
+                <div class="text-sm text-gray-400">Update existing data</div>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h4 class="text-lg font-semibold mb-2">Historical Exchange Rates</h4>
+                    <p class="text-gray-400 text-sm mb-4">Migrate existing USD transactions to use historical exchange rates for more accurate EUR calculations.</p>
+                    
+                    <div id="migration-status" class="mb-4 p-3 bg-gray-700 rounded-lg">
+                        <div class="text-sm text-gray-300">
+                            <span id="migration-status-text">Checking migration status...</span>
+                        </div>
+                    </div>
+                    
+                    <button id="migrate-transactions-btn" class="glass-button glass-button-primary" disabled>
+                        <span id="migrate-btn-text">Migrate USD Transactions</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Configuration Notes -->
         <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg">
             <div class="flex justify-between items-center mb-4">
