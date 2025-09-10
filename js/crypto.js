@@ -337,7 +337,7 @@ async function loadCryptoEvents() {
                 <div class="text-yellow-400 mb-2">⚠️ CoinMarketCal API key not configured</div>
                 <div class="text-gray-400 mb-2">Configure your CoinMarketCal API key to view crypto events.</div>
                 <div class="mt-2">
-                    <a href="api-keys.html" class="text-orange-400 hover:text-orange-300 underline">Configure API Keys</a>
+                    <a href="configurations.html" class="text-orange-400 hover:text-orange-300 underline">Configure API Keys</a>
                 </div>
             `;
             return;
@@ -376,13 +376,13 @@ async function loadCryptoEvents() {
         }
         
         // Display events
-        let eventsHtml = '<div class="space-y-3">';
+        let eventsHtml = '<div class="space-y-1">';
         
         // Add last fetched timestamp at the top
         if (lastFetchedTime) {
             eventsHtml += `
-                <div class="text-xs text-gray-400 mb-3 text-center">
-                    Last fetched: ${lastFetchedTime.toLocaleString()}
+                <div class="text-xs text-gray-400 mb-2 text-center">
+                    ${lastFetchedTime.toLocaleString()}
                 </div>
             `;
         }
@@ -416,22 +416,21 @@ async function loadCryptoEvents() {
             const eventTitle = event.title?.en || event.title || event['-'] || 'Untitled Event';
             
             eventsHtml += `
-                <div class="p-4 bg-gray-700 rounded-lg border-l-4 border-orange-400">
-                    <div class="flex justify-between items-start mb-2">
-                        <h4 class="font-semibold text-orange-400">${eventTitle}</h4>
-                        <div class="text-right text-sm">
+                <div class="p-2 bg-gray-700 rounded border-l-2 border-orange-400">
+                    <div class="flex justify-between items-center mb-1">
+                        <h4 class="text-sm font-semibold text-orange-400">${eventTitle}</h4>
+                        <div class="text-right text-xs">
                             <div class="text-emerald-400 font-medium">${eventDate.toLocaleDateString()}</div>
                             <div class="text-gray-400">${dateText}</div>
                         </div>
                     </div>
-                    <div class="text-sm text-gray-300 mb-2">${event.displayed_date || 'No date details available'}</div>
-                    <div class="flex flex-wrap gap-2 text-xs text-gray-400">
-                        <span class="bg-gray-600 px-2 py-1 rounded">${coinsText}</span>
-                        <span class="bg-gray-600 px-2 py-1 rounded">${categoryText}</span>
-                        <span class="bg-gray-600 px-2 py-1 rounded">${confidenceText}</span>
-                        ${event.can_occur_before ? '<span class="bg-yellow-600 px-2 py-1 rounded">Can occur before</span>' : ''}
+                    <div class="flex flex-wrap gap-1 text-xs text-gray-400 mb-1">
+                        <span class="bg-gray-600 px-1 py-0.5 rounded text-xs">${coinsText}</span>
+                        <span class="bg-gray-600 px-1 py-0.5 rounded text-xs">${categoryText}</span>
+                        <span class="bg-gray-600 px-1 py-0.5 rounded text-xs">${confidenceText}</span>
+                        ${event.can_occur_before ? '<span class="bg-yellow-600 px-1 py-0.5 rounded text-xs">Can occur before</span>' : ''}
                     </div>
-                    ${event.source ? `<div class="mt-2 text-xs"><a href="${event.source}" target="_blank" class="text-orange-400 hover:text-orange-300 underline">View Source</a></div>` : ''}
+                    ${event.source ? `<div class="text-xs"><a href="${event.source}" target="_blank" class="text-orange-400 hover:text-orange-300 underline">View Source</a></div>` : ''}
                 </div>
             `;
         });
