@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sellEtfCancelBtn = document.getElementById('sell-etf-cancel-btn');
     const sellEtfSymbolSelect = document.getElementById('sell-etf-symbol');
     const refreshEtfTransactionsBtn = document.getElementById('refresh-etf-transactions-btn');
+    const etfTransactionsFilter = document.getElementById('etf-transactions-filter');
 
     // Event listeners
     etfCancelBtn.addEventListener('click', closeEtfModal);
@@ -60,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     refreshEtfTransactionsBtn.addEventListener('click', renderEtfTransactions);
+    etfTransactionsFilter.addEventListener('input', filterEtfTransactions);
     
     // Set up auto-calculation for buy form
     setupAutoCalculation('buy-etf-quantity', 'buy-etf-price', 'buy-etf-total');
@@ -182,46 +184,30 @@ function renderEtfs() {
     // First pass: calculate total values
     portfolio.etfs.forEach(etf => {
         const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
-        const currentPrice = cachedData.price || 0;
+        const currentPrice = cachedData.price || 0; // Price is already in EUR
         const value = currentPrice * etf.quantity;
         const purchaseValue = etf.purchasePrice * etf.quantity;
         const pnl = value - purchaseValue;
         
-        // Convert to EUR for total calculation
-        let valueEur = value;
-        let pnlEur = pnl;
-        if (etf.currency === 'USD') {
-            valueEur = value / eurUsdRate;
-            pnlEur = pnl / eurUsdRate;
-        }
-        
-        totalValue += valueEur;
-        totalPnl += pnlEur;
+        totalValue += value;
+        totalPnl += pnl;
     });
     
     // Second pass: render rows with allocation percentages
     portfolio.etfs.forEach(etf => {
         const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
-        const currentPrice = cachedData.price || 0;
+        const currentPrice = cachedData.price || 0; // Price is already in EUR
         const change24h = cachedData.change24h || 0;
         const value = currentPrice * etf.quantity;
         const purchaseValue = etf.purchasePrice * etf.quantity;
         const pnl = value - purchaseValue;
         const pnlPercentage = purchaseValue > 0 ? (pnl / purchaseValue) * 100 : 0;
         
-        // Convert to EUR for total calculation
-        let valueEur = value;
-        let pnlEur = pnl;
-        if (etf.currency === 'USD') {
-            valueEur = value / eurUsdRate;
-            pnlEur = pnl / eurUsdRate;
-        }
-        
         const pnlClass = pnl >= 0 ? 'positive-gain' : 'negative-gain';
         const pnlSign = pnl >= 0 ? '+' : '';
         
         // Calculate allocation percentage
-        const allocationPercentage = totalValue > 0 ? (valueEur / totalValue) * 100 : 0;
+        const allocationPercentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
         
         // Format 24h change
         const change24hClass = change24h >= 0 ? 'text-emerald-400' : 'text-red-400';
@@ -237,7 +223,7 @@ function renderEtfs() {
                 </td>
                 <td class="py-2 px-2">${etf.quantity}</td>
                 <td class="py-2 px-2">${formatCurrency(etf.purchasePrice, etf.currency)}</td>
-                <td class="py-2 px-2">${currentPrice > 0 ? formatCurrency(currentPrice, etf.currency) : '--'}</td>
+                <td class="py-2 px-2">${currentPrice > 0 ? formatCurrency(currentPrice, 'EUR') : '--'}</td>
                 <td class="py-2 px-2 ${change24hClass}">${change24hDisplay}</td>
                 <td class="py-2 px-2">${currentPrice > 0 ? formatCurrency(value, etf.currency) : '--'}</td>
                 <td class="py-2 px-2">${allocationPercentage.toFixed(1)}%</td>
@@ -756,6 +742,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function filterEtfTransactions() {
+    const filterValue = document.getElementById('etf-transactions-filter').value.toLowerCase();
+    const tbody = document.getElementById('etf-transactions-tbody');
+    const rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) {
+            // Skip the "no transactions" row
+            return;
+        }
+        
+        const symbolCell = row.cells[2]; // Symbol column
+        const noteCell = row.cells[7]; // Note column
+        
+        const symbol = symbolCell ? symbolCell.textContent.toLowerCase() : '';
+        const note = noteCell ? noteCell.textContent.toLowerCase() : '';
+        
+        const matches = symbol.includes(filterValue) || note.includes(filterValue);
+        row.style.display = matches ? '' : 'none';
+    });
+}
 
 // Initialize notes when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
