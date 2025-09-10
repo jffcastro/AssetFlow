@@ -38,15 +38,46 @@ function saveData() {
 
 function loadExchangeRate() {
     const stored = localStorage.getItem('eurUsdRate');
+    console.log('Loading exchange rate. Stored value:', stored);
     if (stored) {
-        eurUsdRate = parseFloat(stored);
+        // Try to parse as number first (for unencrypted data)
+        let rate = parseFloat(stored);
+        if (isNaN(rate)) {
+            // If parsing fails, try to decrypt the data
+            try {
+                const decrypted = decryptData(stored);
+                rate = parseFloat(decrypted);
+                console.log('Decrypted exchange rate:', decrypted, 'Parsed rate:', rate);
+            } catch (e) {
+                console.error('Failed to decrypt exchange rate:', e);
+                rate = NaN;
+            }
+        }
+        
+        if (!isNaN(rate) && rate > 0) {
+            eurUsdRate = rate;
+            console.log('Loaded eurUsdRate from storage:', eurUsdRate);
+        } else {
+            console.log('Invalid stored rate, using default:', eurUsdRate);
+            eurUsdRate = 1.0;
+            // Try to fetch the current exchange rate
+            fetchExchangeRate();
+        }
+    } else {
+        // Ensure default rate is set when no stored value
+        eurUsdRate = 1.0;
+        console.log('No stored rate, using default:', eurUsdRate);
+        // Try to fetch the current exchange rate
+        fetchExchangeRate();
     }
     updateExchangeRateLabel();
 }
 
 function saveExchangeRate(rate) {
+    console.log('Saving exchange rate:', rate);
     eurUsdRate = rate;
     localStorage.setItem('eurUsdRate', rate);
+    console.log('Saved eurUsdRate to storage:', eurUsdRate);
     updateExchangeRateLabel();
 }
 
@@ -56,7 +87,9 @@ function updateExchangeRateLabel() {
     const eurEthLabel = document.getElementById('eur-eth-rate-label');
     
     if (eurUsdLabel) {
-        eurUsdLabel.textContent = `EUR/USD: ${eurUsdRate.toFixed(4)}`;
+        // Ensure eurUsdRate is a valid number
+        const rate = isNaN(eurUsdRate) ? 1.0 : eurUsdRate;
+        eurUsdLabel.textContent = `EUR/USD: ${rate.toFixed(4)}`;
     }
     
     const cached = getCachedCryptoRates();
@@ -78,6 +111,22 @@ function updateExchangeRateLabel() {
     
     // Update last update timestamp
     updateLastUpdateTime();
+}
+
+function resetExchangeRateLabels() {
+    const eurUsdLabel = document.getElementById('eur-usd-rate-label');
+    const eurBtcLabel = document.getElementById('eur-btc-rate-label');
+    const eurEthLabel = document.getElementById('eur-eth-rate-label');
+    
+    if (eurUsdLabel) {
+        eurUsdLabel.textContent = 'EUR/USD: 1.0000';
+    }
+    if (eurBtcLabel) {
+        eurBtcLabel.textContent = 'EUR/BTC: --';
+    }
+    if (eurEthLabel) {
+        eurEthLabel.textContent = 'EUR/ETH: --';
+    }
 }
 
 function updateLastUpdateTime() {
@@ -672,14 +721,17 @@ async function fetchCryptoPrice(name, currency = 'USD') {
 
 async function fetchExchangeRate() {
     try {
+        console.log('Fetching exchange rate from Frankfurter...');
         // Fetch EUR/USD rate from Frankfurter
         const eurUsdRes = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD');
         const eurUsdData = await eurUsdRes.json();
+        console.log('Frankfurter response:', eurUsdData);
         
         if (eurUsdData && eurUsdData.rates && eurUsdData.rates.USD) {
+            console.log('EUR/USD rate from Frankfurter:', eurUsdData.rates.USD);
             saveExchangeRate(eurUsdData.rates.USD);
         } else {
-            console.error('Failed to fetch EUR/USD rate');
+            console.error('Failed to fetch EUR/USD rate, response:', eurUsdData);
             setUpdateStatus('rates', 'error');
             return false;
         }
@@ -1081,12 +1133,16 @@ function exportAllData() {
                 
                 // API keys (encrypted/masked for security)
                 apiKeys: {
-                    yahooFinance: localStorage.getItem('portfolioPilotYahooFinance') ? '***CONFIGURED***' : null,
-                    alphaVantage: localStorage.getItem('portfolioPilotAlphaVantage') ? '***CONFIGURED***' : null,
-                    coinGecko: localStorage.getItem('portfolioPilotCoinGecko') ? '***CONFIGURED***' : null,
-                    finnhub: localStorage.getItem('portfolioPilotFinnhub') ? '***CONFIGURED***' : null,
-                    coinMarketCal: localStorage.getItem('portfolioPilotCoinMarketCal') ? '***CONFIGURED***' : null
+                    yahooFinance: getEncryptedItem('portfolioPilotYahooFinance') ? '***CONFIGURED***' : null,
+                    alphaVantage: getEncryptedItem('portfolioPilotAlphaVantage') ? '***CONFIGURED***' : null,
+                    coinGecko: getEncryptedItem('portfolioPilotCoinGecko') ? '***CONFIGURED***' : null,
+                    finnhub: getEncryptedItem('portfolioPilotFinnhub') ? '***CONFIGURED***' : null,
+                    coinMarketCal: getEncryptedItem('portfolioPilotCoinMarketCal') ? '***CONFIGURED***' : null
                 },
+                
+                // Database configuration (encrypted)
+                databaseConfig: getEncryptedItem('assetflow_database_config'),
+                userId: getEncryptedItem('assetflow_user_id'),
                 
                 // Usage statistics
                 usageStats: {
@@ -1220,6 +1276,10 @@ document.addEventListener('DOMContentLoaded', () => {
     loadExchangeRate();
     loadPriceCache();
     
+    // Ensure exchange rate labels are properly initialized
+    resetExchangeRateLabels();
+    updateExchangeRateLabel();
+    
     // Set up common event listeners
     const fetchRatesBtn = document.getElementById('fetch-rates-btn');
     if (fetchRatesBtn) {
@@ -1282,22 +1342,22 @@ document.addEventListener('DOMContentLoaded', () => {
     if (deleteStorageBtn) {
         deleteStorageBtn.addEventListener('click', () => {
             if (confirm('Are you sure you want to delete all portfolio data? This will preserve your API keys and database configuration. This action cannot be undone.')) {
-                // Get list of keys to preserve (encrypted)
+                // Get list of keys to preserve
                 const keysToPreserve = ['apiKeys', 'assetflow_database_config', 'assetflow_user_id', 'assetflow_theme'];
                 const preservedData = {};
                 
-                // Store encrypted data temporarily
+                // Store data temporarily (API keys and DB config are encrypted, others are plain)
                 keysToPreserve.forEach(key => {
                     const value = localStorage.getItem(key);
                     if (value) {
-                        preservedData[key] = value; // Already encrypted by our override
+                        preservedData[key] = value;
                     }
                 });
                 
                 // Clear all localStorage
                 localStorage.clear();
                 
-                // Restore preserved data (still encrypted)
+                // Restore preserved data
                 Object.entries(preservedData).forEach(([key, value]) => {
                     localStorage.setItem(key, value);
                 });
@@ -1720,7 +1780,8 @@ function encryptData(data) {
         
         // Combine salt + encrypted data and base64 encode
         const combined = saltHex + encrypted;
-        return btoa(combined);
+        // Use a more robust encoding method that handles all characters
+        return btoa(unescape(encodeURIComponent(combined)));
     } catch (error) {
         console.warn('Encryption failed, storing as-is:', error);
         return data; // Fallback to unencrypted storage
@@ -1730,13 +1791,28 @@ function encryptData(data) {
 function decryptData(encryptedData) {
     if (!encryptedData) return encryptedData;
     
+    // Check if data looks like it's encrypted (starts with valid base64 and has minimum length)
+    if (typeof encryptedData !== 'string' || encryptedData.length < 50) {
+        return encryptedData; // Likely not encrypted
+    }
+    
     try {
-        // Base64 decode
-        const decoded = atob(encryptedData);
+        // Base64 decode with proper handling of all characters
+        const decoded = decodeURIComponent(escape(atob(encryptedData)));
+        
+        // Check if decoded data has minimum length for salt + encrypted content
+        if (decoded.length < 32) {
+            return encryptedData; // Not encrypted
+        }
         
         // Extract salt (first 32 characters)
         const saltHex = decoded.substring(0, 32);
         const encrypted = decoded.substring(32);
+        
+        // Validate salt format (should be 32 hex characters)
+        if (!/^[0-9a-fA-F]{32}$/.test(saltHex)) {
+            return encryptedData; // Not encrypted
+        }
         
         // Recreate the key using the same salt
         const baseKey = 'assetflow_encryption_key_2024_secure';
@@ -1750,25 +1826,14 @@ function decryptData(encryptedData) {
         
         return decrypted;
     } catch (error) {
-        console.warn('Failed to decrypt data, returning as-is:', error);
-        return encryptedData; // Return original if decryption fails
+        // Silently return original data if decryption fails (likely not encrypted)
+        return encryptedData;
     }
 }
 
-// Override localStorage methods to automatically encrypt ALL data
+// Keep original localStorage methods for normal data
 const originalSetItem = localStorage.setItem;
 const originalGetItem = localStorage.getItem;
-
-localStorage.setItem = function(key, value) {
-    // Encrypt ALL data before storing
-    return originalSetItem.call(this, key, encryptData(value));
-};
-
-localStorage.getItem = function(key) {
-    const value = originalGetItem.call(this, key);
-    // Decrypt ALL data when retrieving
-    return decryptData(value);
-};
 
 window.encryptData = encryptData;
 window.decryptData = decryptData;
@@ -1787,7 +1852,6 @@ window.calculatePortfolioFromTransactions = calculatePortfolioFromTransactions;
 window.setEncryptedItem = function(key, value) {
     // This function explicitly encrypts sensitive data before storage
     // Use this for API keys, database credentials, and other sensitive information
-    // The encryption is handled by the localStorage.setItem override in shared.js
     const encryptedValue = encryptData(value);
     return originalSetItem.call(localStorage, key, encryptedValue);
 };
@@ -1795,7 +1859,6 @@ window.setEncryptedItem = function(key, value) {
 window.getEncryptedItem = function(key) {
     // This function explicitly decrypts sensitive data after retrieval
     // Use this for API keys, database credentials, and other sensitive information
-    // The decryption is handled by the localStorage.getItem override in shared.js
     const encryptedValue = originalGetItem.call(localStorage, key);
     return encryptedValue ? decryptData(encryptedValue) : null;
 };
