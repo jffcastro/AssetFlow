@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update auto-updates status
     updateAutoUpdatesStatus();
     
+    // Load and update exchange rates
+    loadExchangeRate();
+    updateExchangeRateLabel();
     
     // Start scheduled updates
     startScheduledUpdates();
