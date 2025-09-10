@@ -63,6 +63,7 @@ function initializePortfolios() {
     
     renderPortfolios();
     updateCombinedDisplay();
+    updateCS2RealizedPnLDisplay();
 }
 
 function migrateOldStructure() {
@@ -74,6 +75,7 @@ function migrateOldStructure() {
             description: 'Items for playing',
             color: 'blue',
             value: portfolio.cs2.playItems.value || 0,
+            realizedPnl: 0,
             currency: 'USD'
         };
     }
@@ -84,6 +86,7 @@ function migrateOldStructure() {
             description: 'Items for investment',
             color: 'purple',
             value: portfolio.cs2.investmentItems.value || 0,
+            realizedPnl: 0,
             currency: 'USD'
         };
     }
@@ -104,6 +107,7 @@ function createDefaultPortfolios() {
             description: 'Items for playing',
             color: 'blue',
             value: 0,
+            realizedPnl: 0,
             currency: 'USD'
         },
         'investmentItems': {
@@ -111,6 +115,7 @@ function createDefaultPortfolios() {
             description: 'Items for investment',
             color: 'purple',
             value: 0,
+            realizedPnl: 0,
             currency: 'USD'
         }
     };
@@ -146,35 +151,85 @@ function createPortfolioElement(id, portfolioData) {
                 <input type="number" id="${id}-input" step="any" placeholder="0.00" 
                        class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:${theme.border} text-lg">
             </div>
+            <div>
+                <label for="${id}-realized-pnl-input" class="block text-sm font-medium mb-2">Realized P&L (USD)</label>
+                <input type="number" id="${id}-realized-pnl-input" step="any" placeholder="0.00" 
+                       class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:${theme.border} text-lg">
+            </div>
             <button onclick="savePortfolio('${id}')" 
                     class="${theme.bg} ${theme.hover} text-white font-bold py-3 px-6 rounded-lg transition duration-300">
                 Save ${portfolioData.name}
             </button>
         </div>
         <div class="mt-4 p-3 bg-gray-700 rounded-lg">
-            <div class="text-sm text-gray-300">
+            <div class="text-sm text-gray-300 mb-2">
                 <strong>Current Value:</strong> <span id="${id}-current" class="${theme.text}">$0.00</span>
+            </div>
+            <div class="text-sm text-gray-300">
+                <strong>Realized P&L:</strong> <span id="${id}-realized-pnl-display" class="${portfolioData.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$0.00</span>
             </div>
         </div>
     `;
     
-    // Set current value
+    // Set current value and realized P&L
     const input = portfolioDiv.querySelector(`#${id}-input`);
+    const realizedPnlInput = portfolioDiv.querySelector(`#${id}-realized-pnl-input`);
     const current = portfolioDiv.querySelector(`#${id}-current`);
+    const realizedPnlDisplay = portfolioDiv.querySelector(`#${id}-realized-pnl-display`);
     input.value = portfolioData.value || '';
+    realizedPnlInput.value = portfolioData.realizedPnl || '';
     current.textContent = formatCurrency(portfolioData.value || 0, 'USD');
+    realizedPnlDisplay.textContent = formatCurrency(portfolioData.realizedPnl || 0, 'USD');
     
     return portfolioDiv;
 }
 
 function savePortfolio(id) {
     const input = document.getElementById(`${id}-input`);
+    const realizedPnlInput = document.getElementById(`${id}-realized-pnl-input`);
     const value = parseFloat(input.value) || 0;
+    const realizedPnl = parseFloat(realizedPnlInput.value) || 0;
+    
+    // Track value change for realized P&L calculation
+    const previousValue = portfolio.cs2.portfolios[id].value || 0;
+    const valueChange = value - previousValue;
+    
+    // Create transaction record for value change
+    if (valueChange !== 0) {
+        const transaction = {
+            id: Date.now().toString(),
+            type: 'value_update',
+            assetType: 'cs2',
+            symbol: id,
+            quantity: 1, // CS2 doesn't use quantity
+            price: value,
+            total: value,
+            currency: 'USD',
+            originalPrice: value,
+            originalCurrency: 'USD',
+            previousValue: previousValue,
+            currentValue: value,
+            date: new Date().toISOString().split('T')[0],
+            note: `Updated ${portfolio.cs2.portfolios[id].name} value from $${previousValue.toFixed(2)} to $${value.toFixed(2)}`,
+            timestamp: new Date().toISOString()
+        };
+        
+        addTransaction(transaction);
+    }
     
     portfolio.cs2.portfolios[id].value = value;
+    portfolio.cs2.portfolios[id].realizedPnl = realizedPnl;
     updateCombinedTotal();
     saveData();
     updateCombinedDisplay();
+    updateCS2RealizedPnLDisplay();
+    
+    // Update the realized P&L display
+    const realizedPnlDisplay = document.getElementById(`${id}-realized-pnl-display`);
+    if (realizedPnlDisplay) {
+        realizedPnlDisplay.textContent = formatCurrency(realizedPnl, 'USD');
+        realizedPnlDisplay.className = realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+    }
     
     showNotification(`${portfolio.cs2.portfolios[id].name} value saved successfully!`, 'success');
 }
@@ -298,6 +353,57 @@ function updatePortfolioBreakdown() {
     `;
     
     portfolioBreakdown.innerHTML = breakdownHtml;
+}
+
+function updateCS2RealizedPnLDisplay() {
+    const transactions = loadTransactions();
+    const realizedPnL = calculateRealizedPnL(transactions);
+    
+    // Calculate CS2 realized P&L by portfolio
+    const cs2Transactions = transactions.filter(tx => tx.assetType === 'cs2');
+    const portfolioPnL = {};
+    
+    cs2Transactions.forEach(tx => {
+        if (!portfolioPnL[tx.symbol]) {
+            portfolioPnL[tx.symbol] = 0;
+        }
+        portfolioPnL[tx.symbol] += (tx.currentValue || 0) - (tx.previousValue || 0);
+    });
+    
+    // Update individual portfolio P&L displays
+    const playItemsElement = document.getElementById('play-items-realized-pnl');
+    const investmentItemsElement = document.getElementById('investment-items-realized-pnl');
+    const totalUsdElement = document.getElementById('cs2-total-realized-pnl-usd');
+    const totalEurElement = document.getElementById('cs2-total-realized-pnl-eur');
+    
+    const playItemsPnL = portfolioPnL['playItems'] || 0;
+    const investmentItemsPnL = portfolioPnL['investmentItems'] || 0;
+    const totalPnLUsd = playItemsPnL + investmentItemsPnL;
+    const totalPnLEur = totalPnLUsd / eurUsdRate;
+    
+    if (playItemsElement) {
+        const playItemsClass = playItemsPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+        playItemsElement.className = `text-lg font-semibold ${playItemsClass}`;
+        playItemsElement.textContent = formatCurrency(playItemsPnL, 'USD');
+    }
+    
+    if (investmentItemsElement) {
+        const investmentItemsClass = investmentItemsPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+        investmentItemsElement.className = `text-lg font-semibold ${investmentItemsClass}`;
+        investmentItemsElement.textContent = formatCurrency(investmentItemsPnL, 'USD');
+    }
+    
+    if (totalUsdElement) {
+        const totalUsdClass = totalPnLUsd >= 0 ? 'text-emerald-400' : 'text-red-400';
+        totalUsdElement.className = `text-lg font-semibold ${totalUsdClass}`;
+        totalUsdElement.textContent = formatCurrency(totalPnLUsd, 'USD');
+    }
+    
+    if (totalEurElement) {
+        const totalEurClass = totalPnLEur >= 0 ? 'text-emerald-400' : 'text-red-400';
+        totalEurElement.className = `text-lg font-semibold ${totalEurClass}`;
+        totalEurElement.textContent = formatCurrency(totalPnLEur, 'EUR');
+    }
 }
 
 // Make functions globally available for onclick handlers

@@ -170,6 +170,22 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Historical Exchange Rates Migration -->
+            <div class="mt-6 p-4 glass-effect rounded-lg">
+                <h4 class="font-medium mb-2">Historical Exchange Rates Migration</h4>
+                <p class="text-sm text-gray-400 mb-4">Migrate existing USD transactions to use historical exchange rates for more accurate EUR calculations.</p>
+                
+                <div id="migration-status" class="mb-4 p-3 bg-gray-700 rounded-lg">
+                    <div class="text-sm text-gray-300">
+                        <span id="migration-status-text">Checking migration status...</span>
+                    </div>
+                </div>
+                
+                <button id="migrate-transactions-btn" class="glass-button glass-button-primary" disabled>
+                    <span id="migrate-btn-text">Migrate USD Transactions</span>
+                </button>
+            </div>
         </div>
 
         <!-- Security Notice -->
@@ -187,6 +203,7 @@
                 </div>
             </div>
         </div>
+
 
         <!-- Configuration Notes -->
         <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg">

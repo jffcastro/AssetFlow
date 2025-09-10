@@ -29,6 +29,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadExchangeRate();
     updateExchangeRateLabel();
     
+    // Update realized P&L display
+    updateDashboardRealizedPnL();
+    
     // Start scheduled updates
     startScheduledUpdates();
     
@@ -1169,6 +1172,24 @@ function updateDashboardStats() {
         pnlPercentageEl.textContent = (pnlPercentage >= 0 ? '+' : '') + pnlPercentage.toFixed(2) + '%';
     }
     
+    // Update realized P&L
+    const realizedPnlEl = document.getElementById('dashboard-realized-pnl');
+    const realizedPnlPercentageEl = document.getElementById('dashboard-realized-pnl-percentage');
+    if (realizedPnlEl && realizedPnlPercentageEl) {
+        const transactions = loadTransactions();
+        const realizedPnL = calculateRealizedPnL(transactions);
+        const totalValue = calculateTotalValue();
+        const realizedPnlPercentage = totalValue > 0 ? (realizedPnL.total / totalValue) * 100 : 0;
+        
+        realizedPnlEl.textContent = formatCurrency(realizedPnL.total, 'EUR');
+        realizedPnlPercentageEl.textContent = (realizedPnL.total >= 0 ? '+' : '') + realizedPnlPercentage.toFixed(2) + '%';
+        
+        // Color code based on positive/negative
+        const realizedPnlClass = realizedPnL.total >= 0 ? 'text-emerald-400' : 'text-red-400';
+        realizedPnlEl.className = `text-lg font-bold ${realizedPnlClass}`;
+        realizedPnlPercentageEl.className = `text-xs text-gray-400 ${realizedPnlClass}`;
+    }
+    
     // Update asset count
     const assetCountEl = document.getElementById('dashboard-asset-count');
     if (assetCountEl) {
@@ -1824,6 +1845,7 @@ function calculateRetirementProgress(history, transactions) {
     
     return { labels, portfolioValues, contributionValues };
 }
+
 
 // --- CASH FLOW SUMMARY ---
 function updateCashFlowSummary() {

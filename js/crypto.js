@@ -176,7 +176,7 @@ function renderCrypto() {
     }
     
     if (portfolio.crypto.length === 0) {
-        cryptoTbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No cryptocurrencies added yet.</td></tr>';
+        cryptoTbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No cryptocurrencies added yet.</td></tr>';
         return;
     }
     
@@ -233,6 +233,19 @@ function renderCrypto() {
         const change24hSign = change24h >= 0 ? '+' : '';
         const change24hDisplay = currentPrice > 0 ? `${change24hSign}${change24h.toFixed(2)}%` : '--';
         
+        // Calculate holding time
+        const transactions = loadTransactions();
+        const holdingTime = calculateHoldingTime(transactions, 'crypto', crypto.name);
+        const holdingTimeDisplay = holdingTime ? 
+            `${holdingTime.years > 0 ? holdingTime.years + 'y ' : ''}${holdingTime.months > 0 ? holdingTime.months + 'm ' : ''}${holdingTime.daysRemainder}d` : 
+            '--';
+        
+        // Calculate realized P&L for this crypto
+        const realizedPnL = calculateRealizedPnL(transactions);
+        const cryptoRealizedPnL = realizedPnL.byAsset[`crypto-${crypto.name}`] || 0;
+        const realizedPnLDisplay = cryptoRealizedPnL !== 0 ? formatCurrency(cryptoRealizedPnL, 'EUR') : '--';
+        const realizedPnLClass = cryptoRealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+        
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 font-semibold">
@@ -249,6 +262,8 @@ function renderCrypto() {
                 <td class="py-2 px-2 ${pnlClass}">
                     ${currentPrice > 0 ? `${pnlSign}${formatCurrency(pnl, crypto.currency)} (${pnlSign}${pnlPercentage.toFixed(2)}%)` : '--'}
                 </td>
+                <td class="py-2 px-2 ${realizedPnLClass}">${realizedPnLDisplay}</td>
+                <td class="py-2 px-2 text-gray-300">${holdingTimeDisplay}</td>
                 <td class="py-2 px-2">
                     <button onclick="deleteCrypto(${crypto.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
                 </td>
@@ -271,6 +286,8 @@ function renderCrypto() {
                 <td class="py-2 px-2 font-bold ${totalPnlClass}">
                     ${totalPnlSign}${formatCurrency(totalPnl, 'EUR')} (${totalPnlSign}${totalPnlPercentage.toFixed(2)}%)
                 </td>
+                <td class="py-2 px-2 font-bold text-emerald-300">--</td>
+                <td class="py-2 px-2 font-bold text-emerald-300">--</td>
                 <td class="py-2 px-2"></td>
             </tr>
         `;
@@ -694,7 +711,7 @@ function renderCryptoTransactions() {
     const transactions = loadTransactions().filter(tx => tx.assetType === 'crypto');
     
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No crypto transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No crypto transactions yet.</td></tr>';
         return;
     }
     
@@ -723,6 +740,7 @@ function renderCryptoTransactions() {
                 <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, 'EUR')}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.originalCurrency || 'EUR'}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.historicalRate ? tx.historicalRate.toFixed(4) : '--'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
                     <button onclick="editCryptoTransaction('${tx.id}')" class="glass-button text-xs px-2 py-1 mr-1">✏️</button>
@@ -807,7 +825,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Setup auto-calculation for edit form
         setupAutoCalculation('edit-crypto-transaction-quantity', 'edit-crypto-transaction-price', 'edit-crypto-transaction-total');
         
-        editCryptoTransactionForm.addEventListener('submit', (e) => {
+        editCryptoTransactionForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const transactionId = document.getElementById('edit-crypto-transaction-id').value;
@@ -833,12 +851,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // Convert to EUR if needed
+            // Convert to EUR if needed using historical rate
             let priceInEur = price;
             let totalInEur = total;
+            let historicalRate = null;
             if (currency === 'USD') {
-                priceInEur = price / eurUsdRate;
-                totalInEur = total / eurUsdRate;
+                try {
+                    const txDate = new Date(date);
+                    historicalRate = await fetchHistoricalExchangeRate(txDate);
+                    priceInEur = price / historicalRate;
+                    totalInEur = total / historicalRate;
+                } catch (error) {
+                    console.error('Error fetching historical rate:', error);
+                    showNotification('Error fetching historical exchange rate. Using current rate.', 'warning');
+                    priceInEur = price / eurUsdRate;
+                    totalInEur = total / eurUsdRate;
+                    historicalRate = eurUsdRate;
+                }
             }
             
             // Update the transaction
@@ -852,6 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currency: 'EUR', // Always store in EUR
                 originalPrice: currency === 'USD' ? price : null,
                 originalCurrency: currency === 'USD' ? 'USD' : null,
+                historicalRate: currency === 'USD' ? historicalRate : null,
                 date: date,
                 note: note || transactions[transactionIndex].note,
                 timestamp: new Date().toISOString()

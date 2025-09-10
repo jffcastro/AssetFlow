@@ -195,7 +195,7 @@ function renderStocks() {
     }
     
     if (portfolio.stocks.length === 0) {
-        stocksTbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No stocks added yet.</td></tr>';
+        stocksTbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No stocks added yet.</td></tr>';
         return;
     }
     
@@ -239,6 +239,19 @@ function renderStocks() {
         // Format value with color coding (green if current value > purchase value, red if lower)
         const valueClass = value >= purchaseValue ? 'positive-gain' : 'negative-gain';
         
+        // Calculate holding time
+        const transactions = loadTransactions();
+        const holdingTime = calculateHoldingTime(transactions, 'stocks', stock.name);
+        const holdingTimeDisplay = holdingTime ? 
+            `${holdingTime.years > 0 ? holdingTime.years + 'y ' : ''}${holdingTime.months > 0 ? holdingTime.months + 'm ' : ''}${holdingTime.daysRemainder}d` : 
+            '--';
+        
+        // Calculate realized P&L for this stock
+        const realizedPnL = calculateRealizedPnL(transactions);
+        const stockRealizedPnL = realizedPnL.byAsset[`stocks-${stock.name}`] || 0;
+        const realizedPnLDisplay = stockRealizedPnL !== 0 ? formatCurrency(stockRealizedPnL, 'EUR') : '--';
+        const realizedPnLClass = stockRealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+        
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 font-semibold">
@@ -255,6 +268,8 @@ function renderStocks() {
                 <td class="py-2 px-2 ${pnlClass}">
                     ${currentPrice > 0 ? `${pnlSign}${formatCurrency(pnl, stock.currency)} (${pnlSign}${pnlPercentage.toFixed(2)}%)` : '--'}
                 </td>
+                <td class="py-2 px-2 ${realizedPnLClass}">${realizedPnLDisplay}</td>
+                <td class="py-2 px-2 text-gray-300">${holdingTimeDisplay}</td>
                 <td class="py-2 px-2">
                     <button onclick="deleteStock(${stock.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
                 </td>
@@ -277,12 +292,52 @@ function renderStocks() {
                 <td class="py-2 px-2 font-bold ${totalPnlClass}">
                     ${totalPnlSign}${formatCurrency(totalPnl, 'EUR')} (${totalPnlSign}${totalPnlPercentage.toFixed(2)}%)
                 </td>
+                <td class="py-2 px-2 font-bold text-emerald-300">--</td>
+                <td class="py-2 px-2 font-bold text-emerald-300">--</td>
                 <td class="py-2 px-2"></td>
             </tr>
         `;
     }
     
     stocksTbody.innerHTML = html;
+    
+    // Update realized P&L display
+    updateRealizedPnLDisplay();
+}
+
+function updateRealizedPnLDisplay() {
+    const transactions = loadTransactions();
+    const realizedPnL = calculateRealizedPnL(transactions);
+    
+    // Update individual asset type P&L
+    const stocksElement = document.getElementById('stocks-realized-pnl');
+    const etfsElement = document.getElementById('etfs-realized-pnl');
+    const cryptoElement = document.getElementById('crypto-realized-pnl');
+    const totalElement = document.getElementById('total-realized-pnl');
+    
+    if (stocksElement) {
+        const stocksClass = realizedPnL.stocks >= 0 ? 'text-emerald-400' : 'text-red-400';
+        stocksElement.className = `text-lg font-semibold ${stocksClass}`;
+        stocksElement.textContent = formatCurrency(realizedPnL.stocks, 'EUR');
+    }
+    
+    if (etfsElement) {
+        const etfsClass = realizedPnL.etfs >= 0 ? 'text-emerald-400' : 'text-red-400';
+        etfsElement.className = `text-lg font-semibold ${etfsClass}`;
+        etfsElement.textContent = formatCurrency(realizedPnL.etfs, 'EUR');
+    }
+    
+    if (cryptoElement) {
+        const cryptoClass = realizedPnL.crypto >= 0 ? 'text-emerald-400' : 'text-red-400';
+        cryptoElement.className = `text-lg font-semibold ${cryptoClass}`;
+        cryptoElement.textContent = formatCurrency(realizedPnL.crypto, 'EUR');
+    }
+    
+    if (totalElement) {
+        const totalClass = realizedPnL.total >= 0 ? 'text-emerald-400' : 'text-red-400';
+        totalElement.className = `text-lg font-semibold ${totalClass}`;
+        totalElement.textContent = formatCurrency(realizedPnL.total, 'EUR');
+    }
 }
 
 function editStock(id) {
@@ -573,7 +628,7 @@ function closeSellStockModal() {
 }
 
 
-function handleBuyStock() {
+async function handleBuyStock() {
     try {
         const symbol = document.getElementById('buy-stock-symbol').value.trim().toUpperCase();
         const quantity = parseFloat(document.getElementById('buy-stock-quantity').value);
@@ -610,39 +665,25 @@ function handleBuyStock() {
             finalPrice = total / quantity;
         }
     
-        // Convert to EUR if needed
-        let priceInEur = finalPrice;
-        let totalInEur = finalTotal;
-        if (currency === 'USD') {
-            console.log(`Converting USD to EUR: eurUsdRate = ${eurUsdRate}`);
-            console.log(`Original USD values: price = ${finalPrice}, total = ${finalTotal}`);
-            priceInEur = finalPrice / eurUsdRate;
-            totalInEur = finalTotal / eurUsdRate;
-            console.log(`Converted EUR values: price = ${priceInEur}, total = ${totalInEur}`);
-        }
-        
-        // Create transaction
-        const transaction = {
-            id: Date.now().toString(),
+        // Create transaction with historical rate conversion
+        const transactionData = {
             type: 'buy',
             assetType: 'stocks',
             symbol: symbol,
             quantity: quantity,
-            price: priceInEur,
-            total: totalInEur,
-            currency: 'EUR',
-            originalPrice: currency === 'USD' ? finalPrice : null,
-            originalCurrency: currency === 'USD' ? 'USD' : null,
+            finalPrice: finalPrice,
+            finalTotal: finalTotal,
             date: date,
-            note: note || `Bought ${quantity} shares of ${symbol} at €${priceInEur.toFixed(2)} per share`,
-            timestamp: new Date().toISOString()
+            note: note
         };
         
+        const transaction = await createTransactionWithCurrencyConversion(transactionData, currency, new Date(date));
         addTransaction(transaction);
         saveData();
         calculatePortfolioFromTransactions();
         renderStocks();
         renderStockTransactions();
+        updateRealizedPnLDisplay();
         closeBuyStockModal();
         
         showNotification(`Successfully bought ${quantity} shares of ${symbol}`, 'success');
@@ -653,7 +694,7 @@ function handleBuyStock() {
     }
 }
 
-function handleSellStock() {
+async function handleSellStock() {
     const symbol = document.getElementById('sell-stock-symbol').value;
     const quantity = parseFloat(document.getElementById('sell-stock-quantity').value);
     const price = parseFloat(document.getElementById('sell-stock-price').value);
@@ -683,36 +724,25 @@ function handleSellStock() {
         finalPrice = total / quantity;
     }
     
-    // Convert to EUR if needed
-    let priceInEur = finalPrice;
-    let totalInEur = finalTotal;
-    if (currency === 'USD') {
-        priceInEur = finalPrice / eurUsdRate;
-        totalInEur = finalTotal / eurUsdRate;
-    }
-    
-    // Record transaction
-    const transaction = {
-        id: Date.now().toString(),
+    // Create transaction with historical rate conversion
+    const transactionData = {
         type: 'sell',
         assetType: 'stocks',
         symbol: symbol,
         quantity: quantity,
-        price: priceInEur,
-        total: totalInEur,
-        currency: 'EUR',
-        originalPrice: currency === 'USD' ? finalPrice : null,
-        originalCurrency: currency === 'USD' ? 'USD' : null,
+        finalPrice: finalPrice,
+        finalTotal: finalTotal,
         date: date,
-        note: note || `Sold ${quantity} shares of ${symbol} at €${priceInEur.toFixed(2)} per share`,
-        timestamp: new Date().toISOString()
+        note: note
     };
     
+    const transaction = await createTransactionWithCurrencyConversion(transactionData, currency, new Date(date));
     addTransaction(transaction);
     saveData();
     calculatePortfolioFromTransactions();
     renderStocks();
     renderStockTransactions();
+    updateRealizedPnLDisplay();
     closeSellStockModal();
     
     showNotification(`Successfully sold ${quantity} shares of ${symbol}`, 'success');
@@ -726,7 +756,7 @@ function renderStockTransactions() {
     const transactions = loadTransactions().filter(tx => tx.assetType === 'stocks');
     
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No stock transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No stock transactions yet.</td></tr>';
         return;
     }
     
@@ -755,6 +785,7 @@ function renderStockTransactions() {
                 <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, 'EUR')}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.originalCurrency || 'EUR'}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.historicalRate ? tx.historicalRate.toFixed(4) : '--'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
                     <div class="flex gap-1">
@@ -832,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Setup auto-calculation for edit form
         setupAutoCalculation('edit-transaction-quantity', 'edit-transaction-price', 'edit-transaction-total');
         
-        editForm.addEventListener('submit', (e) => {
+        editForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const transactionId = document.getElementById('edit-transaction-id').value;
@@ -850,12 +881,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // Convert to EUR if needed
+            // Convert to EUR if needed using historical rate
             let priceInEur = price;
             let totalInEur = total;
+            let historicalRate = null;
             if (currency === 'USD') {
-                priceInEur = price / eurUsdRate;
-                totalInEur = total / eurUsdRate;
+                try {
+                    const txDate = new Date(date);
+                    historicalRate = await fetchHistoricalExchangeRate(txDate);
+                    priceInEur = price / historicalRate;
+                    totalInEur = total / historicalRate;
+                } catch (error) {
+                    console.error('Error fetching historical rate:', error);
+                    showNotification('Error fetching historical exchange rate. Using current rate.', 'warning');
+                    priceInEur = price / eurUsdRate;
+                    totalInEur = total / eurUsdRate;
+                    historicalRate = eurUsdRate;
+                }
             }
             
             // Update the transaction
@@ -877,6 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currency: 'EUR', // Always store in EUR
                 originalPrice: currency === 'USD' ? price : null,
                 originalCurrency: currency === 'USD' ? 'USD' : null,
+                historicalRate: currency === 'USD' ? historicalRate : null,
                 date,
                 note: note || transactions[transactionIndex].note,
                 timestamp: new Date().toISOString()

@@ -674,6 +674,60 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
+    // Migration Tools
+    const migrateTransactionsBtn = document.getElementById('migrate-transactions-btn');
+    const migrationStatusText = document.getElementById('migration-status-text');
+    const migrateBtnText = document.getElementById('migrate-btn-text');
+    
+    function updateMigrationStatus() {
+        const status = getMigrationStatus();
+        
+        if (status.needsMigration) {
+            migrationStatusText.textContent = `${status.unmigratedUSDTransactions} USD transactions need migration (${status.totalUSDTransactions} total USD transactions)`;
+            migrateTransactionsBtn.disabled = false;
+            migrateBtnText.textContent = `Migrate ${status.unmigratedUSDTransactions} Transactions`;
+        } else {
+            migrationStatusText.textContent = `All USD transactions are up to date (${status.totalUSDTransactions} total USD transactions)`;
+            migrateTransactionsBtn.disabled = true;
+            migrateBtnText.textContent = 'No Migration Needed';
+        }
+    }
+    
+    migrateTransactionsBtn.addEventListener('click', async () => {
+        migrateTransactionsBtn.disabled = true;
+        migrateBtnText.textContent = 'Migrating...';
+        migrationStatusText.textContent = 'Starting migration...';
+        
+        try {
+            const result = await migrateExistingUSDTransactions();
+            
+            if (result.migrated > 0) {
+                migrationStatusText.textContent = `Migration completed: ${result.migrated} transactions migrated successfully`;
+                if (result.errors > 0) {
+                    migrationStatusText.textContent += `, ${result.errors} errors occurred`;
+                }
+                showNotification(`Successfully migrated ${result.migrated} transactions!`, 'success');
+            } else {
+                migrationStatusText.textContent = 'No transactions needed migration';
+                showNotification('No transactions needed migration', 'info');
+            }
+            
+            // Update status after migration
+            setTimeout(updateMigrationStatus, 1000);
+            
+        } catch (error) {
+            console.error('Migration error:', error);
+            migrationStatusText.textContent = 'Migration failed. Check console for details.';
+            showNotification('Migration failed. Please try again.', 'error');
+        } finally {
+            migrateTransactionsBtn.disabled = false;
+            migrateBtnText.textContent = 'Migrate USD Transactions';
+        }
+    });
+    
+    // Initialize migration status
+    updateMigrationStatus();
+
     // Export functions for use in other files
     window.getApiKey = getApiKey;
     window.trackApiUsage = trackApiUsage;
