@@ -9,8 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="css/glass-theme.css" rel="stylesheet">
     <style>
-        .positive-gain { color: #22c55e; /* green-500 */ }
-        .negative-gain { color: #ef4444; /* red-500 */ }
+        .positive-gain { color: #22c55e !important; /* green-500 */ }
+        .negative-gain { color: #ef4444 !important; /* red-500 */ }
         .modal-backdrop {
             background-color: rgba(0, 0, 0, 0.5);
         }
@@ -52,7 +52,7 @@
         </div>
 
         <!-- Stocks Table -->
-        <div class="glass-table p-4 md:p-6 rounded-xl shadow-lg">
+        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold">Your Stocks</h3>
                 <div class="text-sm text-gray-400">
@@ -249,12 +249,16 @@
     </div>
 
     <!-- Transaction History -->
-    <div class="glass-chart-container mb-6 max-w-7xl mx-auto">
+    <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6 max-w-7xl mx-auto">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-semibold text-emerald-400">Stock Transaction History</h3>
-            <button id="refresh-transactions-btn" class="glass-button">
+            <button id="refresh-transactions-btn" class="bg-gray-600 hover:glass-input text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                 Refresh
             </button>
+        </div>
+        <div class="mb-4">
+            <input type="text" id="stock-transactions-filter" placeholder="Filter by Symbol or Note..." 
+                   class="w-full glass-input p-3 rounded-lg">
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -281,7 +285,7 @@
     </div>
 
     <!-- Investment Notes -->
-    <div class="glass-chart-container mb-6 max-w-7xl mx-auto">
+    <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6 max-w-7xl mx-auto">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-semibold text-emerald-400">Investment Notes</h3>
             <div class="text-xs text-gray-500">
@@ -290,7 +294,7 @@
         </div>
         <p class="text-gray-400 text-sm mb-4">Keep track of your investment thoughts, strategies, and observations about your stock portfolio.</p>
         <textarea id="stocks-notes" placeholder="Write your investment notes here..." 
-                  class="w-full glass-input p-4 rounded-lg resize-none" 
+                  class="w-full glass-input p-4 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500 text-white resize-none" 
                   rows="6"></textarea>
     </div>
 

@@ -606,6 +606,8 @@ function setCachedPrice(type, name, priceData) {
         priceCache[type][name] = {
             price: priceData.price,
             change24h: priceData.change24h,
+            originalPrice: priceData.originalPrice,
+            originalCurrency: priceData.originalCurrency,
             timestamp: Date.now()
         };
     }
@@ -647,6 +649,10 @@ async function fetchStockPrice(ticker) {
             return null;
         }
         
+        // Extract currency from Yahoo Finance response
+        const currency = result.meta?.currency || 'USD';
+        console.log(`Yahoo Finance currency for ${ticker}: ${currency}`);
+        
         const closeArr = result.indicators?.quote?.[0]?.close;
         if (!closeArr || !closeArr.length) {
             console.error(`No close prices for stock: ${ticker}`, data);
@@ -683,8 +689,22 @@ async function fetchStockPrice(ticker) {
             change24h = ((currentPrice - previousPrice) / previousPrice) * 100;
         }
         
+        // Convert USD prices to EUR if needed
+        let priceInEur = currentPrice;
+        if (currency === 'USD') {
+            const eurUsdRate = parseFloat(localStorage.getItem('eurUsdRate'));
+            if (eurUsdRate && eurUsdRate > 0) {
+                priceInEur = currentPrice / eurUsdRate;
+                console.log(`Converted ${ticker} price from ${currency} ${currentPrice} to EUR ${priceInEur.toFixed(2)} (rate: ${eurUsdRate})`);
+            } else {
+                console.warn(`No valid EUR/USD rate found for ${ticker} conversion`);
+            }
+        }
+        
         return {
-            price: currentPrice,
+            price: priceInEur,
+            originalPrice: currentPrice,
+            originalCurrency: currency,
             change24h: change24h
         };
     } catch (error) {
@@ -842,23 +862,24 @@ function calculateTotalValue() {
     
     // Calculate stocks value
     portfolio.stocks.forEach(stock => {
-        const price = (priceCache.stocks && priceCache.stocks[stock.name]) || 0;
-        let value = price * stock.quantity;
-        if (stock.currency === 'USD') value = value / eurUsdRate;
+        const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
+        const price = cachedData.price || 0; // Price is already in EUR
+        const value = price * stock.quantity;
         totalValue += value;
     });
     
     // Calculate ETFs value
     portfolio.etfs.forEach(etf => {
-        const price = (priceCache.etfs && priceCache.etfs[etf.name]) || 0;
-        let value = price * etf.quantity;
-        if (etf.currency === 'USD') value = value / eurUsdRate;
+        const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
+        const price = cachedData.price || 0; // Price is already in EUR
+        const value = price * etf.quantity;
         totalValue += value;
     });
     
     // Calculate crypto value
     portfolio.crypto.forEach(crypto => {
-        const price = (priceCache.crypto && priceCache.crypto[crypto.name]) || 0;
+        const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
+        const price = cachedData.price || 0;
         let value = price * crypto.quantity;
         if (crypto.currency === 'USD') value = value / eurUsdRate;
         totalValue += value;

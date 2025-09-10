@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sellStockSymbolSelect = document.getElementById('sell-stock-symbol');
     const refreshTransactionsBtn = document.getElementById('refresh-transactions-btn');
     const refreshEventsBtn = document.getElementById('refresh-events-btn');
+    const stockTransactionsFilter = document.getElementById('stock-transactions-filter');
 
     // Event listeners
     stockCancelBtn.addEventListener('click', closeStockModal);
@@ -62,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     refreshTransactionsBtn.addEventListener('click', renderStockTransactions);
     refreshEventsBtn.addEventListener('click', loadStockEvents);
+    stockTransactionsFilter.addEventListener('input', filterStockTransactions);
     
     // Set up auto-calculation for buy form
     setupAutoCalculation('buy-stock-quantity', 'buy-stock-price', 'buy-stock-total');
@@ -204,51 +206,38 @@ function renderStocks() {
     // First pass: calculate total values
     portfolio.stocks.forEach(stock => {
         const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
-        const currentPrice = cachedData.price || 0;
+        const currentPrice = cachedData.price || 0; // Price is already in EUR
         const value = currentPrice * stock.quantity;
         const purchaseValue = stock.purchasePrice * stock.quantity;
         const pnl = value - purchaseValue;
         
-        // Convert to EUR for total calculation
-        let valueEur = value;
-        let pnlEur = pnl;
-        if (stock.currency === 'USD') {
-            valueEur = value / eurUsdRate;
-            pnlEur = pnl / eurUsdRate;
-        }
-        
-        totalValue += valueEur;
-        totalPnl += pnlEur;
+        totalValue += value;
+        totalPnl += pnl;
     });
     
     // Second pass: render rows with allocation percentages
     portfolio.stocks.forEach(stock => {
         const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
-        const currentPrice = cachedData.price || 0;
+        const currentPrice = cachedData.price || 0; // Price is already in EUR
         const change24h = cachedData.change24h || 0;
         const value = currentPrice * stock.quantity;
         const purchaseValue = stock.purchasePrice * stock.quantity;
         const pnl = value - purchaseValue;
         const pnlPercentage = purchaseValue > 0 ? (pnl / purchaseValue) * 100 : 0;
         
-        // Convert to EUR for total calculation
-        let valueEur = value;
-        let pnlEur = pnl;
-        if (stock.currency === 'USD') {
-            valueEur = value / eurUsdRate;
-            pnlEur = pnl / eurUsdRate;
-        }
-        
         const pnlClass = pnl >= 0 ? 'positive-gain' : 'negative-gain';
         const pnlSign = pnl >= 0 ? '+' : '';
         
         // Calculate allocation percentage
-        const allocationPercentage = totalValue > 0 ? (valueEur / totalValue) * 100 : 0;
+        const allocationPercentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
         
         // Format 24h change
         const change24hClass = change24h >= 0 ? 'text-emerald-400' : 'text-red-400';
         const change24hSign = change24h >= 0 ? '+' : '';
         const change24hDisplay = currentPrice > 0 ? `${change24hSign}${change24h.toFixed(2)}%` : '--';
+        
+        // Format value with color coding (green if current value > purchase value, red if lower)
+        const valueClass = value >= purchaseValue ? 'positive-gain' : 'negative-gain';
         
         html += `
             <tr class="border-b border-gray-700">
@@ -259,9 +248,9 @@ function renderStocks() {
                 </td>
                 <td class="py-2 px-2">${stock.quantity}</td>
                 <td class="py-2 px-2">${formatCurrency(stock.purchasePrice, stock.currency)}</td>
-                <td class="py-2 px-2">${currentPrice > 0 ? formatCurrency(currentPrice, stock.currency) : '--'}</td>
+                <td class="py-2 px-2">${currentPrice > 0 ? formatCurrency(currentPrice, 'EUR') : '--'}</td>
                 <td class="py-2 px-2 ${change24hClass}">${change24hDisplay}</td>
-                <td class="py-2 px-2">${currentPrice > 0 ? formatCurrency(value, stock.currency) : '--'}</td>
+                <td class="py-2 px-2 ${valueClass}">${currentPrice > 0 ? formatCurrency(value, stock.currency) : '--'}</td>
                 <td class="py-2 px-2">${allocationPercentage.toFixed(1)}%</td>
                 <td class="py-2 px-2 ${pnlClass}">
                     ${currentPrice > 0 ? `${pnlSign}${formatCurrency(pnl, stock.currency)} (${pnlSign}${pnlPercentage.toFixed(2)}%)` : '--'}
@@ -283,7 +272,7 @@ function renderStocks() {
             <tr class="border-t-2 border-emerald-500 bg-gray-900">
                 <td colspan="4" class="py-2 px-2 font-bold text-emerald-300">Total</td>
                 <td class="py-2 px-2 font-bold text-emerald-300">--</td>
-                <td class="py-2 px-2 font-bold text-emerald-300">${formatCurrency(totalValue, 'EUR')}</td>
+                <td class="py-2 px-2 font-bold ${totalPnlClass}">${formatCurrency(totalValue, 'EUR')}</td>
                 <td class="py-2 px-2 font-bold text-emerald-300">100.0%</td>
                 <td class="py-2 px-2 font-bold ${totalPnlClass}">
                     ${totalPnlSign}${formatCurrency(totalPnl, 'EUR')} (${totalPnlSign}${totalPnlPercentage.toFixed(2)}%)
@@ -899,6 +888,28 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function filterStockTransactions() {
+    const filterValue = document.getElementById('stock-transactions-filter').value.toLowerCase();
+    const tbody = document.getElementById('stock-transactions-tbody');
+    const rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) {
+            // Skip the "no transactions" row
+            return;
+        }
+        
+        const symbolCell = row.cells[2]; // Symbol column
+        const noteCell = row.cells[7]; // Note column
+        
+        const symbol = symbolCell ? symbolCell.textContent.toLowerCase() : '';
+        const note = noteCell ? noteCell.textContent.toLowerCase() : '';
+        
+        const matches = symbol.includes(filterValue) || note.includes(filterValue);
+        row.style.display = matches ? '' : 'none';
+    });
+}
 
 // Initialize notes when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {

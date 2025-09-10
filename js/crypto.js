@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sellCryptoNameSelect = document.getElementById('sell-crypto-name');
     const refreshCryptoTransactionsBtn = document.getElementById('refresh-crypto-transactions-btn');
     const refreshCryptoEventsBtn = document.getElementById('refresh-crypto-events-btn');
+    const cryptoTransactionsFilter = document.getElementById('crypto-transactions-filter');
 
     // Event listeners
     cryptoCancelBtn.addEventListener('click', closeCryptoModal);
@@ -62,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     refreshCryptoTransactionsBtn.addEventListener('click', renderCryptoTransactions);
     refreshCryptoEventsBtn.addEventListener('click', loadCryptoEvents);
+    cryptoTransactionsFilter.addEventListener('input', filterCryptoTransactions);
     
     // Set up auto-calculation for buy form
     setupAutoCalculation('buy-crypto-quantity', 'buy-crypto-price', 'buy-crypto-total');
@@ -884,3 +886,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function filterCryptoTransactions() {
+    const filterValue = document.getElementById('crypto-transactions-filter').value.toLowerCase();
+    const tbody = document.getElementById('crypto-transactions-tbody');
+    const rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        if (row.querySelector('td[colspan]')) {
+            // Skip the "no transactions" row
+            return;
+        }
+        
+        const nameCell = row.cells[2]; // Name column
+        const noteCell = row.cells[7]; // Note column
+        
+        const name = nameCell ? nameCell.textContent.toLowerCase() : '';
+        const note = noteCell ? noteCell.textContent.toLowerCase() : '';
+        
+        const matches = name.includes(filterValue) || note.includes(filterValue);
+        row.style.display = matches ? '' : 'none';
+    });
+}
