@@ -1172,6 +1172,24 @@ function updateDashboardStats() {
         pnlPercentageEl.textContent = (pnlPercentage >= 0 ? '+' : '') + pnlPercentage.toFixed(2) + '%';
     }
     
+    // Update realized P&L
+    const realizedPnlEl = document.getElementById('dashboard-realized-pnl');
+    const realizedPnlPercentageEl = document.getElementById('dashboard-realized-pnl-percentage');
+    if (realizedPnlEl && realizedPnlPercentageEl) {
+        const transactions = loadTransactions();
+        const realizedPnL = calculateRealizedPnL(transactions);
+        const totalValue = calculateTotalValue();
+        const realizedPnlPercentage = totalValue > 0 ? (realizedPnL.total / totalValue) * 100 : 0;
+        
+        realizedPnlEl.textContent = formatCurrency(realizedPnL.total, 'EUR');
+        realizedPnlPercentageEl.textContent = (realizedPnL.total >= 0 ? '+' : '') + realizedPnlPercentage.toFixed(2) + '%';
+        
+        // Color code based on positive/negative
+        const realizedPnlClass = realizedPnL.total >= 0 ? 'text-emerald-400' : 'text-red-400';
+        realizedPnlEl.className = `text-lg font-bold ${realizedPnlClass}`;
+        realizedPnlPercentageEl.className = `text-xs text-gray-400 ${realizedPnlClass}`;
+    }
+    
     // Update asset count
     const assetCountEl = document.getElementById('dashboard-asset-count');
     if (assetCountEl) {
@@ -1828,59 +1846,6 @@ function calculateRetirementProgress(history, transactions) {
     return { labels, portfolioValues, contributionValues };
 }
 
-// --- REALIZED P&L DISPLAY ---
-function updateDashboardRealizedPnL() {
-    const transactions = loadTransactions();
-    const realizedPnL = calculateRealizedPnL(transactions);
-    
-    // Calculate total portfolio value for percentage calculation
-    const totalValue = calculateTotalValue();
-    
-    // Update individual asset type P&L displays
-    const stocksElement = document.getElementById('dashboard-stocks-realized-pnl');
-    const etfsElement = document.getElementById('dashboard-etfs-realized-pnl');
-    const cryptoElement = document.getElementById('dashboard-crypto-realized-pnl');
-    const cs2Element = document.getElementById('dashboard-cs2-realized-pnl');
-    const totalElement = document.getElementById('dashboard-total-realized-pnl');
-    const totalPercentElement = document.getElementById('dashboard-total-realized-pnl-percent');
-    
-    if (stocksElement) {
-        const stocksClass = realizedPnL.stocks >= 0 ? 'text-emerald-400' : 'text-red-400';
-        stocksElement.className = `text-lg font-semibold ${stocksClass}`;
-        stocksElement.textContent = formatCurrency(realizedPnL.stocks, 'EUR');
-    }
-    
-    if (etfsElement) {
-        const etfsClass = realizedPnL.etfs >= 0 ? 'text-emerald-400' : 'text-red-400';
-        etfsElement.className = `text-lg font-semibold ${etfsClass}`;
-        etfsElement.textContent = formatCurrency(realizedPnL.etfs, 'EUR');
-    }
-    
-    if (cryptoElement) {
-        const cryptoClass = realizedPnL.crypto >= 0 ? 'text-emerald-400' : 'text-red-400';
-        cryptoElement.className = `text-lg font-semibold ${cryptoClass}`;
-        cryptoElement.textContent = formatCurrency(realizedPnL.crypto, 'EUR');
-    }
-    
-    if (cs2Element) {
-        const cs2Class = realizedPnL.cs2 >= 0 ? 'text-emerald-400' : 'text-red-400';
-        cs2Element.className = `text-lg font-semibold ${cs2Class}`;
-        cs2Element.textContent = formatCurrency(realizedPnL.cs2, 'EUR');
-    }
-    
-    if (totalElement) {
-        const totalClass = realizedPnL.total >= 0 ? 'text-emerald-400' : 'text-red-400';
-        totalElement.className = `text-lg font-semibold ${totalClass}`;
-        totalElement.textContent = formatCurrency(realizedPnL.total, 'EUR');
-    }
-    
-    if (totalPercentElement && totalValue > 0) {
-        const totalPercent = (realizedPnL.total / totalValue) * 100;
-        const totalPercentClass = realizedPnL.total >= 0 ? 'text-emerald-400' : 'text-red-400';
-        totalPercentElement.className = `text-lg font-semibold ${totalPercentClass}`;
-        totalPercentElement.textContent = `${realizedPnL.total >= 0 ? '+' : ''}${totalPercent.toFixed(2)}%`;
-    }
-}
 
 // --- CASH FLOW SUMMARY ---
 function updateCashFlowSummary() {

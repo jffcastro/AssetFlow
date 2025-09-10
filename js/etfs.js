@@ -173,7 +173,7 @@ function renderEtfs() {
     }
     
     if (portfolio.etfs.length === 0) {
-        etfsTbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No ETFs added yet.</td></tr>';
+        etfsTbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No ETFs added yet.</td></tr>';
         return;
     }
     
@@ -221,6 +221,12 @@ function renderEtfs() {
             `${holdingTime.years > 0 ? holdingTime.years + 'y ' : ''}${holdingTime.months > 0 ? holdingTime.months + 'm ' : ''}${holdingTime.daysRemainder}d` : 
             '--';
         
+        // Calculate realized P&L for this ETF
+        const realizedPnL = calculateRealizedPnL(transactions);
+        const etfRealizedPnL = realizedPnL.byAsset[`etfs-${etf.name}`] || 0;
+        const realizedPnLDisplay = etfRealizedPnL !== 0 ? formatCurrency(etfRealizedPnL, 'EUR') : '--';
+        const realizedPnLClass = etfRealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+        
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 font-semibold">
@@ -237,6 +243,7 @@ function renderEtfs() {
                 <td class="py-2 px-2 ${pnlClass}">
                     ${currentPrice > 0 ? `${pnlSign}${formatCurrency(pnl, etf.currency)} (${pnlSign}${pnlPercentage.toFixed(2)}%)` : '--'}
                 </td>
+                <td class="py-2 px-2 ${realizedPnLClass}">${realizedPnLDisplay}</td>
                 <td class="py-2 px-2 text-gray-300">${holdingTimeDisplay}</td>
                 <td class="py-2 px-2">
                     <button onclick="deleteEtf(${etf.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
@@ -260,6 +267,7 @@ function renderEtfs() {
                 <td class="py-2 px-2 font-bold ${totalPnlClass}">
                     ${totalPnlSign}${formatCurrency(totalPnl, 'EUR')} (${totalPnlSign}${totalPnlPercentage.toFixed(2)}%)
                 </td>
+                <td class="py-2 px-2 font-bold text-emerald-300">--</td>
                 <td class="py-2 px-2 font-bold text-emerald-300">--</td>
                 <td class="py-2 px-2"></td>
             </tr>
@@ -575,7 +583,7 @@ function renderEtfTransactions() {
     const transactions = loadTransactions().filter(tx => tx.assetType === 'etfs');
     
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-gray-400">No ETF transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No ETF transactions yet.</td></tr>';
         return;
     }
     
@@ -604,6 +612,7 @@ function renderEtfTransactions() {
                 <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
                 <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, 'EUR')}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.originalCurrency || 'EUR'}</td>
+                <td class="py-2 px-2 text-gray-300">${tx.historicalRate ? tx.historicalRate.toFixed(4) : '--'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
                 <td class="py-2 px-2">
                     <div class="flex gap-1">
@@ -681,7 +690,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Setup auto-calculation for edit form
         setupAutoCalculation('edit-etf-transaction-quantity', 'edit-etf-transaction-price', 'edit-etf-transaction-total');
         
-        editForm.addEventListener('submit', (e) => {
+        editForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const transactionId = document.getElementById('edit-etf-transaction-id').value;
@@ -699,12 +708,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // Convert to EUR if needed
+            // Convert to EUR if needed using historical rate
             let priceInEur = price;
             let totalInEur = total;
+            let historicalRate = null;
             if (currency === 'USD') {
-                priceInEur = price / eurUsdRate;
-                totalInEur = total / eurUsdRate;
+                try {
+                    const txDate = new Date(date);
+                    historicalRate = await fetchHistoricalExchangeRate(txDate);
+                    priceInEur = price / historicalRate;
+                    totalInEur = total / historicalRate;
+                } catch (error) {
+                    console.error('Error fetching historical rate:', error);
+                    showNotification('Error fetching historical exchange rate. Using current rate.', 'warning');
+                    priceInEur = price / eurUsdRate;
+                    totalInEur = total / eurUsdRate;
+                    historicalRate = eurUsdRate;
+                }
             }
             
             // Update the transaction
@@ -726,6 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currency: 'EUR', // Always store in EUR
                 originalPrice: currency === 'USD' ? price : null,
                 originalCurrency: currency === 'USD' ? 'USD' : null,
+                historicalRate: currency === 'USD' ? historicalRate : null,
                 date,
                 note: note || transactions[transactionIndex].note,
                 timestamp: new Date().toISOString()

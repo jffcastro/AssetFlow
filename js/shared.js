@@ -147,7 +147,8 @@ function calculateRealizedPnL(transactions) {
         etfs: 0,
         crypto: 0,
         cs2: 0,
-        total: 0
+        total: 0,
+        byAsset: {}
     };
     
     // Group transactions by asset type and symbol
@@ -185,38 +186,65 @@ function calculateRealizedPnL(transactions) {
     // Calculate realized P&L for each asset
     Object.values(assetGroups).forEach(asset => {
         let remainingBuys = [...asset.buys];
+        let assetRealizedPnL = 0;
         
         asset.sells.forEach(sell => {
             let sellQuantity = sell.quantity;
-            let sellTotal = sell.total; // Already in EUR
+            
+            // Use original USD values if available to avoid currency fluctuation effects
+            let sellTotalUSD = sell.originalPrice ? sell.originalPrice * sell.quantity : sell.total * eurUsdRate;
+            let sellTotalEUR = sellTotalUSD / (sell.historicalRate || eurUsdRate);
             
             while (sellQuantity > 0 && remainingBuys.length > 0) {
                 const buy = remainingBuys[0];
                 const buyQuantity = buy.quantity;
-                const buyTotal = buy.total; // Already in EUR
+                
+                // Use original USD values if available to avoid currency fluctuation effects
+                let buyTotalUSD = buy.originalPrice ? buy.originalPrice * buy.quantity : buy.total * eurUsdRate;
+                let buyTotalEUR = buyTotalUSD / (buy.historicalRate || eurUsdRate);
                 
                 if (buyQuantity <= sellQuantity) {
                     // This buy is completely sold
-                    const realizedGain = (sellTotal * (buyQuantity / sell.quantity)) - buyTotal;
+                    const sellPortionUSD = sellTotalUSD * (buyQuantity / sell.quantity);
+                    const sellPortionEUR = sellPortionUSD / (sell.historicalRate || eurUsdRate);
+                    const realizedGain = sellPortionEUR - buyTotalEUR;
                     realizedPnL[asset.assetType] += realizedGain;
+                    assetRealizedPnL += realizedGain;
                     
                     sellQuantity -= buyQuantity;
                     remainingBuys.shift();
                 } else {
                     // Partial sell of this buy
-                    const partialSellTotal = sellTotal * (sellQuantity / sell.quantity);
-                    const partialBuyTotal = buyTotal * (sellQuantity / buyQuantity);
-                    const realizedGain = partialSellTotal - partialBuyTotal;
+                    const sellPortionUSD = sellTotalUSD * (sellQuantity / sell.quantity);
+                    const sellPortionEUR = sellPortionUSD / (sell.historicalRate || eurUsdRate);
+                    const buyPortionUSD = buyTotalUSD * (sellQuantity / buyQuantity);
+                    const buyPortionEUR = buyPortionUSD / (buy.historicalRate || eurUsdRate);
+                    const realizedGain = sellPortionEUR - buyPortionEUR;
                     realizedPnL[asset.assetType] += realizedGain;
+                    assetRealizedPnL += realizedGain;
                     
                     // Update remaining buy
                     remainingBuys[0].quantity -= sellQuantity;
-                    remainingBuys[0].total -= partialBuyTotal;
+                    remainingBuys[0].total -= buyPortionEUR;
                     sellQuantity = 0;
                 }
             }
         });
+        
+        // Store the realized P&L for this specific asset
+        const assetKey = `${asset.assetType}-${asset.symbol}`;
+        realizedPnL.byAsset[assetKey] = assetRealizedPnL;
     });
+    
+    // Add CS2 manual realized P&L from portfolios
+    if (portfolio.cs2 && portfolio.cs2.portfolios) {
+        Object.values(portfolio.cs2.portfolios).forEach(portfolioData => {
+            if (portfolioData.realizedPnl) {
+                // Convert USD to EUR using current rate
+                realizedPnL.cs2 += portfolioData.realizedPnl / eurUsdRate;
+            }
+        });
+    }
     
     // Calculate total realized P&L
     realizedPnL.total = realizedPnL.stocks + realizedPnL.etfs + realizedPnL.crypto + realizedPnL.cs2;

@@ -75,6 +75,7 @@ function migrateOldStructure() {
             description: 'Items for playing',
             color: 'blue',
             value: portfolio.cs2.playItems.value || 0,
+            realizedPnl: 0,
             currency: 'USD'
         };
     }
@@ -85,6 +86,7 @@ function migrateOldStructure() {
             description: 'Items for investment',
             color: 'purple',
             value: portfolio.cs2.investmentItems.value || 0,
+            realizedPnl: 0,
             currency: 'USD'
         };
     }
@@ -105,6 +107,7 @@ function createDefaultPortfolios() {
             description: 'Items for playing',
             color: 'blue',
             value: 0,
+            realizedPnl: 0,
             currency: 'USD'
         },
         'investmentItems': {
@@ -112,6 +115,7 @@ function createDefaultPortfolios() {
             description: 'Items for investment',
             color: 'purple',
             value: 0,
+            realizedPnl: 0,
             currency: 'USD'
         }
     };
@@ -147,30 +151,44 @@ function createPortfolioElement(id, portfolioData) {
                 <input type="number" id="${id}-input" step="any" placeholder="0.00" 
                        class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:${theme.border} text-lg">
             </div>
+            <div>
+                <label for="${id}-realized-pnl-input" class="block text-sm font-medium mb-2">Realized P&L (USD)</label>
+                <input type="number" id="${id}-realized-pnl-input" step="any" placeholder="0.00" 
+                       class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:${theme.border} text-lg">
+            </div>
             <button onclick="savePortfolio('${id}')" 
                     class="${theme.bg} ${theme.hover} text-white font-bold py-3 px-6 rounded-lg transition duration-300">
                 Save ${portfolioData.name}
             </button>
         </div>
         <div class="mt-4 p-3 bg-gray-700 rounded-lg">
-            <div class="text-sm text-gray-300">
+            <div class="text-sm text-gray-300 mb-2">
                 <strong>Current Value:</strong> <span id="${id}-current" class="${theme.text}">$0.00</span>
+            </div>
+            <div class="text-sm text-gray-300">
+                <strong>Realized P&L:</strong> <span id="${id}-realized-pnl-display" class="${portfolioData.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$0.00</span>
             </div>
         </div>
     `;
     
-    // Set current value
+    // Set current value and realized P&L
     const input = portfolioDiv.querySelector(`#${id}-input`);
+    const realizedPnlInput = portfolioDiv.querySelector(`#${id}-realized-pnl-input`);
     const current = portfolioDiv.querySelector(`#${id}-current`);
+    const realizedPnlDisplay = portfolioDiv.querySelector(`#${id}-realized-pnl-display`);
     input.value = portfolioData.value || '';
+    realizedPnlInput.value = portfolioData.realizedPnl || '';
     current.textContent = formatCurrency(portfolioData.value || 0, 'USD');
+    realizedPnlDisplay.textContent = formatCurrency(portfolioData.realizedPnl || 0, 'USD');
     
     return portfolioDiv;
 }
 
 function savePortfolio(id) {
     const input = document.getElementById(`${id}-input`);
+    const realizedPnlInput = document.getElementById(`${id}-realized-pnl-input`);
     const value = parseFloat(input.value) || 0;
+    const realizedPnl = parseFloat(realizedPnlInput.value) || 0;
     
     // Track value change for realized P&L calculation
     const previousValue = portfolio.cs2.portfolios[id].value || 0;
@@ -200,10 +218,18 @@ function savePortfolio(id) {
     }
     
     portfolio.cs2.portfolios[id].value = value;
+    portfolio.cs2.portfolios[id].realizedPnl = realizedPnl;
     updateCombinedTotal();
     saveData();
     updateCombinedDisplay();
     updateCS2RealizedPnLDisplay();
+    
+    // Update the realized P&L display
+    const realizedPnlDisplay = document.getElementById(`${id}-realized-pnl-display`);
+    if (realizedPnlDisplay) {
+        realizedPnlDisplay.textContent = formatCurrency(realizedPnl, 'USD');
+        realizedPnlDisplay.className = realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+    }
     
     showNotification(`${portfolio.cs2.portfolios[id].name} value saved successfully!`, 'success');
 }

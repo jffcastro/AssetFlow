@@ -92,36 +92,6 @@
             </div>
         </div>
 
-        <!-- Realized P&L Overview -->
-        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
-            <h3 class="text-xl font-semibold mb-4">Realized P&L Summary</h3>
-            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                <div class="bg-gray-800 p-4 rounded-lg text-center">
-                    <div class="text-sm text-gray-400 mb-1">Stocks</div>
-                    <div id="dashboard-stocks-realized-pnl" class="text-lg font-semibold text-gray-300">€0.00</div>
-                </div>
-                <div class="bg-gray-800 p-4 rounded-lg text-center">
-                    <div class="text-sm text-gray-400 mb-1">ETFs</div>
-                    <div id="dashboard-etfs-realized-pnl" class="text-lg font-semibold text-gray-300">€0.00</div>
-                </div>
-                <div class="bg-gray-800 p-4 rounded-lg text-center">
-                    <div class="text-sm text-gray-400 mb-1">Crypto</div>
-                    <div id="dashboard-crypto-realized-pnl" class="text-lg font-semibold text-gray-300">€0.00</div>
-                </div>
-                <div class="bg-gray-800 p-4 rounded-lg text-center">
-                    <div class="text-sm text-gray-400 mb-1">CS2</div>
-                    <div id="dashboard-cs2-realized-pnl" class="text-lg font-semibold text-gray-300">€0.00</div>
-                </div>
-                <div class="bg-gray-800 p-4 rounded-lg text-center">
-                    <div class="text-sm text-gray-400 mb-1">Total</div>
-                    <div id="dashboard-total-realized-pnl" class="text-lg font-semibold text-gray-300">€0.00</div>
-                </div>
-                <div class="bg-gray-800 p-4 rounded-lg text-center">
-                    <div class="text-sm text-gray-400 mb-1">Total %</div>
-                    <div id="dashboard-total-realized-pnl-percent" class="text-lg font-semibold text-gray-300">0.00%</div>
-                </div>
-            </div>
-        </div>
 
         <!-- Main Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -234,6 +204,13 @@
                 <h3 class="text-sm font-semibold text-emerald-400 mb-1">Total P&L</h3>
                 <div class="text-lg font-bold" id="dashboard-total-pnl">€0.00</div>
                 <div class="text-xs text-gray-400" id="dashboard-pnl-percentage">+0.00%</div>
+            </div>
+            
+            <!-- Realized P&L Card -->
+            <div class="metric-card">
+                <h3 class="text-sm font-semibold text-emerald-400 mb-1">Realized P&L</h3>
+                <div class="text-lg font-bold" id="dashboard-realized-pnl">€0.00</div>
+                <div class="text-xs text-gray-400" id="dashboard-realized-pnl-percentage">+0.00%</div>
             </div>
             
             <!-- Asset Count Card -->
