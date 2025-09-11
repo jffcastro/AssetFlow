@@ -171,16 +171,9 @@ function calculateRealizedPnL(transactions) {
             } else if (tx.type === 'sell') {
                 assetGroups[key].sells.push(tx);
             }
-        } else if (tx.assetType === 'cs2') {
-            // CS2 transactions are handled differently - they track portfolio value changes
-            if (tx.type === 'value_update') {
-                // For CS2, we track the difference between current value and previous value
-                const previousValue = tx.previousValue || 0;
-                const currentValue = tx.currentValue || 0;
-                const realizedGain = currentValue - previousValue;
-                realizedPnL.cs2 += realizedGain;
-            }
         }
+        // CS2 transactions are not used for realized P&L calculation
+        // CS2 realized P&L is only calculated from manual input in portfolios
     });
     
     // Calculate realized P&L for each asset
