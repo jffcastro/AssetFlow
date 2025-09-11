@@ -4,7 +4,6 @@
 let portfoliosContainer;
 let totalCs2Usd;
 let totalCs2Eur;
-let portfolioBreakdown;
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM elements
@@ -17,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
     portfoliosContainer = document.getElementById('portfolios-container');
     totalCs2Usd = document.getElementById('total-cs2-usd');
     totalCs2Eur = document.getElementById('total-cs2-eur');
-    portfolioBreakdown = document.getElementById('portfolio-breakdown');
     
     // Event listeners
     addPortfolioBtn.addEventListener('click', () => showAddPortfolioModal());
@@ -166,7 +164,7 @@ function createPortfolioElement(id, portfolioData) {
                 <strong>Current Value:</strong> <span id="${id}-current" class="${theme.text}">$0.00</span>
             </div>
             <div class="text-sm text-gray-300">
-                <strong>Realized P&L:</strong> <span id="${id}-realized-pnl-display" class="${portfolioData.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$0.00</span>
+                <strong>Realized P&L:</strong> <span id="${id}-realized-pnl-display" class="${portfolioData.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$0.00</span> <span id="${id}-realized-pnl-eur-display" class="text-gray-400">(€0.00)</span>
             </div>
         </div>
     `;
@@ -176,10 +174,12 @@ function createPortfolioElement(id, portfolioData) {
     const realizedPnlInput = portfolioDiv.querySelector(`#${id}-realized-pnl-input`);
     const current = portfolioDiv.querySelector(`#${id}-current`);
     const realizedPnlDisplay = portfolioDiv.querySelector(`#${id}-realized-pnl-display`);
+    const realizedPnlEurDisplay = portfolioDiv.querySelector(`#${id}-realized-pnl-eur-display`);
     input.value = portfolioData.value || '';
     realizedPnlInput.value = portfolioData.realizedPnl || '';
     current.textContent = formatCurrency(portfolioData.value || 0, 'USD');
     realizedPnlDisplay.textContent = formatCurrency(portfolioData.realizedPnl || 0, 'USD');
+    realizedPnlEurDisplay.textContent = `(€${formatCurrency(portfolioData.realizedPnl / eurUsdRate || 0, 'EUR').replace('€', '')})`;
     
     return portfolioDiv;
 }
@@ -226,9 +226,13 @@ function savePortfolio(id) {
     
     // Update the realized P&L display
     const realizedPnlDisplay = document.getElementById(`${id}-realized-pnl-display`);
+    const realizedPnlEurDisplay = document.getElementById(`${id}-realized-pnl-eur-display`);
     if (realizedPnlDisplay) {
         realizedPnlDisplay.textContent = formatCurrency(realizedPnl, 'USD');
         realizedPnlDisplay.className = realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+    }
+    if (realizedPnlEurDisplay) {
+        realizedPnlEurDisplay.textContent = `(€${formatCurrency(realizedPnl / eurUsdRate, 'EUR').replace('€', '')})`;
     }
     
     showNotification(`${portfolio.cs2.portfolios[id].name} value saved successfully!`, 'success');
@@ -324,36 +328,8 @@ function updateCombinedDisplay() {
     totalCs2Usd.textContent = formatCurrency(totalUsd, 'USD');
     const totalEur = totalUsd / eurUsdRate;
     totalCs2Eur.textContent = formatCurrency(totalEur, 'EUR');
-    
-    // Update portfolio breakdown
-    updatePortfolioBreakdown();
 }
 
-function updatePortfolioBreakdown() {
-    if (!portfolio.cs2.portfolios) return;
-    
-    const portfolios = Object.entries(portfolio.cs2.portfolios);
-    
-    if (portfolios.length === 0) {
-        portfolioBreakdown.innerHTML = '';
-        return;
-    }
-    
-    const breakdownHtml = `
-        <div class="mt-4">
-            <h4 class="text-sm font-medium text-gray-300 mb-2">Portfolio Breakdown:</h4>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                ${portfolios.map(([id, p]) => `
-                    <div class="text-xs text-gray-400">
-                        ${p.name}: <span class="${colorThemes[p.color].text}">${formatCurrency(p.value || 0, 'USD')}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-    
-    portfolioBreakdown.innerHTML = breakdownHtml;
-}
 
 function updateCS2RealizedPnLDisplay() {
     const transactions = loadTransactions();

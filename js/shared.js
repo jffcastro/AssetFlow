@@ -7,7 +7,7 @@ let portfolio = {
     etfs: [],
     crypto: [],
     static: [], // Each static asset: { id, name, type, values: [{date, value, currency}] }
-    cs2: { value: 0, currency: 'EUR' }
+    cs2: { portfolios: {}, value: 0, currency: 'EUR' }
 };
 
 let eurUsdRate = 1.0;
