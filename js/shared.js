@@ -142,10 +142,6 @@ function getHistoricalRateForDate(date) {
 
 // --- REALIZED P&L CALCULATIONS ---
 function calculateRealizedPnL(transactions) {
-    console.log('🔍 [DEBUG] Starting realized P&L calculation...');
-    console.log('🔍 [DEBUG] Total transactions:', transactions.length);
-    console.log('🔍 [DEBUG] Current EUR/USD rate:', eurUsdRate);
-    
     const realizedPnL = {
         stocks: 0,
         etfs: 0,
@@ -180,13 +176,8 @@ function calculateRealizedPnL(transactions) {
         // CS2 realized P&L is only calculated from manual input in portfolios
     });
     
-    console.log('🔍 [DEBUG] Asset groups found:', Object.keys(assetGroups));
-    
     // Calculate realized P&L for each asset
     Object.values(assetGroups).forEach(asset => {
-        console.log(`\n📊 [DEBUG] Processing ${asset.assetType.toUpperCase()}: ${asset.symbol}`);
-        console.log(`📊 [DEBUG] Buys: ${asset.buys.length}, Sells: ${asset.sells.length}`);
-        
         let remainingBuys = [...asset.buys];
         let assetRealizedPnL = 0;
         
@@ -194,41 +185,25 @@ function calculateRealizedPnL(transactions) {
         remainingBuys.sort((a, b) => new Date(a.date) - new Date(b.date));
         
         asset.sells.forEach((sell, sellIndex) => {
-            console.log(`\n💰 [DEBUG] Processing SELL #${sellIndex + 1}:`);
-            console.log(`💰 [DEBUG] Sell Date: ${sell.date}, Quantity: ${sell.quantity}, Total: ${sell.total}, Currency: ${sell.originalCurrency || 'EUR'}`);
-            console.log(`💰 [DEBUG] Sell Original Price: ${sell.originalPrice}, Historical Rate: ${sell.historicalRate}`);
-            
             let sellQuantity = sell.quantity;
             
             // Use original USD values if available to avoid currency fluctuation effects
             let sellTotalUSD = sell.originalPrice ? sell.originalPrice * sell.quantity : sell.total * eurUsdRate;
             let sellTotalEUR = sellTotalUSD / (sell.historicalRate || eurUsdRate);
             
-            console.log(`💰 [DEBUG] Sell Total USD: ${sellTotalUSD.toFixed(2)}, Sell Total EUR: ${sellTotalEUR.toFixed(2)}`);
-            
             while (sellQuantity > 0 && remainingBuys.length > 0) {
                 const buy = remainingBuys[0];
                 const buyQuantity = buy.quantity;
-                
-                console.log(`\n🛒 [DEBUG] Processing BUY: Date: ${buy.date}, Quantity: ${buyQuantity}, Total: ${buy.total}, Currency: ${buy.originalCurrency || 'EUR'}`);
-                console.log(`🛒 [DEBUG] Buy Original Price: ${buy.originalPrice}, Historical Rate: ${buy.historicalRate}`);
                 
                 // Use original USD values if available to avoid currency fluctuation effects
                 let buyTotalUSD = buy.originalPrice ? buy.originalPrice * buy.quantity : buy.total * eurUsdRate;
                 let buyTotalEUR = buyTotalUSD / (buy.historicalRate || eurUsdRate);
                 
-                console.log(`🛒 [DEBUG] Buy Total USD: ${buyTotalUSD.toFixed(2)}, Buy Total EUR: ${buyTotalEUR.toFixed(2)}`);
-                
                 if (buyQuantity <= sellQuantity) {
                     // This buy is completely sold
-                    console.log(`✅ [DEBUG] Complete sell of buy (${buyQuantity} shares)`);
-                    
                     const sellPortionUSD = sellTotalUSD * (buyQuantity / sell.quantity);
                     const sellPortionEUR = sellPortionUSD / (sell.historicalRate || eurUsdRate);
                     const realizedGain = sellPortionEUR - buyTotalEUR;
-                    
-                    console.log(`✅ [DEBUG] Sell Portion USD: ${sellPortionUSD.toFixed(2)}, Sell Portion EUR: ${sellPortionEUR.toFixed(2)}`);
-                    console.log(`✅ [DEBUG] Realized Gain: ${realizedGain.toFixed(2)} EUR (${realizedGain > 0 ? 'PROFIT' : 'LOSS'})`);
                     
                     realizedPnL[asset.assetType] += realizedGain;
                     assetRealizedPnL += realizedGain;
@@ -237,17 +212,11 @@ function calculateRealizedPnL(transactions) {
                     remainingBuys.shift();
                 } else {
                     // Partial sell of this buy
-                    console.log(`🔄 [DEBUG] Partial sell of buy (${sellQuantity} of ${buyQuantity} shares)`);
-                    
                     const sellPortionUSD = sellTotalUSD * (sellQuantity / sell.quantity);
                     const sellPortionEUR = sellPortionUSD / (sell.historicalRate || eurUsdRate);
                     const buyPortionUSD = buyTotalUSD * (sellQuantity / buyQuantity);
                     const buyPortionEUR = buyPortionUSD / (buy.historicalRate || eurUsdRate);
                     const realizedGain = sellPortionEUR - buyPortionEUR;
-                    
-                    console.log(`🔄 [DEBUG] Sell Portion USD: ${sellPortionUSD.toFixed(2)}, Sell Portion EUR: ${sellPortionEUR.toFixed(2)}`);
-                    console.log(`🔄 [DEBUG] Buy Portion USD: ${buyPortionUSD.toFixed(2)}, Buy Portion EUR: ${buyPortionEUR.toFixed(2)}`);
-                    console.log(`🔄 [DEBUG] Realized Gain: ${realizedGain.toFixed(2)} EUR (${realizedGain > 0 ? 'PROFIT' : 'LOSS'})`);
                     
                     realizedPnL[asset.assetType] += realizedGain;
                     assetRealizedPnL += realizedGain;
@@ -260,7 +229,7 @@ function calculateRealizedPnL(transactions) {
             }
             
             if (sellQuantity > 0) {
-                console.log(`⚠️ [DEBUG] WARNING: ${sellQuantity} shares could not be matched to any buy orders!`);
+                console.warn(`⚠️ [P&L] ${asset.symbol}: ${sellQuantity} shares could not be matched to buy orders`);
             }
         });
         
@@ -268,16 +237,17 @@ function calculateRealizedPnL(transactions) {
         const assetKey = `${asset.assetType}-${asset.symbol}`;
         realizedPnL.byAsset[assetKey] = assetRealizedPnL;
         
-        console.log(`📈 [DEBUG] Final realized P&L for ${asset.symbol}: ${assetRealizedPnL.toFixed(2)} EUR`);
+        // Only log if there's a realized P&L (not zero)
+        if (assetRealizedPnL !== 0) {
+            console.log(`📈 [P&L] ${asset.symbol}: ${assetRealizedPnL.toFixed(2)} EUR`);
+        }
     });
     
     // Add CS2 manual realized P&L from portfolios
     if (portfolio.cs2 && portfolio.cs2.portfolios) {
-        console.log('\n🎮 [DEBUG] Processing CS2 portfolios...');
         Object.values(portfolio.cs2.portfolios).forEach((portfolioData, index) => {
             if (portfolioData.realizedPnl) {
                 const eurValue = portfolioData.realizedPnl / eurUsdRate;
-                console.log(`🎮 [DEBUG] CS2 Portfolio #${index + 1}: ${portfolioData.realizedPnl} USD = ${eurValue.toFixed(2)} EUR`);
                 realizedPnL.cs2 += eurValue;
             }
         });
@@ -286,13 +256,10 @@ function calculateRealizedPnL(transactions) {
     // Calculate total realized P&L
     realizedPnL.total = realizedPnL.stocks + realizedPnL.etfs + realizedPnL.crypto + realizedPnL.cs2;
     
-    console.log('\n📊 [DEBUG] FINAL REALIZED P&L SUMMARY:');
-    console.log(`📊 [DEBUG] Stocks: ${realizedPnL.stocks.toFixed(2)} EUR`);
-    console.log(`📊 [DEBUG] ETFs: ${realizedPnL.etfs.toFixed(2)} EUR`);
-    console.log(`📊 [DEBUG] Crypto: ${realizedPnL.crypto.toFixed(2)} EUR`);
-    console.log(`📊 [DEBUG] CS2: ${realizedPnL.cs2.toFixed(2)} EUR`);
-    console.log(`📊 [DEBUG] TOTAL: ${realizedPnL.total.toFixed(2)} EUR`);
-    console.log('🔍 [DEBUG] Realized P&L calculation completed.\n');
+    // Only log summary if there's any realized P&L
+    if (realizedPnL.total !== 0) {
+        console.log(`📊 [P&L] Total: ${realizedPnL.total.toFixed(2)} EUR (Stocks: ${realizedPnL.stocks.toFixed(2)}, ETFs: ${realizedPnL.etfs.toFixed(2)}, Crypto: ${realizedPnL.crypto.toFixed(2)}, CS2: ${realizedPnL.cs2.toFixed(2)})`);
+    }
     
     return realizedPnL;
 }
