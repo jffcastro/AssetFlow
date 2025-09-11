@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 { asset_type: 'etfs', data: portfolio.etfs || [] },
                 { asset_type: 'crypto', data: portfolio.crypto || [] },
                 { asset_type: 'static', data: portfolio.static || [] },
-                { asset_type: 'cs2', data: portfolio.cs2 || { value: 0, currency: 'EUR' } }
+                { asset_type: 'cs2', data: portfolio.cs2 || { portfolios: {}, value: 0, currency: 'EUR' } }
             ];
 
             for (const entry of portfolioEntries) {
