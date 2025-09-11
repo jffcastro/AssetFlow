@@ -181,7 +181,10 @@ function calculateRealizedPnL(transactions) {
         let remainingBuys = [...asset.buys];
         let assetRealizedPnL = 0;
         
-        asset.sells.forEach(sell => {
+        // Sort buys by date (FIFO)
+        remainingBuys.sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        asset.sells.forEach((sell, sellIndex) => {
             let sellQuantity = sell.quantity;
             
             // Use original USD values if available to avoid currency fluctuation effects
@@ -201,6 +204,7 @@ function calculateRealizedPnL(transactions) {
                     const sellPortionUSD = sellTotalUSD * (buyQuantity / sell.quantity);
                     const sellPortionEUR = sellPortionUSD / (sell.historicalRate || eurUsdRate);
                     const realizedGain = sellPortionEUR - buyTotalEUR;
+                    
                     realizedPnL[asset.assetType] += realizedGain;
                     assetRealizedPnL += realizedGain;
                     
@@ -213,6 +217,7 @@ function calculateRealizedPnL(transactions) {
                     const buyPortionUSD = buyTotalUSD * (sellQuantity / buyQuantity);
                     const buyPortionEUR = buyPortionUSD / (buy.historicalRate || eurUsdRate);
                     const realizedGain = sellPortionEUR - buyPortionEUR;
+                    
                     realizedPnL[asset.assetType] += realizedGain;
                     assetRealizedPnL += realizedGain;
                     
@@ -222,25 +227,39 @@ function calculateRealizedPnL(transactions) {
                     sellQuantity = 0;
                 }
             }
+            
+            if (sellQuantity > 0) {
+                console.warn(`⚠️ [P&L] ${asset.symbol}: ${sellQuantity} shares could not be matched to buy orders`);
+            }
         });
         
         // Store the realized P&L for this specific asset
         const assetKey = `${asset.assetType}-${asset.symbol}`;
         realizedPnL.byAsset[assetKey] = assetRealizedPnL;
+        
+        // Only log if there's a realized P&L (not zero)
+        if (assetRealizedPnL !== 0) {
+            console.log(`📈 [P&L] ${asset.symbol}: ${assetRealizedPnL.toFixed(2)} EUR`);
+        }
     });
     
     // Add CS2 manual realized P&L from portfolios
     if (portfolio.cs2 && portfolio.cs2.portfolios) {
-        Object.values(portfolio.cs2.portfolios).forEach(portfolioData => {
+        Object.values(portfolio.cs2.portfolios).forEach((portfolioData, index) => {
             if (portfolioData.realizedPnl) {
-                // Convert USD to EUR using current rate
-                realizedPnL.cs2 += portfolioData.realizedPnl / eurUsdRate;
+                const eurValue = portfolioData.realizedPnl / eurUsdRate;
+                realizedPnL.cs2 += eurValue;
             }
         });
     }
     
     // Calculate total realized P&L
     realizedPnL.total = realizedPnL.stocks + realizedPnL.etfs + realizedPnL.crypto + realizedPnL.cs2;
+    
+    // Only log summary if there's any realized P&L
+    if (realizedPnL.total !== 0) {
+        console.log(`📊 [P&L] Total: ${realizedPnL.total.toFixed(2)} EUR (Stocks: ${realizedPnL.stocks.toFixed(2)}, ETFs: ${realizedPnL.etfs.toFixed(2)}, Crypto: ${realizedPnL.crypto.toFixed(2)}, CS2: ${realizedPnL.cs2.toFixed(2)})`);
+    }
     
     return realizedPnL;
 }
