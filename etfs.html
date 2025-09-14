@@ -83,6 +83,48 @@
             </div>
         </div>
 
+        <!-- Sold Assets Analysis -->
+        <div class="glass-chart-container mt-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Sold Assets Analysis</h3>
+                <div class="flex items-center gap-3">
+                    <button id="toggle-sold-assets-btn" class="glass-button">
+                        <span id="sold-assets-toggle-text">Show</span> Sold Assets
+                    </button>
+                    <button id="refresh-sold-assets-btn" class="glass-button" style="display: none;">
+                        Refresh Prices
+                    </button>
+                </div>
+            </div>
+            <div id="sold-assets-container" class="hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-600">
+                                <th class="text-left py-3 px-3 font-medium text-gray-300">Symbol</th>
+                                <th class="text-left py-3 px-3 font-medium text-gray-300">Quantity</th>
+                                <th class="text-left py-3 px-3 font-medium text-gray-300">Sold Price</th>
+                                <th class="text-left py-3 px-3 font-medium text-gray-300">Current Price</th>
+                                <th class="text-left py-3 px-3 font-medium text-gray-300">Realized P&L</th>
+                                <th class="text-left py-3 px-3 font-medium text-gray-300">If Held P&L</th>
+                                <th class="text-left py-3 px-3 font-medium text-gray-300">Difference</th>
+                                <th class="text-left py-3 px-3 font-medium text-gray-300">Sell Date(s)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sold-assets-tbody" class="divide-y divide-gray-700">
+                            <!-- Sold assets will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="sold-assets-loading" class="text-center py-4 text-gray-400 hidden">
+                    Loading current prices...
+                </div>
+                <div id="sold-assets-empty" class="text-center py-8 text-gray-400 hidden">
+                    No sold assets found
+                </div>
+            </div>
+        </div>
+
         <!-- ETF Information -->
         <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mt-6">
             <div class="flex justify-between items-center mb-4">

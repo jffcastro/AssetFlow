@@ -75,14 +75,56 @@
                 <h3 class="text-xl font-semibold text-emerald-400">Total CS2 Portfolio Value</h3>
                 <div class="text-sm text-gray-400">Combined total in EUR</div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="p-4 glass-input rounded-lg">
-                    <div class="text-sm text-gray-300 mb-1">Total Value (USD)</div>
+                    <div class="text-sm text-gray-300 mb-1">Total Exposure (USD)</div>
                     <div class="text-lg font-semibold text-blue-400" id="total-cs2-usd">$0.00</div>
                 </div>
                 <div class="p-4 glass-input rounded-lg">
-                    <div class="text-sm text-gray-300 mb-1">Total Value (EUR)</div>
+                    <div class="text-sm text-gray-300 mb-1">Total Exposure (EUR)</div>
                     <div class="text-lg font-semibold text-emerald-400" id="total-cs2-eur">€0.00</div>
+                </div>
+                <div class="p-4 glass-input rounded-lg">
+                    <div class="text-sm text-gray-300 mb-1">Active Items (USD)</div>
+                    <div class="text-lg font-semibold text-green-400" id="active-items-usd">$0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Funds Section -->
+        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Marketplace Funds</h3>
+                <div class="flex items-center gap-3">
+                    <button id="toggle-pending-funds-btn" class="glass-button">
+                        <span id="pending-funds-toggle-text">Show</span> Funds
+                    </button>
+                    <button id="add-pending-funds-btn" class="glass-button glass-button-secondary" style="display: none;">
+                        Add Funds
+                    </button>
+                </div>
+            </div>
+            
+            <div id="pending-funds-container" class="hidden">
+                <div class="mb-4">
+                    <div class="flex items-center justify-between p-4 glass-input rounded-lg">
+                        <div>
+                            <div class="text-sm text-gray-300 mb-1">Total Pending Funds (USD)</div>
+                            <div class="text-lg font-semibold text-orange-400" id="total-pending-funds-usd">$0.00</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-300 mb-1">Total Pending Funds (EUR)</div>
+                            <div class="text-lg font-semibold text-orange-400" id="total-pending-funds-eur">€0.00</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="pending-funds-list" class="space-y-2">
+                    <!-- Pending funds will be populated here -->
+                </div>
+                
+                <div id="pending-funds-empty" class="text-center py-8 text-gray-400 hidden">
+                    No pending funds found
                 </div>
             </div>
         </div>
@@ -160,6 +202,31 @@
                         Add Portfolio
                     </button>
                     <button type="button" id="cancel-add-portfolio" class="flex-1 bg-gray-600 hover:glass-input text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Pending Funds Modal -->
+    <div id="pending-funds-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="glass-chart-container p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
+            <h3 id="pending-funds-modal-title" class="text-xl font-semibold mb-4">Add Marketplace Funds</h3>
+            <form id="pending-funds-form">
+                <div class="mb-4">
+                    <label for="marketplace-name" class="block text-sm font-medium mb-2">Marketplace</label>
+                    <input type="text" id="marketplace-name" required class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500" placeholder="e.g., Steam Market, Buff163, Skinport">
+                </div>
+                <div class="mb-6">
+                    <label for="funds-amount" class="block text-sm font-medium mb-2">Amount (USD)</label>
+                    <input type="number" id="funds-amount" step="0.01" min="0" required class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500" placeholder="0.00">
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" class="flex-1 glass-button glass-button-primary">
+                        Save
+                    </button>
+                    <button type="button" id="cancel-pending-funds" class="flex-1 glass-button">
                         Cancel
                     </button>
                 </div>

@@ -76,6 +76,33 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial render
     renderStocks();
     loadStockEvents();
+    
+    // Sold Assets functionality
+    const toggleSoldAssetsBtn = document.getElementById('toggle-sold-assets-btn');
+    const refreshSoldAssetsBtn = document.getElementById('refresh-sold-assets-btn');
+    const soldAssetsContainer = document.getElementById('sold-assets-container');
+    const soldAssetsToggleText = document.getElementById('sold-assets-toggle-text');
+    
+    let soldAssetsVisible = false;
+    
+    toggleSoldAssetsBtn.addEventListener('click', async () => {
+        soldAssetsVisible = !soldAssetsVisible;
+        
+        if (soldAssetsVisible) {
+            soldAssetsContainer.classList.remove('hidden');
+            soldAssetsToggleText.textContent = 'Hide';
+            refreshSoldAssetsBtn.style.display = 'inline-block';
+            await renderSoldAssets();
+        } else {
+            soldAssetsContainer.classList.add('hidden');
+            soldAssetsToggleText.textContent = 'Show';
+            refreshSoldAssetsBtn.style.display = 'none';
+        }
+    });
+    
+    refreshSoldAssetsBtn.addEventListener('click', async () => {
+        await renderSoldAssets();
+    });
 });
 
 function openStockModal(mode = 'add', stock = null) {
@@ -973,3 +1000,81 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeNotes();
     renderStockTransactions();
 });
+
+// Sold Assets Analysis Functions
+async function renderSoldAssets() {
+    const soldAssetsTbody = document.getElementById('sold-assets-tbody');
+    const soldAssetsLoading = document.getElementById('sold-assets-loading');
+    const soldAssetsEmpty = document.getElementById('sold-assets-empty');
+    
+    if (!soldAssetsTbody) return;
+    
+    // Show loading state
+    soldAssetsLoading.classList.remove('hidden');
+    soldAssetsEmpty.classList.add('hidden');
+    soldAssetsTbody.innerHTML = '';
+    
+    try {
+        // Get sold assets analysis
+        const transactions = loadTransactions();
+        const soldAssets = getSoldAssetsAnalysis(transactions, 'stocks');
+        
+        if (soldAssets.length === 0) {
+            soldAssetsLoading.classList.add('hidden');
+            soldAssetsEmpty.classList.remove('hidden');
+            return;
+        }
+        
+        // Update with current prices
+        const updatedAssets = await updateSoldAssetsWithCurrentPrices(soldAssets, 'stocks');
+        
+        // Render the table
+        soldAssetsTbody.innerHTML = '';
+        updatedAssets.forEach(asset => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-800/50';
+            
+            const formatCurrency = (value) => {
+                if (value === null || value === undefined) return '--';
+                return `$${value.toFixed(2)}`;
+            };
+            
+            const formatPnL = (value) => {
+                if (value === null || value === undefined) return '--';
+                const formatted = `$${Math.abs(value).toFixed(2)}`;
+                return value >= 0 ? `+${formatted}` : `-${formatted}`;
+            };
+            
+            const formatDate = (dateStr) => {
+                if (dateStr.includes(' - ')) {
+                    // Date range format
+                    const [start, end] = dateStr.split(' - ');
+                    return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`;
+                } else {
+                    // Single date format
+                    return new Date(dateStr).toLocaleDateString();
+                }
+            };
+            
+            row.innerHTML = `
+                <td class="py-3 px-3 font-medium">${asset.symbol}</td>
+                <td class="py-3 px-3">${asset.quantity}</td>
+                <td class="py-3 px-3">${formatCurrency(asset.averageSellPrice)}</td>
+                <td class="py-3 px-3">${formatCurrency(asset.currentPrice)}</td>
+                <td class="py-3 px-3 ${asset.realizedPnL >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.realizedPnL)}</td>
+                <td class="py-3 px-3 ${asset.ifHeldPnL >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.ifHeldPnL)}</td>
+                <td class="py-3 px-3 ${asset.difference >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.difference)}</td>
+                <td class="py-3 px-3 text-gray-400">${formatDate(asset.sellDate)}</td>
+            `;
+            
+            soldAssetsTbody.appendChild(row);
+        });
+        
+        soldAssetsLoading.classList.add('hidden');
+        
+    } catch (error) {
+        console.error('Error rendering sold assets:', error);
+        soldAssetsLoading.classList.add('hidden');
+        soldAssetsTbody.innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-4">Error loading sold assets</td></tr>';
+    }
+}
