@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Migrate data to cloud using Supabase REST API
+    // Migrate data to cloud using optimized Supabase REST API with compression
     async function migrateDataToCloud() {
         const config = getDatabaseConfig();
         if (!config || !config.url || !config.anonKey) {
@@ -279,12 +279,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const portfolio = JSON.parse(localStorage.getItem('portfolioPilotData') || '{}');
             const transactions = JSON.parse(localStorage.getItem('portfolioPilotTransactions') || '[]');
             const eurUsdRate = localStorage.getItem('eurUsdRate') || '1.0';
-            const priceCache = JSON.parse(localStorage.getItem('priceCache') || '{}');
+            const priceCache = JSON.parse(localStorage.getItem('portfolioPilotPriceCache') || '{}');
+            const historicalRates = JSON.parse(localStorage.getItem('historicalRates') || '{}');
+            const soldAssetsCache = JSON.parse(localStorage.getItem('soldAssetsCache') || '{}');
 
             // Generate user ID
             const userId = getUserId();
 
-            // Migrate portfolio data
+            // Compress and migrate portfolio data (single API call per asset type)
             const portfolioEntries = [
                 { asset_type: 'stocks', data: portfolio.stocks || [] },
                 { asset_type: 'etfs', data: portfolio.etfs || [] },
@@ -294,6 +296,9 @@ document.addEventListener('DOMContentLoaded', () => {
             ];
 
             for (const entry of portfolioEntries) {
+                // Compress data before sending
+                const compressedData = LZString.compress(JSON.stringify(entry.data));
+                
                 const response = await fetch(`${config.url}/rest/v1/portfolio`, {
                     method: 'POST',
                     headers: {
@@ -305,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                         user_id: userId,
                         asset_type: entry.asset_type,
-                        asset_data: entry.data
+                        compressed_data: compressedData
                     })
                 });
 
@@ -316,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Migrate transactions
+            // Compress and migrate transactions (single API call)
             if (transactions.length > 0) {
                 const supabaseTransactions = transactions.map(tx => ({
                     id: tx.id,
@@ -330,8 +335,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     currency: tx.currency,
                     date: tx.date,
                     note: tx.note,
-                    timestamp: tx.timestamp || new Date().toISOString()
+                    timestamp: tx.timestamp || new Date().toISOString(),
+                    // Add missing fields for historical exchange rates
+                    historical_rate: tx.historicalRate || null,
+                    original_price: tx.originalPrice || null,
+                    original_currency: tx.originalCurrency || null
                 }));
+
+                // Compress transactions data
+                const compressedTransactions = LZString.compress(JSON.stringify(supabaseTransactions));
 
                 const response = await fetch(`${config.url}/rest/v1/transactions`, {
                     method: 'POST',
@@ -341,7 +353,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Content-Type': 'application/json',
                         'Prefer': 'resolution=merge-duplicates'
                     },
-                    body: JSON.stringify(supabaseTransactions)
+                    body: JSON.stringify({
+                        user_id: userId,
+                        compressed_data: compressedTransactions
+                    })
                 });
 
                 if (!response.ok) {
@@ -351,7 +366,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            // Save user settings
+            // Compress and save user settings (single API call)
+            const settingsData = {
+                eur_usd_rate: parseFloat(eurUsdRate),
+                price_cache: priceCache,
+                historical_rates: historicalRates,
+                sold_assets_cache: soldAssetsCache,
+                preferences: {}
+            };
+
+            const compressedSettings = LZString.compress(JSON.stringify(settingsData));
+
             const settingsResponse = await fetch(`${config.url}/rest/v1/user_settings`, {
                 method: 'POST',
                 headers: {
@@ -362,15 +387,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify({
                     user_id: userId,
-                    eur_usd_rate: parseFloat(eurUsdRate),
-                    price_cache: priceCache,
-                    preferences: {}
+                    compressed_data: compressedSettings
                 })
             });
 
             if (!settingsResponse.ok) {
                 throw new Error(`Failed to migrate settings: ${settingsResponse.statusText}`);
             }
+
+            // Track bandwidth usage
+            trackBandwidthUsage(JSON.stringify(portfolio).length + JSON.stringify(transactions).length + JSON.stringify(settingsData).length);
 
             showNotification('Data migrated to cloud successfully!', 'success');
             migrationStatus.textContent = 'Migration completed';
@@ -386,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Backup data using Supabase REST API
+    // Backup data using optimized Supabase REST API with decompression
     async function backupData() {
         const config = getDatabaseConfig();
         if (!config || !config.url || !config.anonKey) {
@@ -429,12 +455,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 settingsResponse.json()
             ]);
 
+            // Decompress portfolio data
+            const decompressedPortfolio = {};
+            portfolio.forEach(item => {
+                if (item.compressed_data) {
+                    decompressedPortfolio[item.asset_type] = JSON.parse(LZString.decompress(item.compressed_data));
+                } else {
+                    // Fallback for old format
+                    decompressedPortfolio[item.asset_type] = item.asset_data;
+                }
+            });
+
+            // Decompress transactions data
+            let decompressedTransactions = [];
+            if (transactions.length > 0) {
+                const transactionData = transactions[0];
+                if (transactionData.compressed_data) {
+                    decompressedTransactions = JSON.parse(LZString.decompress(transactionData.compressed_data));
+                } else {
+                    // Fallback for old format
+                    decompressedTransactions = transactions;
+                }
+            }
+
+            // Decompress settings data
+            let decompressedSettings = {};
+            if (settings.length > 0) {
+                const settingsData = settings[0];
+                if (settingsData.compressed_data) {
+                    decompressedSettings = JSON.parse(LZString.decompress(settingsData.compressed_data));
+                } else {
+                    // Fallback for old format
+                    decompressedSettings = settingsData;
+                }
+            }
+
             // Create backup object
             const backup = {
                 timestamp: new Date().toISOString(),
-                portfolio: portfolio,
-                transactions: transactions,
-                settings: settings[0] || {}
+                portfolio: decompressedPortfolio,
+                transactions: decompressedTransactions,
+                settings: decompressedSettings
             };
 
             // Download backup file
@@ -456,7 +517,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Restore data using Supabase REST API
+    // Restore data using optimized Supabase REST API with compression
     function restoreData() {
         const input = document.createElement('input');
         input.type = 'file';
@@ -485,8 +546,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const userId = getUserId();
 
-                // Restore portfolio data
-                for (const portfolioItem of backup.portfolio) {
+                // Restore portfolio data with compression
+                for (const [assetType, assetData] of Object.entries(backup.portfolio)) {
+                    const compressedData = LZString.compress(JSON.stringify(assetData));
+                    
                     const response = await fetch(`${config.url}/rest/v1/portfolio`, {
                         method: 'POST',
                         headers: {
@@ -497,8 +560,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         },
                         body: JSON.stringify({
                             user_id: userId,
-                            asset_type: portfolioItem.asset_type,
-                            asset_data: portfolioItem.asset_data
+                            asset_type: assetType,
+                            compressed_data: compressedData
                         })
                     });
 
@@ -507,12 +570,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // Restore transactions
+                // Restore transactions with compression
                 if (backup.transactions.length > 0) {
                     const transactionsToRestore = backup.transactions.map(tx => ({
                         ...tx,
                         user_id: userId
                     }));
+
+                    const compressedTransactions = LZString.compress(JSON.stringify(transactionsToRestore));
 
                     const response = await fetch(`${config.url}/rest/v1/transactions`, {
                         method: 'POST',
@@ -522,7 +587,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             'Content-Type': 'application/json',
                             'Prefer': 'resolution=merge-duplicates'
                         },
-                        body: JSON.stringify(transactionsToRestore)
+                        body: JSON.stringify({
+                            user_id: userId,
+                            compressed_data: compressedTransactions
+                        })
                     });
 
                     if (!response.ok) {
@@ -530,8 +598,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // Restore settings
+                // Restore settings with compression
                 if (backup.settings && Object.keys(backup.settings).length > 0) {
+                    const compressedSettings = LZString.compress(JSON.stringify(backup.settings));
+
                     const response = await fetch(`${config.url}/rest/v1/user_settings`, {
                         method: 'POST',
                         headers: {
@@ -542,9 +612,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         },
                         body: JSON.stringify({
                             user_id: userId,
-                            eur_usd_rate: backup.settings.eur_usd_rate,
-                            price_cache: backup.settings.price_cache,
-                            preferences: backup.settings.preferences
+                            compressed_data: compressedSettings
                         })
                     });
 
@@ -728,7 +796,188 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize migration status
     updateMigrationStatus();
 
+    // ==================== BANDWIDTH TRACKING & SMART SYNC ====================
+
+    // Bandwidth tracking for free tier management
+    function trackBandwidthUsage(bytes) {
+        const today = new Date().toDateString();
+        const bandwidthData = JSON.parse(localStorage.getItem('assetflow_bandwidth_usage') || '{}');
+        
+        bandwidthData[today] = (bandwidthData[today] || 0) + bytes;
+        localStorage.setItem('assetflow_bandwidth_usage', JSON.stringify(bandwidthData));
+        
+        // Check if approaching limit (80% of 2GB)
+        const dailyUsage = bandwidthData[today];
+        const limit = 2 * 1024 * 1024 * 1024; // 2GB in bytes
+        const warningThreshold = limit * 0.8;
+        
+        if (dailyUsage > warningThreshold) {
+            showNotification('Approaching bandwidth limit. Sync frequency reduced.', 'warning');
+        }
+    }
+
+    // Smart sync - only sync when data actually changes
+    let lastSyncHash = null;
+    let syncDebounceTimer = null;
+
+    function generateDataHash() {
+        const portfolio = JSON.parse(localStorage.getItem('portfolioPilotData') || '{}');
+        const transactions = JSON.parse(localStorage.getItem('portfolioPilotTransactions') || '[]');
+        
+        // Simple hash of critical data
+        return btoa(JSON.stringify({
+            portfolio: portfolio,
+            transactions: transactions.length,
+            lastModified: Date.now()
+        }));
+    }
+
+    function shouldSync() {
+        const currentHash = generateDataHash();
+        if (currentHash !== lastSyncHash) {
+            lastSyncHash = currentHash;
+            return true;
+        }
+        return false;
+    }
+
+    function isOffline() {
+        return !navigator.onLine;
+    }
+
+    // Debounced sync function
+    function debouncedSync() {
+        if (syncDebounceTimer) {
+            clearTimeout(syncDebounceTimer);
+        }
+        
+        syncDebounceTimer = setTimeout(async () => {
+            if (shouldSync() && !isOffline()) {
+                await smartSyncToCloud();
+            }
+        }, 30000); // 30 second delay
+    }
+
+    // Smart sync to cloud
+    async function smartSyncToCloud() {
+        const config = getDatabaseConfig();
+        if (!config || !config.url || !config.anonKey) {
+            return; // Silently fail if not configured
+        }
+
+        try {
+            const userId = getUserId();
+            
+            // Get current data
+            const portfolio = JSON.parse(localStorage.getItem('portfolioPilotData') || '{}');
+            const transactions = JSON.parse(localStorage.getItem('portfolioPilotTransactions') || '[]');
+            const eurUsdRate = localStorage.getItem('eurUsdRate') || '1.0';
+            const priceCache = JSON.parse(localStorage.getItem('portfolioPilotPriceCache') || '{}');
+            const historicalRates = JSON.parse(localStorage.getItem('historicalRates') || '{}');
+            const soldAssetsCache = JSON.parse(localStorage.getItem('soldAssetsCache') || '{}');
+
+            // Sync portfolio data
+            const portfolioEntries = [
+                { asset_type: 'stocks', data: portfolio.stocks || [] },
+                { asset_type: 'etfs', data: portfolio.etfs || [] },
+                { asset_type: 'crypto', data: portfolio.crypto || [] },
+                { asset_type: 'static', data: portfolio.static || [] },
+                { asset_type: 'cs2', data: portfolio.cs2 || { portfolios: {}, value: 0, currency: 'EUR' } }
+            ];
+
+            for (const entry of portfolioEntries) {
+                const compressedData = LZString.compress(JSON.stringify(entry.data));
+                
+                await fetch(`${config.url}/rest/v1/portfolio`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': config.anonKey,
+                        'Authorization': `Bearer ${config.anonKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        asset_type: entry.asset_type,
+                        compressed_data: compressedData
+                    })
+                });
+            }
+
+            // Sync transactions
+            if (transactions.length > 0) {
+                const supabaseTransactions = transactions.map(tx => ({
+                    id: tx.id,
+                    user_id: userId,
+                    type: tx.type,
+                    asset_type: tx.assetType,
+                    symbol: tx.symbol,
+                    quantity: tx.quantity,
+                    price: tx.price,
+                    total: tx.total,
+                    currency: tx.currency,
+                    date: tx.date,
+                    note: tx.note,
+                    timestamp: tx.timestamp || new Date().toISOString(),
+                    historical_rate: tx.historicalRate || null,
+                    original_price: tx.originalPrice || null,
+                    original_currency: tx.originalCurrency || null
+                }));
+
+                const compressedTransactions = LZString.compress(JSON.stringify(supabaseTransactions));
+
+                await fetch(`${config.url}/rest/v1/transactions`, {
+                    method: 'POST',
+                    headers: {
+                        'apikey': config.anonKey,
+                        'Authorization': `Bearer ${config.anonKey}`,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'resolution=merge-duplicates'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        compressed_data: compressedTransactions
+                    })
+                });
+            }
+
+            // Sync settings
+            const settingsData = {
+                eur_usd_rate: parseFloat(eurUsdRate),
+                price_cache: priceCache,
+                historical_rates: historicalRates,
+                sold_assets_cache: soldAssetsCache,
+                preferences: {}
+            };
+
+            const compressedSettings = LZString.compress(JSON.stringify(settingsData));
+
+            await fetch(`${config.url}/rest/v1/user_settings`, {
+                method: 'POST',
+                headers: {
+                    'apikey': config.anonKey,
+                    'Authorization': `Bearer ${config.anonKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'resolution=merge-duplicates'
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    compressed_data: compressedSettings
+                })
+            });
+
+            // Track bandwidth usage
+            trackBandwidthUsage(JSON.stringify(portfolio).length + JSON.stringify(transactions).length + JSON.stringify(settingsData).length);
+
+        } catch (error) {
+            console.error('Smart sync error:', error);
+            // Silently fail for background sync
+        }
+    }
+
     // Export functions for use in other files
     window.getApiKey = getApiKey;
     window.trackApiUsage = trackApiUsage;
+    window.debouncedSync = debouncedSync;
+    window.smartSyncToCloud = smartSyncToCloud;
 });

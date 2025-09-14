@@ -4,6 +4,7 @@
 let portfoliosContainer;
 let totalCs2Usd;
 let totalCs2Eur;
+let editingMarketplace = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM elements
@@ -24,6 +25,55 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize CS2 portfolios
     initializePortfolios();
+    
+    // Pending Funds functionality
+    const togglePendingFundsBtn = document.getElementById('toggle-pending-funds-btn');
+    const addPendingFundsBtn = document.getElementById('add-pending-funds-btn');
+    const pendingFundsContainer = document.getElementById('pending-funds-container');
+    const pendingFundsToggleText = document.getElementById('pending-funds-toggle-text');
+    const pendingFundsModal = document.getElementById('pending-funds-modal');
+    const pendingFundsForm = document.getElementById('pending-funds-form');
+    const cancelPendingFunds = document.getElementById('cancel-pending-funds');
+    
+    let pendingFundsVisible = false;
+    
+    togglePendingFundsBtn.addEventListener('click', () => {
+        pendingFundsVisible = !pendingFundsVisible;
+        
+        if (pendingFundsVisible) {
+            pendingFundsContainer.classList.remove('hidden');
+            pendingFundsToggleText.textContent = 'Hide';
+            addPendingFundsBtn.style.display = 'inline-block';
+            renderPendingFunds();
+        } else {
+            pendingFundsContainer.classList.add('hidden');
+            pendingFundsToggleText.textContent = 'Show';
+            addPendingFundsBtn.style.display = 'none';
+        }
+    });
+    
+    addPendingFundsBtn.addEventListener('click', () => {
+        editingMarketplace = null;
+        document.getElementById('pending-funds-modal-title').textContent = 'Add Marketplace Funds';
+        document.getElementById('marketplace-name').value = '';
+        document.getElementById('funds-amount').value = '';
+        pendingFundsModal.classList.remove('hidden');
+    });
+    
+    cancelPendingFunds.addEventListener('click', () => {
+        pendingFundsModal.classList.add('hidden');
+    });
+    
+    pendingFundsModal.addEventListener('click', (e) => {
+        if (e.target === pendingFundsModal) {
+            pendingFundsModal.classList.add('hidden');
+        }
+    });
+    
+    pendingFundsForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        handlePendingFundsSubmit();
+    });
 });
 
 // Color themes for portfolios
@@ -321,13 +371,26 @@ function updateCombinedTotal() {
 function updateCombinedDisplay() {
     if (!portfolio.cs2.portfolios) return;
     
-    const totalUsd = Object.values(portfolio.cs2.portfolios)
+    // Calculate active items total
+    const activeItemsUsd = Object.values(portfolio.cs2.portfolios)
         .reduce((sum, p) => sum + (p.value || 0), 0);
     
-    // Update USD and EUR displays
-    totalCs2Usd.textContent = formatCurrency(totalUsd, 'USD');
+    // Calculate pending funds total
+    const pendingFundsUsd = portfolio.cs2.pendingFunds ? portfolio.cs2.pendingFunds.total : 0;
+    
+    // Total CS2 exposure
+    const totalUsd = activeItemsUsd + pendingFundsUsd;
     const totalEur = totalUsd / eurUsdRate;
+    
+    // Update displays
+    totalCs2Usd.textContent = formatCurrency(totalUsd, 'USD');
     totalCs2Eur.textContent = formatCurrency(totalEur, 'EUR');
+    
+    // Update active items display
+    const activeItemsDisplay = document.getElementById('active-items-usd');
+    if (activeItemsDisplay) {
+        activeItemsDisplay.textContent = formatCurrency(activeItemsUsd, 'USD');
+    }
 }
 
 
@@ -440,3 +503,103 @@ function updateCharCount() {
 document.addEventListener('DOMContentLoaded', () => {
     initializeNotes();
 });
+
+// Pending Funds Functions
+function handlePendingFundsSubmit() {
+    const marketplaceName = document.getElementById('marketplace-name').value.trim();
+    const amount = parseFloat(document.getElementById('funds-amount').value);
+    
+    if (!marketplaceName || isNaN(amount) || amount <= 0) {
+        showNotification('Please enter valid marketplace name and amount', 'error');
+        return;
+    }
+    
+    if (editingMarketplace) {
+        // Update existing marketplace
+        removePendingFunds(editingMarketplace);
+    }
+    
+    addPendingFunds(marketplaceName, amount);
+    renderPendingFunds();
+    updateCombinedDisplay();
+    
+    document.getElementById('pending-funds-modal').classList.add('hidden');
+    showNotification(`Marketplace funds ${editingMarketplace ? 'updated' : 'added'} successfully!`, 'success');
+}
+
+function renderPendingFunds() {
+    const pendingFundsList = document.getElementById('pending-funds-list');
+    const pendingFundsEmpty = document.getElementById('pending-funds-empty');
+    const totalPendingFundsUsd = document.getElementById('total-pending-funds-usd');
+    const totalPendingFundsEur = document.getElementById('total-pending-funds-eur');
+    
+    if (!portfolio.cs2.pendingFunds || !portfolio.cs2.pendingFunds.breakdown) {
+        portfolio.cs2.pendingFunds = { total: 0, breakdown: {} };
+    }
+    
+    const breakdown = portfolio.cs2.pendingFunds.breakdown;
+    const totalUSD = portfolio.cs2.pendingFunds.total;
+    const totalEUR = totalUSD / eurUsdRate;
+    
+    // Update totals
+    totalPendingFundsUsd.textContent = `$${totalUSD.toFixed(2)}`;
+    totalPendingFundsEur.textContent = `€${totalEUR.toFixed(2)}`;
+    
+    // Clear existing list
+    pendingFundsList.innerHTML = '';
+    
+    if (Object.keys(breakdown).length === 0) {
+        pendingFundsEmpty.classList.remove('hidden');
+        return;
+    }
+    
+    pendingFundsEmpty.classList.add('hidden');
+    
+    // Render each marketplace
+    Object.entries(breakdown).forEach(([marketplace, amountUSD]) => {
+        const amountEUR = amountUSD / eurUsdRate;
+        
+        const marketplaceElement = document.createElement('div');
+        marketplaceElement.className = 'flex items-center justify-between p-3 glass-input rounded-lg';
+        marketplaceElement.innerHTML = `
+            <div class="flex-1">
+                <div class="font-medium text-white">${marketplace}</div>
+                <div class="text-sm text-gray-400">
+                    $${amountUSD.toFixed(2)} (€${amountEUR.toFixed(2)})
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="editPendingFunds('${marketplace}')" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition duration-300">
+                    Edit
+                </button>
+                <button onclick="removePendingFundsFromUI('${marketplace}')" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition duration-300">
+                    Remove
+                </button>
+            </div>
+        `;
+        
+        pendingFundsList.appendChild(marketplaceElement);
+    });
+}
+
+function editPendingFunds(marketplace) {
+    const amount = portfolio.cs2.pendingFunds.breakdown[marketplace];
+    
+    editingMarketplace = marketplace;
+    document.getElementById('pending-funds-modal-title').textContent = 'Edit Marketplace Funds';
+    document.getElementById('marketplace-name').value = marketplace;
+    document.getElementById('funds-amount').value = amount;
+    document.getElementById('pending-funds-modal').classList.remove('hidden');
+}
+
+// Global functions for onclick handlers
+window.removePendingFundsFromUI = function(marketplace) {
+    if (confirm(`Are you sure you want to remove ${marketplace}?`)) {
+        removePendingFunds(marketplace);
+        renderPendingFunds();
+        updateCombinedDisplay();
+        showNotification('Marketplace funds removed successfully!', 'success');
+    }
+};
+
+window.editPendingFunds = editPendingFunds;

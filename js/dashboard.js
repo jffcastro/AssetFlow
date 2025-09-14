@@ -872,7 +872,7 @@ function calculatePortfolioBreakdown() {
         }
     });
     
-    // Add CS2 value (now handles dynamic portfolios)
+    // Add CS2 value (now handles dynamic portfolios + pending funds)
     if (portfolio.cs2) {
         let cs2Value = 0;
         
@@ -892,6 +892,11 @@ function calculatePortfolioBreakdown() {
             const investmentItemsValue = portfolio.cs2.investmentItems?.value || 0;
             const totalUsd = playItemsValue + investmentItemsValue;
             cs2Value = totalUsd / eurUsdRate;
+        }
+        
+        // Add pending funds to CS2 total
+        if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.total) {
+            cs2Value += portfolio.cs2.pendingFunds.total / eurUsdRate;
         }
         
         breakdown['CS2 Items'] += cs2Value;

@@ -7,12 +7,21 @@ let portfolio = {
     etfs: [],
     crypto: [],
     static: [], // Each static asset: { id, name, type, values: [{date, value, currency}] }
-    cs2: { portfolios: {}, value: 0, currency: 'EUR' }
+    cs2: { 
+        portfolios: {}, 
+        value: 0, 
+        currency: 'EUR',
+        pendingFunds: {
+            total: 0,
+            breakdown: {}
+        }
+    }
 };
 
 let eurUsdRate = 1.0;
 let priceCache = { stocks: {}, crypto: {}, etfs: {} };
 let historicalRates = {}; // Store historical EUR/USD rates by date
+let soldAssetsCache = {}; // Store current prices for sold assets
 
 // Using full cryptocurrency names directly for CoinGecko API
 
@@ -25,6 +34,7 @@ function loadData() {
             portfolio = { ...portfolio, ...parsed };
         }
         loadHistoricalRates();
+        loadSoldAssetsCache();
     } catch (e) {
         console.error('Error loading portfolio data:', e);
     }
@@ -138,6 +148,27 @@ async function fetchHistoricalExchangeRate(date) {
 function getHistoricalRateForDate(date) {
     const dateStr = date.toISOString().split('T')[0];
     return historicalRates[dateStr] || eurUsdRate;
+}
+
+// --- SOLD ASSETS CACHE ---
+function loadSoldAssetsCache() {
+    try {
+        const data = localStorage.getItem('soldAssetsCache');
+        if (data) {
+            soldAssetsCache = JSON.parse(data);
+        }
+    } catch (e) {
+        console.error('Error loading sold assets cache:', e);
+        soldAssetsCache = {};
+    }
+}
+
+function saveSoldAssetsCache() {
+    try {
+        localStorage.setItem('soldAssetsCache', JSON.stringify(soldAssetsCache));
+    } catch (e) {
+        console.error('Error saving sold assets cache:', e);
+    }
 }
 
 // --- REALIZED P&L CALCULATIONS ---
@@ -262,6 +293,235 @@ function calculateRealizedPnL(transactions) {
     }
     
     return realizedPnL;
+}
+
+// --- SOLD ASSETS ANALYSIS ---
+async function fetchCurrentPriceForSoldAsset(assetType, symbol) {
+    const cacheKey = `${assetType}_${symbol}`;
+    const now = Date.now();
+    const cacheExpiry = 5 * 60 * 1000; // 5 minutes
+    
+    // Check if we have a recent cached price
+    if (soldAssetsCache[cacheKey] && (now - soldAssetsCache[cacheKey].timestamp) < cacheExpiry) {
+        return soldAssetsCache[cacheKey].price;
+    }
+    
+    try {
+        let price = null;
+        
+        if (assetType === 'stocks' || assetType === 'etfs') {
+            // Use existing price cache or fetch new price
+            const existingPrice = priceCache[assetType][symbol];
+            if (existingPrice && existingPrice.price) {
+                price = existingPrice.price;
+            } else {
+                // Fetch from Finnhub
+                const apiKey = getApiKey('finnhub');
+                if (apiKey) {
+                    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`);
+                    const data = await response.json();
+                    if (data && data.c) {
+                        price = data.c;
+                    }
+                }
+            }
+        } else if (assetType === 'crypto') {
+            // Use existing price cache or fetch new price
+            const existingPrice = priceCache.crypto[symbol];
+            if (existingPrice && existingPrice.price) {
+                price = existingPrice.price;
+            } else {
+                // Fetch from CoinGecko
+                const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd`);
+                const data = await response.json();
+                if (data && data[symbol] && data[symbol].usd) {
+                    price = data[symbol].usd;
+                }
+            }
+        }
+        
+        if (price) {
+            // Cache the price
+            soldAssetsCache[cacheKey] = {
+                price: price,
+                timestamp: now
+            };
+            saveSoldAssetsCache();
+        }
+        
+        return price;
+    } catch (error) {
+        console.error(`Error fetching current price for ${symbol}:`, error);
+        return null;
+    }
+}
+
+function getSoldAssetsAnalysis(transactions, assetType) {
+    const soldAssets = [];
+    const assetGroups = {};
+    
+    // Group transactions by symbol
+    transactions.forEach(tx => {
+        if (tx.assetType === assetType && tx.type === 'sell') {
+            const key = tx.symbol;
+            if (!assetGroups[key]) {
+                assetGroups[key] = {
+                    symbol: tx.symbol,
+                    sells: [],
+                    buys: []
+                };
+            }
+            assetGroups[key].sells.push(tx);
+        } else if (tx.assetType === assetType && tx.type === 'buy') {
+            const key = tx.symbol;
+            if (!assetGroups[key]) {
+                assetGroups[key] = {
+                    symbol: tx.symbol,
+                    sells: [],
+                    buys: []
+                };
+            }
+            assetGroups[key].buys.push(tx);
+        }
+    });
+    
+    // Process each asset that has sells
+    Object.values(assetGroups).forEach(asset => {
+        if (asset.sells.length > 0) {
+            // Calculate total sold quantity and average sell price
+            let totalSoldQuantity = 0;
+            let totalSoldValue = 0;
+            let totalSoldValueUSD = 0;
+            let sellDates = [];
+            
+            asset.sells.forEach(sell => {
+                totalSoldQuantity += sell.quantity;
+                totalSoldValue += sell.total;
+                sellDates.push(sell.date);
+                
+                // Use original USD value if available
+                if (sell.originalPrice) {
+                    totalSoldValueUSD += sell.originalPrice * sell.quantity;
+                } else {
+                    totalSoldValueUSD += sell.total * eurUsdRate;
+                }
+            });
+            
+            // Sort sell dates and create date range
+            sellDates.sort((a, b) => new Date(a) - new Date(b));
+            const firstSellDate = sellDates[0];
+            const lastSellDate = sellDates[sellDates.length - 1];
+            const sellDateRange = sellDates.length === 1 ? firstSellDate : `${firstSellDate} - ${lastSellDate}`;
+            
+            // Calculate average cost basis using FIFO
+            let remainingBuys = [...asset.buys].sort((a, b) => new Date(a.date) - new Date(b.date));
+            let totalCostBasis = 0;
+            let sellQuantity = totalSoldQuantity;
+            
+            while (sellQuantity > 0 && remainingBuys.length > 0) {
+                const buy = remainingBuys[0];
+                const buyQuantity = buy.quantity;
+                
+                if (buyQuantity <= sellQuantity) {
+                    // Use original USD value if available
+                    if (buy.originalPrice) {
+                        totalCostBasis += buy.originalPrice * buy.quantity;
+                    } else {
+                        totalCostBasis += buy.total * eurUsdRate;
+                    }
+                    sellQuantity -= buyQuantity;
+                    remainingBuys.shift();
+                } else {
+                    // Partial buy
+                    if (buy.originalPrice) {
+                        totalCostBasis += buy.originalPrice * sellQuantity;
+                    } else {
+                        totalCostBasis += (buy.total * eurUsdRate) * (sellQuantity / buy.quantity);
+                    }
+                    sellQuantity = 0;
+                }
+            }
+            
+            const averageSellPrice = totalSoldValueUSD / totalSoldQuantity;
+            const averageCostBasis = totalCostBasis / totalSoldQuantity;
+            const realizedPnL = totalSoldValueUSD - totalCostBasis;
+            
+            soldAssets.push({
+                symbol: asset.symbol,
+                quantity: totalSoldQuantity,
+                averageSellPrice: averageSellPrice,
+                averageCostBasis: averageCostBasis,
+                realizedPnL: realizedPnL,
+                sellDate: sellDateRange,
+                sellDates: sellDates, // Keep individual dates for reference
+                currentPrice: null // Will be fetched separately
+            });
+        }
+    });
+    
+    return soldAssets;
+}
+
+async function updateSoldAssetsWithCurrentPrices(soldAssets, assetType) {
+    const updatedAssets = [];
+    
+    for (const asset of soldAssets) {
+        const currentPrice = await fetchCurrentPriceForSoldAsset(assetType, asset.symbol);
+        const ifHeldPnL = currentPrice ? (currentPrice - asset.averageCostBasis) * asset.quantity : null;
+        const difference = ifHeldPnL !== null ? ifHeldPnL - asset.realizedPnL : null;
+        
+        updatedAssets.push({
+            ...asset,
+            currentPrice: currentPrice,
+            ifHeldPnL: ifHeldPnL,
+            difference: difference
+        });
+    }
+    
+    return updatedAssets;
+}
+
+// --- PENDING FUNDS MANAGEMENT ---
+function addPendingFunds(marketplace, amountUSD) {
+    if (!portfolio.cs2.pendingFunds) {
+        portfolio.cs2.pendingFunds = { total: 0, breakdown: {} };
+    }
+    
+    portfolio.cs2.pendingFunds.breakdown[marketplace] = amountUSD;
+    updatePendingFundsTotal();
+    saveData();
+}
+
+function removePendingFunds(marketplace) {
+    if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.breakdown[marketplace]) {
+        delete portfolio.cs2.pendingFunds.breakdown[marketplace];
+        updatePendingFundsTotal();
+        saveData();
+    }
+}
+
+function updatePendingFundsTotal() {
+    if (!portfolio.cs2.pendingFunds) {
+        portfolio.cs2.pendingFunds = { total: 0, breakdown: {} };
+    }
+    
+    let totalUSD = 0;
+    Object.values(portfolio.cs2.pendingFunds.breakdown).forEach(amount => {
+        totalUSD += amount;
+    });
+    
+    portfolio.cs2.pendingFunds.total = totalUSD;
+}
+
+function getPendingFundsInEUR() {
+    if (!portfolio.cs2.pendingFunds) return 0;
+    return portfolio.cs2.pendingFunds.total / eurUsdRate;
+}
+
+function getTotalCS2Exposure() {
+    const activeItemsValue = portfolio.cs2.value || 0;
+    const pendingFundsValue = getPendingFundsInEUR();
+    return activeItemsValue + pendingFundsValue;
 }
 
 function calculateHoldingTime(transactions, assetType, symbol) {
@@ -1409,6 +1669,7 @@ function exportAllData() {
                 priceCache: JSON.parse(localStorage.getItem('portfolioPilotPriceCache') || '{}'),
                 eurUsdRate: localStorage.getItem('eurUsdRate') || '1.0',
                 historicalRates: JSON.parse(localStorage.getItem('historicalRates') || '{}'),
+                soldAssetsCache: JSON.parse(localStorage.getItem('soldAssetsCache') || '{}'),
                 cryptoRates: localStorage.getItem('portfolioPilotCryptoRates'),
                 benchmarkData: localStorage.getItem('portfolioPilotBenchmarkData'),
                 benchmarkHistory: localStorage.getItem('portfolioPilotBenchmarkHistory'),
@@ -1508,6 +1769,9 @@ function importAllData(event) {
             }
             if (backupData.data.historicalRates) {
                 localStorage.setItem('historicalRates', JSON.stringify(backupData.data.historicalRates));
+            }
+            if (backupData.data.soldAssetsCache) {
+                localStorage.setItem('soldAssetsCache', JSON.stringify(backupData.data.soldAssetsCache));
             }
             if (backupData.data.cryptoRates) {
                 localStorage.setItem('portfolioPilotCryptoRates', backupData.data.cryptoRates);
