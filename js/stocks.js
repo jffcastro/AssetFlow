@@ -1036,12 +1036,12 @@ async function renderSoldAssets() {
             
             const formatCurrency = (value) => {
                 if (value === null || value === undefined) return '--';
-                return `$${value.toFixed(2)}`;
+                return `€${value.toFixed(2)}`;
             };
             
             const formatPnL = (value) => {
                 if (value === null || value === undefined) return '--';
-                const formatted = `$${Math.abs(value).toFixed(2)}`;
+                const formatted = `€${Math.abs(value).toFixed(2)}`;
                 return value >= 0 ? `+${formatted}` : `-${formatted}`;
             };
             
@@ -1065,6 +1065,13 @@ async function renderSoldAssets() {
                 <td class="py-3 px-3 ${asset.ifHeldPnL >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.ifHeldPnL)}</td>
                 <td class="py-3 px-3 ${asset.difference >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.difference)}</td>
                 <td class="py-3 px-3 text-gray-400">${formatDate(asset.sellDate)}</td>
+                <td class="py-3 px-3">
+                    <button onclick="filterSellTransactions('${asset.symbol}', 'stocks')" 
+                            class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors"
+                            title="View sell transactions for ${asset.symbol}">
+                        📋
+                    </button>
+                </td>
             `;
             
             soldAssetsTbody.appendChild(row);
@@ -1075,6 +1082,75 @@ async function renderSoldAssets() {
     } catch (error) {
         console.error('Error rendering sold assets:', error);
         soldAssetsLoading.classList.add('hidden');
-        soldAssetsTbody.innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-4">Error loading sold assets</td></tr>';
+        soldAssetsTbody.innerHTML = '<tr><td colspan="9" class="text-center text-red-400 py-4">Error loading sold assets</td></tr>';
     }
 }
+
+// Filter sell transactions for a specific asset
+function filterSellTransactions(symbol, assetType) {
+    const transactions = loadTransactions();
+    const sellTransactions = transactions.filter(tx => 
+        tx.assetType === assetType && 
+        tx.symbol === symbol && 
+        tx.type === 'sell'
+    );
+    
+    if (sellTransactions.length === 0) {
+        showNotification(`No sell transactions found for ${symbol}`, 'info');
+        return;
+    }
+    
+    // Create a modal to display the filtered transactions
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+        <div class="glass-chart-container p-6 rounded-xl shadow-lg w-full max-w-4xl mx-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-blue-400">Sell Transactions for ${symbol}</h3>
+                <button onclick="this.closest('.fixed').remove()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-600">
+                            <th class="text-left py-2 px-2 text-gray-300">Date</th>
+                            <th class="text-left py-2 px-2 text-gray-300">Type</th>
+                            <th class="text-left py-2 px-2 text-gray-300">Quantity</th>
+                            <th class="text-left py-2 px-2 text-gray-300">Price</th>
+                            <th class="text-left py-2 px-2 text-gray-300">Total</th>
+                            <th class="text-left py-2 px-2 text-gray-300">Rate</th>
+                            <th class="text-left py-2 px-2 text-gray-300">Note</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sellTransactions.map(tx => {
+                            const priceDisplay = tx.originalPrice ? 
+                                `€${tx.price.toFixed(2)} ($${tx.originalPrice.toFixed(2)})` : 
+                                `€${tx.price.toFixed(2)}`;
+                            
+                            return `
+                                <tr class="border-b border-gray-700 hover:bg-gray-800/50">
+                                    <td class="py-2 px-2 text-gray-300">${new Date(tx.date).toLocaleDateString()}</td>
+                                    <td class="py-2 px-2 text-red-400 font-medium">${tx.type.toUpperCase()}</td>
+                                    <td class="py-2 px-2 text-gray-300">${tx.quantity}</td>
+                                    <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
+                                    <td class="py-2 px-2 text-gray-300">€${tx.total.toFixed(2)}</td>
+                                    <td class="py-2 px-2 text-gray-300">${tx.historicalRate ? tx.historicalRate.toFixed(4) : '--'}</td>
+                                    <td class="py-2 px-2 text-gray-400">${tx.note || '--'}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4 text-sm text-gray-400">
+                Total: ${sellTransactions.length} sell transaction${sellTransactions.length !== 1 ? 's' : ''}
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+}
+
+// Make the function globally available
+window.filterSellTransactions = filterSellTransactions;

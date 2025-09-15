@@ -303,17 +303,17 @@ async function fetchCurrentPriceForSoldAsset(assetType, symbol) {
     
     // Check if we have a recent cached price
     if (soldAssetsCache[cacheKey] && (now - soldAssetsCache[cacheKey].timestamp) < cacheExpiry) {
-        return soldAssetsCache[cacheKey].price;
+        return soldAssetsCache[cacheKey].price; // Already in EUR
     }
     
     try {
-        let price = null;
+        let priceUSD = null;
         
         if (assetType === 'stocks' || assetType === 'etfs') {
             // Use existing price cache or fetch new price
             const existingPrice = priceCache[assetType][symbol];
             if (existingPrice && existingPrice.price) {
-                price = existingPrice.price;
+                priceUSD = existingPrice.price; // This is already in EUR from the cache
             } else {
                 // Fetch from Finnhub
                 const apiKey = getApiKey('finnhub');
@@ -321,7 +321,7 @@ async function fetchCurrentPriceForSoldAsset(assetType, symbol) {
                     const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`);
                     const data = await response.json();
                     if (data && data.c) {
-                        price = data.c;
+                        priceUSD = data.c; // This is in USD, needs conversion
                     }
                 }
             }
@@ -329,27 +329,42 @@ async function fetchCurrentPriceForSoldAsset(assetType, symbol) {
             // Use existing price cache or fetch new price
             const existingPrice = priceCache.crypto[symbol];
             if (existingPrice && existingPrice.price) {
-                price = existingPrice.price;
+                priceUSD = existingPrice.price; // This is already in EUR from the cache
             } else {
                 // Fetch from CoinGecko
                 const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd`);
                 const data = await response.json();
                 if (data && data[symbol] && data[symbol].usd) {
-                    price = data[symbol].usd;
+                    priceUSD = data[symbol].usd; // This is in USD, needs conversion
                 }
             }
         }
         
-        if (price) {
-            // Cache the price
+        if (priceUSD) {
+            // Convert USD to EUR if needed
+            let priceEUR = priceUSD;
+            
+            // Check if the price is from cache (already in EUR) or from API (in USD)
+            const existingPrice = assetType === 'crypto' ? 
+                priceCache.crypto[symbol] : 
+                priceCache[assetType] && priceCache[assetType][symbol];
+            
+            if (!existingPrice) {
+                // Price is from API (in USD), convert to EUR
+                priceEUR = priceUSD / eurUsdRate;
+            }
+            
+            // Cache the price in EUR
             soldAssetsCache[cacheKey] = {
-                price: price,
+                price: priceEUR,
                 timestamp: now
             };
             saveSoldAssetsCache();
+            
+            return priceEUR;
         }
         
-        return price;
+        return null;
     } catch (error) {
         console.error(`Error fetching current price for ${symbol}:`, error);
         return null;
@@ -388,23 +403,26 @@ function getSoldAssetsAnalysis(transactions, assetType) {
     // Process each asset that has sells
     Object.values(assetGroups).forEach(asset => {
         if (asset.sells.length > 0) {
-            // Calculate total sold quantity and average sell price
+            // Calculate total sold quantity and average sell price in EUR
             let totalSoldQuantity = 0;
-            let totalSoldValue = 0;
-            let totalSoldValueUSD = 0;
+            let totalSoldValueEUR = 0;
             let sellDates = [];
             
             asset.sells.forEach(sell => {
                 totalSoldQuantity += sell.quantity;
-                totalSoldValue += sell.total;
-                sellDates.push(sell.date);
                 
-                // Use original USD value if available
-                if (sell.originalPrice) {
-                    totalSoldValueUSD += sell.originalPrice * sell.quantity;
-                } else {
-                    totalSoldValueUSD += sell.total * eurUsdRate;
+                // Convert to EUR if the transaction was originally in USD
+                let sellValueEUR = sell.total;
+                if (sell.originalPrice && sell.historicalRate) {
+                    // Use historical rate to convert original USD to EUR
+                    sellValueEUR = (sell.originalPrice * sell.quantity) / sell.historicalRate;
+                } else if (sell.originalPrice && !sell.historicalRate) {
+                    // Fallback to current rate if no historical rate
+                    sellValueEUR = (sell.originalPrice * sell.quantity) / eurUsdRate;
                 }
+                
+                totalSoldValueEUR += sellValueEUR;
+                sellDates.push(sell.date);
             });
             
             // Sort sell dates and create date range
@@ -413,9 +431,9 @@ function getSoldAssetsAnalysis(transactions, assetType) {
             const lastSellDate = sellDates[sellDates.length - 1];
             const sellDateRange = sellDates.length === 1 ? firstSellDate : `${firstSellDate} - ${lastSellDate}`;
             
-            // Calculate average cost basis using FIFO
+            // Calculate average cost basis using FIFO in EUR
             let remainingBuys = [...asset.buys].sort((a, b) => new Date(a.date) - new Date(b.date));
-            let totalCostBasis = 0;
+            let totalCostBasisEUR = 0;
             let sellQuantity = totalSoldQuantity;
             
             while (sellQuantity > 0 && remainingBuys.length > 0) {
@@ -423,28 +441,41 @@ function getSoldAssetsAnalysis(transactions, assetType) {
                 const buyQuantity = buy.quantity;
                 
                 if (buyQuantity <= sellQuantity) {
-                    // Use original USD value if available
-                    if (buy.originalPrice) {
-                        totalCostBasis += buy.originalPrice * buy.quantity;
-                    } else {
-                        totalCostBasis += buy.total * eurUsdRate;
+                    // Convert to EUR if the transaction was originally in USD
+                    let buyValueEUR = buy.total;
+                    if (buy.originalPrice && buy.historicalRate) {
+                        // Use historical rate to convert original USD to EUR
+                        buyValueEUR = (buy.originalPrice * buy.quantity) / buy.historicalRate;
+                    } else if (buy.originalPrice && !buy.historicalRate) {
+                        // Fallback to current rate if no historical rate
+                        buyValueEUR = (buy.originalPrice * buy.quantity) / eurUsdRate;
                     }
+                    
+                    totalCostBasisEUR += buyValueEUR;
                     sellQuantity -= buyQuantity;
                     remainingBuys.shift();
                 } else {
                     // Partial buy
-                    if (buy.originalPrice) {
-                        totalCostBasis += buy.originalPrice * sellQuantity;
-                    } else {
-                        totalCostBasis += (buy.total * eurUsdRate) * (sellQuantity / buy.quantity);
+                    let buyValueEUR = buy.total;
+                    if (buy.originalPrice && buy.historicalRate) {
+                        // Use historical rate to convert original USD to EUR
+                        buyValueEUR = (buy.originalPrice * buy.quantity) / buy.historicalRate;
+                    } else if (buy.originalPrice && !buy.historicalRate) {
+                        // Fallback to current rate if no historical rate
+                        buyValueEUR = (buy.originalPrice * buy.quantity) / eurUsdRate;
                     }
+                    
+                    totalCostBasisEUR += buyValueEUR * (sellQuantity / buy.quantity);
                     sellQuantity = 0;
                 }
             }
             
-            const averageSellPrice = totalSoldValueUSD / totalSoldQuantity;
-            const averageCostBasis = totalCostBasis / totalSoldQuantity;
-            const realizedPnL = totalSoldValueUSD - totalCostBasis;
+            const averageSellPrice = totalSoldValueEUR / totalSoldQuantity;
+            const averageCostBasis = totalCostBasisEUR / totalSoldQuantity;
+            const realizedPnL = totalSoldValueEUR - totalCostBasisEUR;
+            
+            // Debug logging for sold assets analysis
+            console.log(`🔍 [Sold Assets] ${asset.symbol}: Sell Value: ${totalSoldValueEUR.toFixed(2)} EUR, Cost Basis: ${totalCostBasisEUR.toFixed(2)} EUR, P&L: ${realizedPnL.toFixed(2)} EUR`);
             
             soldAssets.push({
                 symbol: asset.symbol,
