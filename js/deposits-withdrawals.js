@@ -31,12 +31,12 @@ document.addEventListener('DOMContentLoaded', () => {
     transactionDateInput.value = new Date().toISOString().slice(0, 10);
     
     // Filter controls
-    const assetTypeFilter = document.getElementById('asset-type-filter');
+    const accountFilter = document.getElementById('account-filter');
     const noteSearch = document.getElementById('note-search');
     const clearFiltersBtn = document.getElementById('clear-filters-btn');
     
-    if (assetTypeFilter) {
-        assetTypeFilter.addEventListener('change', renderTransactionsList);
+    if (accountFilter) {
+        accountFilter.addEventListener('input', renderTransactionsList);
     }
     
     if (noteSearch) {
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (clearFiltersBtn) {
         clearFiltersBtn.addEventListener('click', () => {
-            if (assetTypeFilter) assetTypeFilter.value = '';
+            if (accountFilter) accountFilter.value = '';
             if (noteSearch) noteSearch.value = '';
             renderTransactionsList();
         });
@@ -61,7 +61,7 @@ function openTransactionModal(mode = 'add', tx = null) {
     const transactionModalTitle = document.getElementById('transaction-modal-title');
     const transactionIdInput = document.getElementById('transaction-id');
     const transactionTypeSelect = document.getElementById('transaction-type');
-    const transactionAssetTypeSelect = document.getElementById('transaction-asset-type');
+    const transactionAccountInput = document.getElementById('transaction-account');
     const transactionAmountInput = document.getElementById('transaction-amount');
     const transactionDateInput = document.getElementById('transaction-date');
     const transactionNoteInput = document.getElementById('transaction-note');
@@ -72,13 +72,13 @@ function openTransactionModal(mode = 'add', tx = null) {
     
     if (tx) {
         transactionTypeSelect.value = tx.type;
-        transactionAssetTypeSelect.value = tx.assetType;
+        transactionAccountInput.value = tx.account || '';
         transactionAmountInput.value = tx.amount;
         transactionDateInput.value = tx.date;
         transactionNoteInput.value = tx.note || '';
     } else {
         transactionTypeSelect.value = 'deposit';
-        transactionAssetTypeSelect.value = 'stocks';
+        transactionAccountInput.value = '';
         transactionAmountInput.value = '';
         transactionDateInput.value = new Date().toISOString().slice(0, 10);
         transactionNoteInput.value = '';
@@ -91,27 +91,12 @@ function closeTransactionModal() {
     document.getElementById('transaction-modal').classList.add('hidden');
 }
 
-// Separate storage functions for deposits/withdrawals
-function loadDepositTransactions() {
-    try {
-        const data = localStorage.getItem('portfolioPilotDeposits');
-        if (data) return JSON.parse(data);
-    } catch {}
-    return [];
-}
-
-function saveDepositTransactions(transactions) {
-    try {
-        localStorage.setItem('portfolioPilotDeposits', JSON.stringify(transactions));
-    } catch (e) {
-        console.error('Error saving deposit transactions:', e);
-    }
-}
+// Deposit/withdrawal functions are now in shared.js
 
 function saveTransaction() {
     const transactionIdInput = document.getElementById('transaction-id');
     const transactionTypeSelect = document.getElementById('transaction-type');
-    const transactionAssetTypeSelect = document.getElementById('transaction-asset-type');
+    const transactionAccountInput = document.getElementById('transaction-account');
     const transactionAmountInput = document.getElementById('transaction-amount');
     const transactionDateInput = document.getElementById('transaction-date');
     const transactionNoteInput = document.getElementById('transaction-note');
@@ -119,7 +104,7 @@ function saveTransaction() {
     const txData = {
         id: transactionIdInput.value ? parseInt(transactionIdInput.value) : Date.now(),
         type: transactionTypeSelect.value,
-        assetType: transactionAssetTypeSelect.value,
+        account: transactionAccountInput.value.trim(),
         amount: parseFloat(transactionAmountInput.value),
         date: transactionDateInput.value,
         note: transactionNoteInput.value.trim()
@@ -185,7 +170,7 @@ function renderTransactionsList() {
                 <td class="py-2 px-2">
                     <span class="${typeColor}">${typeIcon} ${tx.type.charAt(0).toUpperCase() + tx.type.slice(1)}</span>
                 </td>
-                <td class="py-2 px-2">${tx.assetType.charAt(0).toUpperCase() + tx.assetType.slice(1)}</td>
+                <td class="py-2 px-2">${tx.account || 'Unknown Account'}</td>
                 <td class="py-2 px-2 font-semibold">${formatCurrency(tx.amount, 'EUR')}</td>
                 <td class="py-2 px-2">${tx.date}</td>
                 <td class="py-2 px-2">${tx.note || '-'}</td>
@@ -201,12 +186,12 @@ function renderTransactionsList() {
 }
 
 function applyFilters(transactions) {
-    const assetTypeFilter = document.getElementById('asset-type-filter')?.value || '';
+    const accountFilter = document.getElementById('account-filter')?.value || '';
     const noteSearch = document.getElementById('note-search')?.value || '';
     
     return transactions.filter(tx => {
-        // Filter by asset type
-        if (assetTypeFilter && tx.assetType !== assetTypeFilter) {
+        // Filter by account
+        if (accountFilter && (!tx.account || !tx.account.toLowerCase().includes(accountFilter.toLowerCase()))) {
             return false;
         }
         
@@ -219,33 +204,38 @@ function applyFilters(transactions) {
     });
 }
 
+function getAccountTotals(transactions) {
+    const totals = {};
+    transactions.forEach(tx => {
+        const account = tx.account || 'Unknown Account';
+        if (!totals[account]) {
+            totals[account] = { deposit: 0, withdrawal: 0 };
+        }
+        if (tx.type === 'deposit') totals[account].deposit += tx.amount;
+        if (tx.type === 'withdrawal') totals[account].withdrawal += tx.amount;
+    });
+    return totals;
+}
+
 function renderDepositsSummary() {
     const depositsSummaryTable = document.getElementById('deposits-summary-table');
     if (!depositsSummaryTable) return;
     
     // Get deposit/withdrawal transactions from separate storage
     const transactions = loadDepositTransactions();
-    const totals = getTransactionTotals(transactions);
-    
-    const assetLabels = {
-        stocks: 'Stocks',
-        etfs: 'ETFs',
-        crypto: 'Crypto',
-        cs2: 'CS2'
-    };
+    const totals = getAccountTotals(transactions);
     
     let html = '';
-    Object.keys(assetLabels).forEach(type => {
-        // Ensure totals[type] exists, otherwise use default values
-        const typeTotals = totals[type] || { deposit: 0, withdrawal: 0 };
-        const dep = typeTotals.deposit || 0;
-        const wit = typeTotals.withdrawal || 0;
+    Object.keys(totals).sort().forEach(account => {
+        const accountTotals = totals[account];
+        const dep = accountTotals.deposit || 0;
+        const wit = accountTotals.withdrawal || 0;
         const net = dep - wit;
         const netClass = net >= 0 ? 'text-green-400' : 'text-red-400';
         
         html += `
             <tr class="border-b border-gray-700">
-                <td class="py-2 px-2 font-semibold">${assetLabels[type]}</td>
+                <td class="py-2 px-2 font-semibold">${account}</td>
                 <td class="py-2 px-2 text-green-300">${formatCurrency(dep, 'EUR')}</td>
                 <td class="py-2 px-2 text-red-300">${formatCurrency(wit, 'EUR')}</td>
                 <td class="py-2 px-2 ${netClass} font-bold">${formatCurrency(net, 'EUR')}</td>
@@ -329,6 +319,4 @@ function debugDepositSeparation() {
 // Make debug function available globally
 window.debugDepositSeparation = debugDepositSeparation;
 
-// Make deposit transaction functions available globally for dashboard
-window.loadDepositTransactions = loadDepositTransactions;
-window.saveDepositTransactions = saveDepositTransactions;
+// Deposit transaction functions are now available globally from shared.js
