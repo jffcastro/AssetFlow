@@ -442,16 +442,21 @@ function getSoldAssetsAnalysis(transactions, assetType) {
                 }
             }
             
-            const averageSellPrice = totalSoldValueUSD / totalSoldQuantity;
-            const averageCostBasis = totalCostBasis / totalSoldQuantity;
-            const realizedPnL = totalSoldValueUSD - totalCostBasis;
+            const averageSellPriceUSD = totalSoldValueUSD / totalSoldQuantity;
+            const averageCostBasisUSD = totalCostBasis / totalSoldQuantity;
+            const realizedPnLUSD = totalSoldValueUSD - totalCostBasis;
+            
+            // Convert to EUR for display
+            const averageSellPriceEUR = averageSellPriceUSD / eurUsdRate;
+            const averageCostBasisEUR = averageCostBasisUSD / eurUsdRate;
+            const realizedPnLEUR = realizedPnLUSD / eurUsdRate;
             
             soldAssets.push({
                 symbol: asset.symbol,
                 quantity: totalSoldQuantity,
-                averageSellPrice: averageSellPrice,
-                averageCostBasis: averageCostBasis,
-                realizedPnL: realizedPnL,
+                averageSellPrice: averageSellPriceEUR,
+                averageCostBasis: averageCostBasisEUR,
+                realizedPnL: realizedPnLEUR,
                 sellDate: sellDateRange,
                 sellDates: sellDates, // Keep individual dates for reference
                 currentPrice: null // Will be fetched separately
@@ -466,13 +471,15 @@ async function updateSoldAssetsWithCurrentPrices(soldAssets, assetType) {
     const updatedAssets = [];
     
     for (const asset of soldAssets) {
-        const currentPrice = await fetchCurrentPriceForSoldAsset(assetType, asset.symbol);
-        const ifHeldPnL = currentPrice ? (currentPrice - asset.averageCostBasis) * asset.quantity : null;
+        const currentPriceUSD = await fetchCurrentPriceForSoldAsset(assetType, asset.symbol);
+        // Convert current price to EUR for display
+        const currentPriceEUR = currentPriceUSD ? currentPriceUSD / eurUsdRate : null;
+        const ifHeldPnL = currentPriceEUR ? (currentPriceEUR - asset.averageCostBasis) * asset.quantity : null;
         const difference = ifHeldPnL !== null ? ifHeldPnL - asset.realizedPnL : null;
         
         updatedAssets.push({
             ...asset,
-            currentPrice: currentPrice,
+            currentPrice: currentPriceEUR,
             ifHeldPnL: ifHeldPnL,
             difference: difference
         });
@@ -2432,4 +2439,44 @@ window.getEncryptedItem = function(key) {
     // Use this for API keys, database credentials, and other sensitive information
     const encryptedValue = originalGetItem.call(localStorage, key);
     return encryptedValue ? decryptData(encryptedValue) : null;
+};
+
+// Debug function to test sold assets currency conversion
+window.debugSoldAssetsCurrency = function() {
+    console.log('=== SOLD ASSETS CURRENCY DEBUG ===');
+    console.log('Current EUR/USD rate:', eurUsdRate);
+    
+    const transactions = loadTransactions();
+    const stockTransactions = transactions.filter(tx => tx.assetType === 'stocks');
+    const cryptoTransactions = transactions.filter(tx => tx.assetType === 'crypto');
+    const etfTransactions = transactions.filter(tx => tx.assetType === 'etfs');
+    
+    console.log('Stock transactions:', stockTransactions.length);
+    console.log('Crypto transactions:', cryptoTransactions.length);
+    console.log('ETF transactions:', etfTransactions.length);
+    
+    // Test sold assets analysis for stocks
+    if (stockTransactions.length > 0) {
+        const soldStocks = getSoldAssetsAnalysis(stockTransactions, 'stocks');
+        console.log('Sold stocks analysis (should be in EUR):', soldStocks);
+    }
+    
+    // Test sold assets analysis for crypto
+    if (cryptoTransactions.length > 0) {
+        const soldCrypto = getSoldAssetsAnalysis(cryptoTransactions, 'crypto');
+        console.log('Sold crypto analysis (should be in EUR):', soldCrypto);
+    }
+    
+    // Test sold assets analysis for ETFs
+    if (etfTransactions.length > 0) {
+        const soldETFs = getSoldAssetsAnalysis(etfTransactions, 'etfs');
+        console.log('Sold ETFs analysis (should be in EUR):', soldETFs);
+    }
+    
+    return {
+        eurUsdRate,
+        stockCount: stockTransactions.length,
+        cryptoCount: cryptoTransactions.length,
+        etfCount: etfTransactions.length
+    };
 };
