@@ -1265,6 +1265,25 @@ function saveTransactions(transactions) {
     }
 }
 
+// Deposit/Withdrawal transaction functions
+function loadDepositTransactions() {
+    try {
+        const data = localStorage.getItem('portfolioPilotDeposits');
+        if (data) return JSON.parse(data);
+    } catch (e) {
+        console.error('Error loading deposit transactions:', e);
+    }
+    return [];
+}
+
+function saveDepositTransactions(transactions) {
+    try {
+        localStorage.setItem('portfolioPilotDeposits', JSON.stringify(transactions));
+    } catch (e) {
+        console.error('Error saving deposit transactions:', e);
+    }
+}
+
 function getTransactionTotals(transactions) {
     const types = ['stocks', 'etfs', 'crypto', 'cs2'];
     const totals = {};
