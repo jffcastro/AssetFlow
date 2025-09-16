@@ -321,7 +321,8 @@ async function fetchCurrentPriceForSoldAsset(assetType, symbol) {
                     const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`);
                     const data = await response.json();
                     if (data && data.c) {
-                        price = data.c;
+                        // Convert USD price to EUR
+                        price = data.c / eurUsdRate;
                     }
                 }
             }
@@ -335,7 +336,8 @@ async function fetchCurrentPriceForSoldAsset(assetType, symbol) {
                 const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd`);
                 const data = await response.json();
                 if (data && data[symbol] && data[symbol].usd) {
-                    price = data[symbol].usd;
+                    // Convert USD price to EUR
+                    price = data[symbol].usd / eurUsdRate;
                 }
             }
         }
@@ -415,21 +417,13 @@ function getSoldAssetsAnalysis(transactions, assetType) {
                 const buyQuantity = buy.quantity;
                 
                 if (buyQuantity <= sellQuantity) {
-                    // Use original USD value if available
-                    if (buy.originalPrice) {
-                        totalCostBasis += buy.originalPrice * buy.quantity;
-                    } else {
-                        totalCostBasis += buy.total * eurUsdRate;
-                    }
+                    // Use EUR total directly (already stored in EUR)
+                    totalCostBasis += buy.total;
                     sellQuantity -= buyQuantity;
                     remainingBuys.shift();
                 } else {
-                    // Partial buy
-                    if (buy.originalPrice) {
-                        totalCostBasis += buy.originalPrice * sellQuantity;
-                    } else {
-                        totalCostBasis += (buy.total * eurUsdRate) * (sellQuantity / buy.quantity);
-                    }
+                    // Partial buy - calculate proportional cost basis
+                    totalCostBasis += buy.total * (sellQuantity / buy.quantity);
                     sellQuantity = 0;
                 }
             }
@@ -458,9 +452,8 @@ async function updateSoldAssetsWithCurrentPrices(soldAssets, assetType) {
     const updatedAssets = [];
     
     for (const asset of soldAssets) {
-        const currentPriceUSD = await fetchCurrentPriceForSoldAsset(assetType, asset.symbol);
-        // Convert current price to EUR for display
-        const currentPriceEUR = currentPriceUSD ? currentPriceUSD / eurUsdRate : null;
+        const currentPriceEUR = await fetchCurrentPriceForSoldAsset(assetType, asset.symbol);
+        // Price is already in EUR from priceCache, no need to convert
         const ifHeldPnL = currentPriceEUR ? (currentPriceEUR - asset.averageCostBasis) * asset.quantity : null;
         const difference = ifHeldPnL !== null ? ifHeldPnL - asset.realizedPnL : null;
         
