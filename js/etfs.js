@@ -863,12 +863,12 @@ async function renderSoldAssets() {
             
             const formatCurrency = (value) => {
                 if (value === null || value === undefined) return '--';
-                return `$${value.toFixed(2)}`;
+                return `€${value.toFixed(2)}`;
             };
             
             const formatPnL = (value) => {
                 if (value === null || value === undefined) return '--';
-                const formatted = `$${Math.abs(value).toFixed(2)}`;
+                const formatted = `€${Math.abs(value).toFixed(2)}`;
                 return value >= 0 ? `+${formatted}` : `-${formatted}`;
             };
             

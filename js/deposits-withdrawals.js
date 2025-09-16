@@ -91,6 +91,23 @@ function closeTransactionModal() {
     document.getElementById('transaction-modal').classList.add('hidden');
 }
 
+// Separate storage functions for deposits/withdrawals
+function loadDepositTransactions() {
+    try {
+        const data = localStorage.getItem('portfolioPilotDeposits');
+        if (data) return JSON.parse(data);
+    } catch {}
+    return [];
+}
+
+function saveDepositTransactions(transactions) {
+    try {
+        localStorage.setItem('portfolioPilotDeposits', JSON.stringify(transactions));
+    } catch (e) {
+        console.error('Error saving deposit transactions:', e);
+    }
+}
+
 function saveTransaction() {
     const transactionIdInput = document.getElementById('transaction-id');
     const transactionTypeSelect = document.getElementById('transaction-type');
@@ -108,7 +125,7 @@ function saveTransaction() {
         note: transactionNoteInput.value.trim()
     };
     
-    let transactions = loadTransactions();
+    let transactions = loadDepositTransactions();
     
     if (transactionIdInput.value) {
         // Edit existing transaction
@@ -118,7 +135,7 @@ function saveTransaction() {
         transactions.push(txData);
     }
     
-    saveTransactions(transactions);
+    saveDepositTransactions(transactions);
     renderDepositsSummary();
     renderTransactionsList();
     closeTransactionModal();
@@ -127,8 +144,8 @@ function saveTransaction() {
 
 function deleteTransaction(id) {
     if (confirm('Are you sure you want to delete this transaction?')) {
-        let transactions = loadTransactions().filter(t => t.id != id);
-        saveTransactions(transactions);
+        let transactions = loadDepositTransactions().filter(t => t.id != id);
+        saveDepositTransactions(transactions);
         renderDepositsSummary();
         renderTransactionsList();
         showNotification('Transaction deleted successfully!', 'success');
@@ -140,11 +157,8 @@ function renderTransactionsList() {
     const transactionsCountSpan = document.getElementById('transactions-count');
     if (!transactionsListDiv) return;
     
-    // Get all transactions and filter out buy/sell transactions (only show deposit/withdrawal)
-    const allTransactions = loadTransactions();
-    const transactions = allTransactions.filter(tx => 
-        tx.type === 'deposit' || tx.type === 'withdrawal'
-    );
+    // Get deposit/withdrawal transactions from separate storage
+    const transactions = loadDepositTransactions();
     
     // Apply filters
     const filteredTransactions = applyFilters(transactions);
@@ -209,11 +223,8 @@ function renderDepositsSummary() {
     const depositsSummaryTable = document.getElementById('deposits-summary-table');
     if (!depositsSummaryTable) return;
     
-    // Filter out buy/sell transactions (only show deposit/withdrawal)
-    const allTransactions = loadTransactions();
-    const transactions = allTransactions.filter(tx => 
-        tx.type === 'deposit' || tx.type === 'withdrawal'
-    );
+    // Get deposit/withdrawal transactions from separate storage
+    const transactions = loadDepositTransactions();
     const totals = getTransactionTotals(transactions);
     
     const assetLabels = {
@@ -261,9 +272,63 @@ function renderDepositsSummary() {
 }
 
 function editTransaction(id) {
-    const transactions = loadTransactions();
+    const transactions = loadDepositTransactions();
     const tx = transactions.find(t => t.id == id);
     if (tx) {
         openTransactionModal('edit', tx);
     }
 }
+
+// Debug function to verify separation (can be called from browser console)
+function debugDepositSeparation() {
+    const buySellTransactions = loadTransactions();
+    const depositTransactions = loadDepositTransactions();
+    
+    console.log('=== DEPOSIT/WITHDRAWAL SEPARATION DEBUG ===');
+    console.log('Buy/Sell transactions (portfolioPilotTransactions):', buySellTransactions.length);
+    console.log('Deposit/Withdrawal transactions (portfolioPilotDeposits):', depositTransactions.length);
+    
+    const buySellTypes = buySellTransactions.reduce((acc, tx) => {
+        acc[tx.type] = (acc[tx.type] || 0) + 1;
+        return acc;
+    }, {});
+    
+    const depositTypes = depositTransactions.reduce((acc, tx) => {
+        acc[tx.type] = (acc[tx.type] || 0) + 1;
+        return acc;
+    }, {});
+    
+    console.log('Buy/Sell transaction types:', buySellTypes);
+    console.log('Deposit/Withdrawal transaction types:', depositTypes);
+    
+    // Check for any cross-contamination
+    const buySellDeposits = buySellTransactions.filter(tx => tx.type === 'deposit' || tx.type === 'withdrawal');
+    const depositBuySells = depositTransactions.filter(tx => tx.type === 'buy' || tx.type === 'sell');
+    
+    if (buySellDeposits.length > 0) {
+        console.warn('⚠️ Found deposit/withdrawal transactions in buy/sell storage:', buySellDeposits);
+    }
+    
+    if (depositBuySells.length > 0) {
+        console.warn('⚠️ Found buy/sell transactions in deposit storage:', depositBuySells);
+    }
+    
+    if (buySellDeposits.length === 0 && depositBuySells.length === 0) {
+        console.log('✅ Separation is working correctly!');
+    }
+    
+    return {
+        buySellCount: buySellTransactions.length,
+        depositCount: depositTransactions.length,
+        buySellTypes,
+        depositTypes,
+        separationWorking: buySellDeposits.length === 0 && depositBuySells.length === 0
+    };
+}
+
+// Make debug function available globally
+window.debugDepositSeparation = debugDepositSeparation;
+
+// Make deposit transaction functions available globally for dashboard
+window.loadDepositTransactions = loadDepositTransactions;
+window.saveDepositTransactions = saveDepositTransactions;

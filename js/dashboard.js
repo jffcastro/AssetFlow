@@ -1154,6 +1154,40 @@ function updateAutoUpdatesStatus() {
 // Export function for use in shared.js
 window.updateAutoUpdatesStatus = updateAutoUpdatesStatus;
 
+// Debug function to test cash flow logic
+window.debugCashFlow = function() {
+    console.log('=== CASH FLOW DEBUG ===');
+    
+    const depositTransactions = loadDepositTransactions();
+    console.log('Deposit transactions:', depositTransactions);
+    
+    let totalDeposits = 0;
+    let totalWithdrawals = 0;
+    
+    depositTransactions.forEach(transaction => {
+        if (transaction.type === 'deposit') {
+            totalDeposits += transaction.amount;
+        } else if (transaction.type === 'withdrawal') {
+            totalWithdrawals += transaction.amount;
+        }
+    });
+    
+    const netCashFlow = totalWithdrawals - totalDeposits;
+    
+    console.log('Total Deposits:', totalDeposits);
+    console.log('Total Withdrawals:', totalWithdrawals);
+    console.log('Net Cash Flow (withdrawals - deposits):', netCashFlow);
+    console.log('Should be GREEN if positive (money flowing INTO portfolio)');
+    console.log('Should be RED if negative (money flowing OUT of portfolio)');
+    
+    return {
+        totalDeposits,
+        totalWithdrawals,
+        netCashFlow,
+        color: netCashFlow >= 0 ? 'GREEN' : 'RED'
+    };
+};
+
 function updateDashboardStats() {
     const totalValue = calculateTotalValue();
     const breakdown = calculatePortfolioBreakdown();
@@ -1851,12 +1885,13 @@ function calculateRetirementProgress(history, transactions) {
 
 // --- CASH FLOW SUMMARY ---
 function updateCashFlowSummary() {
-    const transactions = loadTransactions();
+    // Use the new separate deposit/withdrawal storage
+    const depositTransactions = loadDepositTransactions();
     
     let totalDeposits = 0;
     let totalWithdrawals = 0;
     
-    transactions.forEach(transaction => {
+    depositTransactions.forEach(transaction => {
         if (transaction.type === 'deposit') {
             totalDeposits += transaction.amount;
         } else if (transaction.type === 'withdrawal') {
@@ -1864,7 +1899,10 @@ function updateCashFlowSummary() {
         }
     });
     
-    const netCashFlow = totalDeposits - totalWithdrawals;
+    // Net Cash Flow should be withdrawals - deposits
+    // Positive = money flowing INTO portfolio (withdrawals > deposits) = GREEN
+    // Negative = money flowing OUT of portfolio (deposits > withdrawals) = RED
+    const netCashFlow = totalWithdrawals - totalDeposits;
     
     // Update DOM elements
     const totalDepositsEl = document.getElementById('total-deposits');
