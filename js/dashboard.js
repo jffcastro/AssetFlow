@@ -176,9 +176,9 @@ function initializeMultiCurrencyChart() {
                     label: 'Portfolio (EUR) - Main Currency',
                     data: eurIndex,
                     borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
                     borderWidth: 4,
-                    fill: true,
+                    fill: false,
                     tension: 0.4,
                     pointRadius: 4,
                     pointHoverRadius: 6
