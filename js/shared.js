@@ -1670,6 +1670,8 @@ function exportAllData() {
                 // Core portfolio data
                 portfolio: JSON.parse(localStorage.getItem('portfolioPilotData') || '{}'),
                 transactions: JSON.parse(localStorage.getItem('portfolioPilotTransactions') || '[]'),
+                deposits: JSON.parse(localStorage.getItem('portfolioPilotDeposits') || '[]').filter(tx => tx.type === 'deposit'),
+                withdrawals: JSON.parse(localStorage.getItem('portfolioPilotDeposits') || '[]').filter(tx => tx.type === 'withdrawal'),
                 validatedHistory: JSON.parse(localStorage.getItem('portfolioPilotValidatedHistory') || '[]'),
                 
                 // Market data and rates
@@ -1762,8 +1764,30 @@ function importAllData(event) {
             if (backupData.data.portfolio) {
                 localStorage.setItem('portfolioPilotData', JSON.stringify(backupData.data.portfolio));
             }
+            // Restore buy/sell transactions
             if (backupData.data.transactions) {
                 localStorage.setItem('portfolioPilotTransactions', JSON.stringify(backupData.data.transactions));
+            }
+            
+            // Restore deposit/withdrawal transactions
+            if (backupData.data.deposits || backupData.data.withdrawals) {
+                // New format: separate deposits and withdrawals arrays
+                const deposits = backupData.data.deposits || [];
+                const withdrawals = backupData.data.withdrawals || [];
+                const allDepositTransactions = [...deposits, ...withdrawals];
+                localStorage.setItem('portfolioPilotDeposits', JSON.stringify(allDepositTransactions));
+            } else if (backupData.data.depositTransactions) {
+                // Fallback: single depositTransactions array
+                localStorage.setItem('portfolioPilotDeposits', JSON.stringify(backupData.data.depositTransactions));
+            } else if (backupData.data.transactions) {
+                // Fallback: handle old backup format with mixed transactions
+                const allTransactions = backupData.data.transactions;
+                const depositTransactions = allTransactions.filter(tx => 
+                    tx.type === 'deposit' || tx.type === 'withdrawal'
+                );
+                if (depositTransactions.length > 0) {
+                    localStorage.setItem('portfolioPilotDeposits', JSON.stringify(depositTransactions));
+                }
             }
             if (backupData.data.validatedHistory) {
                 localStorage.setItem('portfolioPilotValidatedHistory', JSON.stringify(backupData.data.validatedHistory));
@@ -2479,4 +2503,52 @@ window.debugSoldAssetsCurrency = function() {
         cryptoCount: cryptoTransactions.length,
         etfCount: etfTransactions.length
     };
+};
+
+// Debug function to test backup compatibility
+window.debugBackupCompatibility = function(backupData) {
+    console.log('=== BACKUP COMPATIBILITY DEBUG ===');
+    
+    if (!backupData || !backupData.data) {
+        console.error('Invalid backup data structure');
+        return;
+    }
+    
+    // Check for newest format (separate deposits and withdrawals arrays)
+    if (backupData.data.deposits || backupData.data.withdrawals) {
+        console.log('✅ Newest backup format detected (separate deposits and withdrawals arrays)');
+        console.log('Buy/Sell transactions:', backupData.data.transactions?.length || 0);
+        console.log('Deposits:', backupData.data.deposits?.length || 0);
+        console.log('Withdrawals:', backupData.data.withdrawals?.length || 0);
+        console.log('Sample buy transaction:', backupData.data.transactions?.[0]);
+        console.log('Sample deposit:', backupData.data.deposits?.[0]);
+        console.log('Sample withdrawal:', backupData.data.withdrawals?.[0]);
+    } else if (backupData.data.depositTransactions) {
+        console.log('✅ New backup format detected (single depositTransactions array)');
+        console.log('Buy/Sell transactions:', backupData.data.transactions?.length || 0);
+        console.log('Deposit/Withdrawal transactions:', backupData.data.depositTransactions?.length || 0);
+        console.log('Sample buy transaction:', backupData.data.transactions?.[0]);
+        console.log('Sample deposit transaction:', backupData.data.depositTransactions?.[0]);
+    } else if (backupData.data.transactions) {
+        // Check for old format (mixed transactions)
+        console.log('⚠️ Old backup format detected (mixed transactions)');
+        const allTransactions = backupData.data.transactions;
+        const buySellTransactions = allTransactions.filter(tx => 
+            tx.type === 'buy' || tx.type === 'sell' || tx.type === 'value_update'
+        );
+        const depositTransactions = allTransactions.filter(tx => 
+            tx.type === 'deposit' || tx.type === 'withdrawal'
+        );
+        
+        console.log('Total transactions in backup:', allTransactions.length);
+        console.log('Buy/Sell transactions:', buySellTransactions.length);
+        console.log('Deposit/Withdrawal transactions:', depositTransactions.length);
+        console.log('Sample buy transaction:', buySellTransactions[0]);
+        console.log('Sample deposit transaction:', depositTransactions[0]);
+    } else {
+        console.error('No transaction data found in backup');
+        return;
+    }
+    
+    console.log('✅ Backup is compatible with current system');
 };
