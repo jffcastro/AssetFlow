@@ -391,20 +391,12 @@ function getSoldAssetsAnalysis(transactions, assetType) {
             // Calculate total sold quantity and average sell price
             let totalSoldQuantity = 0;
             let totalSoldValue = 0;
-            let totalSoldValueUSD = 0;
             let sellDates = [];
             
             asset.sells.forEach(sell => {
                 totalSoldQuantity += sell.quantity;
                 totalSoldValue += sell.total;
                 sellDates.push(sell.date);
-                
-                // Use original USD value if available
-                if (sell.originalPrice) {
-                    totalSoldValueUSD += sell.originalPrice * sell.quantity;
-                } else {
-                    totalSoldValueUSD += sell.total * eurUsdRate;
-                }
             });
             
             // Sort sell dates and create date range
@@ -442,21 +434,16 @@ function getSoldAssetsAnalysis(transactions, assetType) {
                 }
             }
             
-            const averageSellPriceUSD = totalSoldValueUSD / totalSoldQuantity;
-            const averageCostBasisUSD = totalCostBasis / totalSoldQuantity;
-            const realizedPnLUSD = totalSoldValueUSD - totalCostBasis;
-            
-            // Convert to EUR for display
-            const averageSellPriceEUR = averageSellPriceUSD / eurUsdRate;
-            const averageCostBasisEUR = averageCostBasisUSD / eurUsdRate;
-            const realizedPnLEUR = realizedPnLUSD / eurUsdRate;
+            const averageSellPrice = totalSoldValue / totalSoldQuantity;
+            const averageCostBasis = totalCostBasis / totalSoldQuantity;
+            const realizedPnL = totalSoldValue - totalCostBasis;
             
             soldAssets.push({
                 symbol: asset.symbol,
                 quantity: totalSoldQuantity,
-                averageSellPrice: averageSellPriceEUR,
-                averageCostBasis: averageCostBasisEUR,
-                realizedPnL: realizedPnLEUR,
+                averageSellPrice: averageSellPrice,
+                averageCostBasis: averageCostBasis,
+                realizedPnL: realizedPnL,
                 sellDate: sellDateRange,
                 sellDates: sellDates, // Keep individual dates for reference
                 currentPrice: null // Will be fetched separately
