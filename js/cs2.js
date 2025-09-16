@@ -257,6 +257,7 @@ function savePortfolio(id) {
             currency: 'USD',
             originalPrice: value,
             originalCurrency: 'USD',
+            historicalRate: eurUsdRate, // Use current rate since it's a current value update
             previousValue: previousValue,
             currentValue: value,
             date: new Date().toISOString().split('T')[0],
