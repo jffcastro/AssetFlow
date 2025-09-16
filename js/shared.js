@@ -296,66 +296,17 @@ function calculateRealizedPnL(transactions) {
 }
 
 // --- SOLD ASSETS ANALYSIS ---
-async function fetchCurrentPriceForSoldAsset(assetType, symbol) {
-    const cacheKey = `${assetType}_${symbol}`;
-    const now = Date.now();
-    const cacheExpiry = 5 * 60 * 1000; // 5 minutes
-    
-    // Check if we have a recent cached price
-    if (soldAssetsCache[cacheKey] && (now - soldAssetsCache[cacheKey].timestamp) < cacheExpiry) {
-        return soldAssetsCache[cacheKey].price;
+function getCurrentPriceForSoldAsset(assetType, symbol) {
+    // Use the same priceCache that the assets tabs use
+    // This ensures we get exactly the same prices shown in the portfolio
+    if (assetType === 'stocks' || assetType === 'etfs') {
+        const cachedData = (priceCache[assetType] && priceCache[assetType][symbol]) || {};
+        return cachedData.price || null; // Price is already in EUR
+    } else if (assetType === 'crypto') {
+        const cachedData = (priceCache.crypto && priceCache.crypto[symbol]) || {};
+        return cachedData.price || null; // Price is already in EUR
     }
-    
-    try {
-        let price = null;
-        
-        if (assetType === 'stocks' || assetType === 'etfs') {
-            // Use existing price cache or fetch new price
-            const existingPrice = priceCache[assetType][symbol];
-            if (existingPrice && existingPrice.price) {
-                price = existingPrice.price;
-            } else {
-                // Fetch from Finnhub
-                const apiKey = getApiKey('finnhub');
-                if (apiKey) {
-                    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`);
-                    const data = await response.json();
-                    if (data && data.c) {
-                        // Convert USD price to EUR
-                        price = data.c / eurUsdRate;
-                    }
-                }
-            }
-        } else if (assetType === 'crypto') {
-            // Use existing price cache or fetch new price
-            const existingPrice = priceCache.crypto[symbol];
-            if (existingPrice && existingPrice.price) {
-                price = existingPrice.price;
-            } else {
-                // Fetch from CoinGecko
-                const response = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${symbol}&vs_currencies=usd`);
-                const data = await response.json();
-                if (data && data[symbol] && data[symbol].usd) {
-                    // Convert USD price to EUR
-                    price = data[symbol].usd / eurUsdRate;
-                }
-            }
-        }
-        
-        if (price) {
-            // Cache the price
-            soldAssetsCache[cacheKey] = {
-                price: price,
-                timestamp: now
-            };
-            saveSoldAssetsCache();
-        }
-        
-        return price;
-    } catch (error) {
-        console.error(`Error fetching current price for ${symbol}:`, error);
-        return null;
-    }
+    return null;
 }
 
 function getSoldAssetsAnalysis(transactions, assetType) {
@@ -448,11 +399,11 @@ function getSoldAssetsAnalysis(transactions, assetType) {
     return soldAssets;
 }
 
-async function updateSoldAssetsWithCurrentPrices(soldAssets, assetType) {
+function updateSoldAssetsWithCurrentPrices(soldAssets, assetType) {
     const updatedAssets = [];
     
     for (const asset of soldAssets) {
-        const currentPriceEUR = await fetchCurrentPriceForSoldAsset(assetType, asset.symbol);
+        const currentPriceEUR = getCurrentPriceForSoldAsset(assetType, asset.symbol);
         // Price is already in EUR from priceCache, no need to convert
         const ifHeldPnL = currentPriceEUR ? (currentPriceEUR - asset.averageCostBasis) * asset.quantity : null;
         const difference = ifHeldPnL !== null ? ifHeldPnL - asset.realizedPnL : null;

@@ -853,7 +853,7 @@ async function renderSoldAssets() {
         }
         
         // Update with current prices
-        const updatedAssets = await updateSoldAssetsWithCurrentPrices(soldAssets, 'etfs');
+        const updatedAssets = updateSoldAssetsWithCurrentPrices(soldAssets, 'etfs');
         
         // Render the table
         soldAssetsTbody.innerHTML = '';
