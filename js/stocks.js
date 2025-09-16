@@ -1026,7 +1026,7 @@ async function renderSoldAssets() {
         }
         
         // Update with current prices
-        const updatedAssets = await updateSoldAssetsWithCurrentPrices(soldAssets, 'stocks');
+        const updatedAssets = updateSoldAssetsWithCurrentPrices(soldAssets, 'stocks');
         
         // Render the table
         soldAssetsTbody.innerHTML = '';

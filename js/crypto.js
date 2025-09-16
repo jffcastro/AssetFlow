@@ -990,7 +990,7 @@ async function renderSoldAssets() {
         }
         
         // Update with current prices
-        const updatedAssets = await updateSoldAssetsWithCurrentPrices(soldAssets, 'crypto');
+        const updatedAssets = updateSoldAssetsWithCurrentPrices(soldAssets, 'crypto');
         
         // Render the table
         soldAssetsTbody.innerHTML = '';
