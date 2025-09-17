@@ -317,8 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     lastUpdate: null,
                     notes: null,
                     apiKeys: null,
-                    databaseConfig: null,
-                    userId: null,
                     usageStats: null
                 }
             };

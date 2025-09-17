@@ -1655,9 +1655,9 @@ function exportAllData() {
                     coinMarketCal: getEncryptedItem('portfolioPilotCoinMarketCal') ? '***CONFIGURED***' : null
                 },
                 
-                // Database configuration (encrypted)
-                databaseConfig: getEncryptedItem('assetflow_database_config'),
-                userId: getEncryptedItem('assetflow_user_id'),
+                // Database configuration (removed - no longer used)
+                databaseConfig: null,
+                userId: null,
                 
                 // Usage statistics
                 usageStats: {
@@ -1887,12 +1887,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteStorageBtn = document.getElementById('delete-storage-btn');
     if (deleteStorageBtn) {
         deleteStorageBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to delete all portfolio data? This will preserve your API keys and database configuration. This action cannot be undone.')) {
+            if (confirm('Are you sure you want to delete all portfolio data? This will preserve your API keys and theme settings. This action cannot be undone.')) {
                 // Get list of keys to preserve
-                const keysToPreserve = ['apiKeys', 'assetflow_database_config', 'assetflow_user_id', 'assetflow_theme'];
+                const keysToPreserve = ['apiKeys', 'assetflow_theme'];
                 const preservedData = {};
                 
-                // Store data temporarily (API keys and DB config are encrypted, others are plain)
+                // Store data temporarily (API keys are encrypted, others are plain)
                 keysToPreserve.forEach(key => {
                     const value = localStorage.getItem(key);
                     if (value) {
@@ -2417,14 +2417,14 @@ window.calculatePortfolioFromTransactions = calculatePortfolioFromTransactions;
 // Explicit encryption wrapper functions for sensitive data
 window.setEncryptedItem = function(key, value) {
     // This function explicitly encrypts sensitive data before storage
-    // Use this for API keys, database credentials, and other sensitive information
+    // Use this for API keys and other sensitive information
     const encryptedValue = encryptData(value);
     return originalSetItem.call(localStorage, key, encryptedValue);
 };
 
 window.getEncryptedItem = function(key) {
     // This function explicitly decrypts sensitive data after retrieval
-    // Use this for API keys, database credentials, and other sensitive information
+    // Use this for API keys and other sensitive information
     const encryptedValue = originalGetItem.call(localStorage, key);
     return encryptedValue ? decryptData(encryptedValue) : null;
 };
