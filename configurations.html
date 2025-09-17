@@ -44,7 +44,7 @@
         <!-- Page Title -->
         <div class="mb-6">
             <h2 class="text-3xl font-bold text-emerald-400 mb-2">Configurations</h2>
-            <p class="text-gray-400">Manage API keys and database settings for enhanced functionality</p>
+            <p class="text-gray-400">Manage API keys and portfolio data settings</p>
         </div>
 
         <!-- API Keys Section -->
@@ -103,79 +103,21 @@
             </div>
         </div>
 
-        <!-- Database Configuration Section -->
-        <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold text-emerald-400">Database Configuration</h3>
-                <div id="database-status" class="flex items-center gap-2">
-                    <div class="w-3 h-3 rounded-full bg-gray-500" id="status-indicator"></div>
-                    <span id="status-text" class="text-sm">Not Connected</span>
-                </div>
-            </div>
-            
-            <form id="database-config-form" class="space-y-4">
-                <div>
-                    <label for="supabase-url" class="block mb-2 text-sm font-medium">Supabase Project URL</label>
-                    <input type="url" id="supabase-url" placeholder="https://xxx.supabase.co" 
-                           class="w-full glass-input p-3 rounded-lg" required>
-                </div>
-                
-                <div>
-                    <label for="supabase-anon-key" class="block mb-2 text-sm font-medium">Supabase Anon Key</label>
-                    <input type="password" id="supabase-anon-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
-                           class="w-full glass-input p-3 rounded-lg" required>
-                </div>
-                
-                <div class="flex gap-3">
-                    <button type="submit" class="glass-button glass-button-primary flex-1">
-                        Save Configuration
-                    </button>
-                    <button type="button" id="test-connection-btn" class="glass-button glass-button-secondary">
-                        Test Connection
-                    </button>
-                    <button type="button" id="clear-config-btn" class="glass-button">
-                        Clear
-                    </button>
-                </div>
-            </form>
-        </div>
 
         <!-- Data Management Section -->
         <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold text-emerald-400">Data Management</h3>
-                <div class="text-sm text-gray-400">
-                    <span id="migration-status">Ready to migrate</span>
-                </div>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="p-4 glass-effect rounded-lg">
-                    <h4 class="font-medium mb-2">Cloud Migration</h4>
-                    <p class="text-sm text-gray-400 mb-3">Migrate your local data to the cloud</p>
-                    <button id="migrate-data-btn" class="glass-button glass-button-secondary w-full">
-                        Migrate to Cloud
-                    </button>
-                </div>
-                
-                <div class="p-4 glass-effect rounded-lg">
-                    <h4 class="font-medium mb-2">Backup & Restore</h4>
-                    <p class="text-sm text-gray-400 mb-3">Create backups or restore from cloud</p>
-                    <div class="space-y-2">
-                        <div class="flex gap-2">
-                            <button id="backup-data-btn" class="glass-button flex-1">
-                                Full Backup
-                            </button>
-                            <button id="restore-data-btn" class="glass-button flex-1">
-                                Restore
-                            </button>
-                        </div>
-                        <button id="selective-export-btn" class="glass-button glass-button-secondary w-full">
-                            Selective Export
-                        </button>
-                        <p class="text-xs text-gray-500 mt-1">Selective export includes only: transaction history, cash/savings accounts, CS2 portfolio, and deposits/withdrawals</p>
-                    </div>
-                </div>
+            <div class="p-4 glass-effect rounded-lg">
+                <h4 class="font-medium mb-2">Selective Export</h4>
+                <p class="text-sm text-gray-400 mb-3">Export only specific data types for focused backups</p>
+                <button id="selective-export-btn" class="glass-button glass-button-secondary w-full">
+                    Selective Export
+                </button>
+                <p class="text-xs text-gray-500 mt-1">Includes only: transaction history, cash/savings accounts, CS2 portfolio, and deposits/withdrawals</p>
+                <p class="text-xs text-gray-400 mt-2">For full backup/restore, use the buttons in the Dashboard header</p>
             </div>
             
             <!-- Historical Exchange Rates Migration -->
