@@ -161,13 +161,19 @@
                 <div class="p-4 glass-effect rounded-lg">
                     <h4 class="font-medium mb-2">Backup & Restore</h4>
                     <p class="text-sm text-gray-400 mb-3">Create backups or restore from cloud</p>
-                    <div class="flex gap-2">
-                        <button id="backup-data-btn" class="glass-button flex-1">
-                            Backup
+                    <div class="space-y-2">
+                        <div class="flex gap-2">
+                            <button id="backup-data-btn" class="glass-button flex-1">
+                                Full Backup
+                            </button>
+                            <button id="restore-data-btn" class="glass-button flex-1">
+                                Restore
+                            </button>
+                        </div>
+                        <button id="selective-export-btn" class="glass-button glass-button-secondary w-full">
+                            Selective Export
                         </button>
-                        <button id="restore-data-btn" class="glass-button flex-1">
-                            Restore
-                        </button>
+                        <p class="text-xs text-gray-500 mt-1">Selective export includes only: transaction history, cash/savings accounts, CS2 portfolio, and deposits/withdrawals</p>
                     </div>
                 </div>
             </div>
