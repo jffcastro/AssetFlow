@@ -48,6 +48,12 @@ document.addEventListener('DOMContentLoaded', () => {
     migrateDataBtn.addEventListener('click', migrateDataToCloud);
     backupDataBtn.addEventListener('click', backupData);
     restoreDataBtn.addEventListener('click', restoreData);
+    
+    // Selective export button
+    const selectiveExportBtn = document.getElementById('selective-export-btn');
+    if (selectiveExportBtn) {
+        selectiveExportBtn.addEventListener('click', exportSelectiveData);
+    }
 
     // ==================== API KEYS FUNCTIONS ====================
 
@@ -621,6 +627,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                // Recalculate portfolio from transactions (source of truth)
+                calculatePortfolioFromTransactions();
+                
                 showNotification('Data restored successfully!', 'success');
                 updateDatabaseStatus('connected');
 
@@ -975,9 +984,88 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // ==================== SELECTIVE EXPORT FUNCTIONS ====================
+
+    // Selective export function that only backs up specific data types
+    function exportSelectiveData() {
+        try {
+            // Get all transactions and filter by asset type
+            const allTransactions = JSON.parse(localStorage.getItem('portfolioPilotTransactions') || '[]');
+            const selectedTransactions = allTransactions.filter(tx => 
+                tx.assetType === 'stocks' || tx.assetType === 'etfs' || tx.assetType === 'crypto'
+            );
+            
+            // Get portfolio data and extract only static assets and CS2
+            const portfolioData = JSON.parse(localStorage.getItem('portfolioPilotData') || '{}');
+            const selectivePortfolio = {
+                static: portfolioData.static || [],
+                cs2: portfolioData.cs2 || {}
+            };
+            
+            // Get deposits and withdrawals
+            const depositsAndWithdrawals = JSON.parse(localStorage.getItem('portfolioPilotDeposits') || '[]');
+            
+            // Create backup in the same format as full backup for compatibility
+            const selectiveBackupData = {
+                version: '2.0',
+                timestamp: new Date().toISOString(),
+                description: 'Selective Portfolio Pilot backup - includes only transaction history, cash/savings accounts, CS2 portfolio, and deposits/withdrawals',
+                data: {
+                    // Portfolio data (only static assets and CS2)
+                    portfolio: selectivePortfolio,
+                    
+                    // Transaction history (stocks, ETFs, crypto only)
+                    transactions: selectedTransactions,
+                    
+                    // Deposits and withdrawals in the expected format
+                    deposits: depositsAndWithdrawals.filter(tx => tx.type === 'deposit'),
+                    withdrawals: depositsAndWithdrawals.filter(tx => tx.type === 'withdrawal'),
+                    
+                    // Include minimal required fields as null to maintain compatibility
+                    validatedHistory: null,
+                    priceCache: null,
+                    eurUsdRate: null,
+                    historicalRates: null,
+                    soldAssetsCache: null,
+                    cryptoRates: null,
+                    benchmarkData: null,
+                    benchmarkHistory: null,
+                    benchmarkDataByDate: null,
+                    stockEarnings: null,
+                    cryptoEvents: null,
+                    lastUpdate: null,
+                    notes: null,
+                    apiKeys: null,
+                    databaseConfig: null,
+                    userId: null,
+                    usageStats: null
+                }
+            };
+
+            // Create and download the backup file
+            const dataStr = JSON.stringify(selectiveBackupData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `portfolio-selective-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Selective portfolio backup created successfully!', 'success');
+        } catch (error) {
+            console.error('Error creating selective backup:', error);
+            showNotification('Error creating selective backup. Please try again.', 'error');
+        }
+    }
+
     // Export functions for use in other files
     window.getApiKey = getApiKey;
     window.trackApiUsage = trackApiUsage;
     window.debouncedSync = debouncedSync;
     window.smartSyncToCloud = smartSyncToCloud;
+    window.exportSelectiveData = exportSelectiveData;
 });

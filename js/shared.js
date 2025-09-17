@@ -1794,6 +1794,9 @@ function importAllData(event) {
                 if (backupData.data.usageStats.coinMarketCal) localStorage.setItem('portfolioPilotCoinMarketCalUsage', backupData.data.usageStats.coinMarketCal);
             }
             
+            // Recalculate portfolio from transactions (source of truth)
+            calculatePortfolioFromTransactions();
+            
             showNotification('Complete portfolio data restored successfully! Reloading page...', 'success');
             
             // Reload the page to apply the restored data
@@ -2131,10 +2134,21 @@ function getUpdateStatuses() {
 
 // Recalculate portfolio from transactions (source of truth)
 function calculatePortfolioFromTransactions() {
-    // Reset portfolio holdings
+    // Load current portfolio data from localStorage to preserve static assets and CS2
+    const currentPortfolioData = JSON.parse(localStorage.getItem('portfolioPilotData') || '{}');
+    
+    // Reset only the transaction-based holdings, preserve static assets and CS2
     portfolio.stocks = [];
     portfolio.etfs = [];
     portfolio.crypto = [];
+    
+    // Preserve static assets and CS2 data from the current portfolio
+    if (currentPortfolioData.static) {
+        portfolio.static = currentPortfolioData.static;
+    }
+    if (currentPortfolioData.cs2) {
+        portfolio.cs2 = currentPortfolioData.cs2;
+    }
 
     // Get all transactions
     const transactions = loadTransactions();
