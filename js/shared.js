@@ -297,16 +297,87 @@ function calculateRealizedPnL(transactions) {
 
 // --- SOLD ASSETS ANALYSIS ---
 function getCurrentPriceForSoldAsset(assetType, symbol) {
-    // Use the same priceCache that the assets tabs use
-    // This ensures we get exactly the same prices shown in the portfolio
+    // First check the main priceCache (for assets still in portfolio)
     if (assetType === 'stocks' || assetType === 'etfs') {
         const cachedData = (priceCache[assetType] && priceCache[assetType][symbol]) || {};
-        return cachedData.price || null; // Price is already in EUR
+        if (cachedData.price) {
+            return cachedData.price; // Price is already in EUR
+        }
     } else if (assetType === 'crypto') {
         const cachedData = (priceCache.crypto && priceCache.crypto[symbol]) || {};
-        return cachedData.price || null; // Price is already in EUR
+        if (cachedData.price) {
+            return cachedData.price; // Price is already in EUR
+        }
     }
+    
+    // If not in main cache, check sold assets cache
+    const soldAssetKey = `${assetType}_${symbol}`;
+    const soldAssetData = soldAssetsCache[soldAssetKey];
+    if (soldAssetData && soldAssetData.price) {
+        return soldAssetData.price; // Price is already in EUR
+    }
+    
     return null;
+}
+
+// Fetch prices for all sold assets
+async function fetchSoldAssetsPrices() {
+    try {
+        const transactions = JSON.parse(localStorage.getItem('portfolioPilotTransactions') || '[]');
+        const soldAssets = new Set(); // Use Set to avoid duplicates
+        
+        // Collect all unique sold assets from transactions
+        transactions.forEach(tx => {
+            if (tx.type === 'sell' && (tx.assetType === 'stocks' || tx.assetType === 'etfs' || tx.assetType === 'crypto')) {
+                soldAssets.add(`${tx.assetType}_${tx.symbol}`);
+            }
+        });
+        
+        if (soldAssets.size === 0) {
+            return; // No sold assets to fetch
+        }
+        
+        console.log(`Fetching prices for ${soldAssets.size} sold assets...`);
+        
+        // Fetch prices for each sold asset
+        const promises = Array.from(soldAssets).map(async (assetKey) => {
+            const [assetType, symbol] = assetKey.split('_');
+            
+            try {
+                let price = null;
+                
+                if (assetType === 'stocks' || assetType === 'etfs') {
+                    price = await fetchStockPrice(symbol);
+                } else if (assetType === 'crypto') {
+                    // For crypto, we need to determine the currency from transactions
+                    const cryptoTx = transactions.find(tx => tx.symbol === symbol && tx.assetType === 'crypto');
+                    const currency = cryptoTx?.currency || 'USD';
+                    price = await fetchCryptoPrice(symbol, currency);
+                }
+                
+                if (price) {
+                    // Store in sold assets cache
+                    soldAssetsCache[assetKey] = {
+                        price: price.price || price, // Handle both formats
+                        change24h: price.change24h || 0,
+                        timestamp: Date.now()
+                    };
+                }
+            } catch (error) {
+                console.error(`Error fetching price for sold asset ${assetKey}:`, error);
+            }
+        });
+        
+        await Promise.allSettled(promises);
+        
+        // Save the updated sold assets cache
+        saveSoldAssetsCache();
+        
+        console.log('Sold assets prices updated');
+        
+    } catch (error) {
+        console.error('Error fetching sold assets prices:', error);
+    }
 }
 
 function getSoldAssetsAnalysis(transactions, assetType) {
@@ -939,6 +1010,9 @@ async function fetchAllAssetPrices() {
             });
             await Promise.allSettled(cryptoPromises);
         }
+        
+        // Fetch prices for sold assets
+        await fetchSoldAssetsPrices();
         
         // Update last fetch time
         setLastUpdateTime();

@@ -334,6 +334,10 @@ async function updateEtfPrices() {
     
     await Promise.all(promises);
     savePriceCache();
+    
+    // Also update sold assets prices
+    await fetchSoldAssetsPrices();
+    
     renderEtfs();
     
     if (getEtfsPricesBtn) {
