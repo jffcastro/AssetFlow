@@ -397,6 +397,10 @@ async function updateStockPrices() {
     
     await Promise.all(promises);
     savePriceCache();
+    
+    // Also update sold assets prices (stocks only)
+    await fetchSoldAssetsPrices('stocks');
+    
     renderStocks();
     
     if (getStocksPricesBtn) {

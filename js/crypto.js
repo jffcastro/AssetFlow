@@ -353,6 +353,10 @@ async function updateCryptoPrices() {
     
     await Promise.all(promises);
     savePriceCache();
+    
+    // Also update sold assets prices (crypto only)
+    await fetchSoldAssetsPrices('crypto');
+    
     renderCrypto();
     
     if (getCryptoPricesBtn) {
