@@ -398,8 +398,8 @@ async function updateStockPrices() {
     await Promise.all(promises);
     savePriceCache();
     
-    // Also update sold assets prices
-    await fetchSoldAssetsPrices();
+    // Also update sold assets prices (stocks only)
+    await fetchSoldAssetsPrices('stocks');
     
     renderStocks();
     

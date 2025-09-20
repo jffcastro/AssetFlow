@@ -320,16 +320,19 @@ function getCurrentPriceForSoldAsset(assetType, symbol) {
     return null;
 }
 
-// Fetch prices for all sold assets
-async function fetchSoldAssetsPrices() {
+// Fetch prices for sold assets (optionally filtered by asset type)
+async function fetchSoldAssetsPrices(assetType = null) {
     try {
         const transactions = JSON.parse(localStorage.getItem('portfolioPilotTransactions') || '[]');
         const soldAssets = new Set(); // Use Set to avoid duplicates
         
-        // Collect all unique sold assets from transactions
+        // Collect unique sold assets from transactions
         transactions.forEach(tx => {
             if (tx.type === 'sell' && (tx.assetType === 'stocks' || tx.assetType === 'etfs' || tx.assetType === 'crypto')) {
-                soldAssets.add(`${tx.assetType}_${tx.symbol}`);
+                // If assetType is specified, only include that type
+                if (assetType === null || tx.assetType === assetType) {
+                    soldAssets.add(`${tx.assetType}_${tx.symbol}`);
+                }
             }
         });
         
@@ -337,18 +340,19 @@ async function fetchSoldAssetsPrices() {
             return; // No sold assets to fetch
         }
         
-        console.log(`Fetching prices for ${soldAssets.size} sold assets...`);
+        const typeText = assetType ? ` ${assetType}` : '';
+        console.log(`Fetching prices for ${soldAssets.size} sold${typeText} assets...`);
         
         // Fetch prices for each sold asset
         const promises = Array.from(soldAssets).map(async (assetKey) => {
-            const [assetType, symbol] = assetKey.split('_');
+            const [assetTypeKey, symbol] = assetKey.split('_');
             
             try {
                 let price = null;
                 
-                if (assetType === 'stocks' || assetType === 'etfs') {
+                if (assetTypeKey === 'stocks' || assetTypeKey === 'etfs') {
                     price = await fetchStockPrice(symbol);
-                } else if (assetType === 'crypto') {
+                } else if (assetTypeKey === 'crypto') {
                     // For crypto, we need to determine the currency from transactions
                     const cryptoTx = transactions.find(tx => tx.symbol === symbol && tx.assetType === 'crypto');
                     const currency = cryptoTx?.currency || 'USD';
@@ -373,7 +377,7 @@ async function fetchSoldAssetsPrices() {
         // Save the updated sold assets cache
         saveSoldAssetsCache();
         
-        console.log('Sold assets prices updated');
+        console.log(`Sold${typeText} assets prices updated`);
         
     } catch (error) {
         console.error('Error fetching sold assets prices:', error);
