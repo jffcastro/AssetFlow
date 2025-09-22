@@ -51,6 +51,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+    // New controls
+    const hideLowValueCheckbox = document.getElementById('hide-low-value');
+    const valueThresholdInput = document.getElementById('value-threshold');
+    const showAllTransactionsCheckbox = document.getElementById('show-all-transactions');
+    if (hideLowValueCheckbox) {
+        hideLowValueCheckbox.addEventListener('change', renderDepositsSummary);
+    }
+    
+    if (valueThresholdInput) {
+        valueThresholdInput.addEventListener('input', renderDepositsSummary);
+    }
+    
+    if (showAllTransactionsCheckbox) {
+        showAllTransactionsCheckbox.addEventListener('change', renderTransactionsList);
+    }
+    
     // Initial render
     renderTransactionsList();
     renderDepositsSummary();
@@ -148,20 +164,37 @@ function renderTransactionsList() {
     // Apply filters
     const filteredTransactions = applyFilters(transactions);
     
-    // Update count
-    if (transactionsCountSpan) {
-        transactionsCountSpan.textContent = filteredTransactions.length;
+    // Sort transactions by date (latest first) before limiting
+    filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // Check if we should limit to 10 transactions
+    const showAllTransactionsCheckbox = document.getElementById('show-all-transactions');
+    const showAll = showAllTransactionsCheckbox ? showAllTransactionsCheckbox.checked : false;
+    
+    let displayTransactions = filteredTransactions;
+    if (!showAll) {
+        displayTransactions = filteredTransactions.slice(0, 10);
     }
     
-    if (filteredTransactions.length === 0) {
+    // Update count
+    if (transactionsCountSpan) {
+        const totalCount = filteredTransactions.length;
+        const displayCount = displayTransactions.length;
+        if (showAll || totalCount <= 10) {
+            transactionsCountSpan.textContent = totalCount;
+        } else {
+            transactionsCountSpan.textContent = `${displayCount} of ${totalCount}`;
+        }
+    }
+    
+    if (displayTransactions.length === 0) {
         transactionsListDiv.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-400">No deposit/withdrawal transactions found.</td></tr>';
         return;
     }
     
     let html = '';
-    filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    filteredTransactions.forEach(tx => {
+    displayTransactions.forEach(tx => {
         const typeColor = tx.type === 'deposit' ? 'text-green-400' : 'text-red-400';
         const typeIcon = tx.type === 'deposit' ? '↗' : '↘';
         
@@ -225,19 +258,39 @@ function renderDepositsSummary() {
     const transactions = loadDepositTransactions();
     const totals = getAccountTotals(transactions);
     
+    // Get filter settings
+    const hideLowValueCheckbox = document.getElementById('hide-low-value');
+    const valueThresholdInput = document.getElementById('value-threshold');
+    const hideLowValue = hideLowValueCheckbox ? hideLowValueCheckbox.checked : false;
+    const threshold = valueThresholdInput ? parseFloat(valueThresholdInput.value) || 50 : 50;
+    
     let html = '';
-    Object.keys(totals).sort().forEach(account => {
+    let filteredAccounts = Object.keys(totals).sort();
+    
+    // Filter out low-value accounts if enabled
+    if (hideLowValue) {
+        filteredAccounts = filteredAccounts.filter(account => {
+            const accountTotals = totals[account];
+            const dep = accountTotals.deposit || 0;
+            const wit = accountTotals.withdrawal || 0;
+            const net = Math.abs(dep - wit);
+            return net >= threshold;
+        });
+    }
+    
+    // Render accounts
+    filteredAccounts.forEach(account => {
         const accountTotals = totals[account];
         const dep = accountTotals.deposit || 0;
         const wit = accountTotals.withdrawal || 0;
         const net = dep - wit;
-        const netClass = net >= 0 ? 'text-green-400' : 'text-red-400';
+        const netClass = net >= 0 ? 'text-red-400' : 'text-green-400';
         
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 font-semibold">${account}</td>
-                <td class="py-2 px-2 text-green-300">${formatCurrency(dep, 'EUR')}</td>
-                <td class="py-2 px-2 text-red-300">${formatCurrency(wit, 'EUR')}</td>
+                <td class="py-2 px-2 text-red-300">${formatCurrency(dep, 'EUR')}</td>
+                <td class="py-2 px-2 text-green-300">${formatCurrency(wit, 'EUR')}</td>
                 <td class="py-2 px-2 ${netClass} font-bold">${formatCurrency(net, 'EUR')}</td>
             </tr>
         `;
@@ -247,13 +300,13 @@ function renderDepositsSummary() {
     const totalDeposits = Object.values(totals).reduce((sum, t) => sum + t.deposit, 0);
     const totalWithdrawals = Object.values(totals).reduce((sum, t) => sum + t.withdrawal, 0);
     const totalNet = totalDeposits - totalWithdrawals;
-    const totalNetClass = totalNet >= 0 ? 'text-green-400' : 'text-red-400';
+    const totalNetClass = totalNet >= 0 ? 'text-red-400' : 'text-green-400';
     
     html += `
         <tr class="border-t-2 border-emerald-500 bg-gray-900">
             <td class="py-2 px-2 font-bold text-emerald-300">Total</td>
-            <td class="py-2 px-2 font-bold text-green-300">${formatCurrency(totalDeposits, 'EUR')}</td>
-            <td class="py-2 px-2 font-bold text-red-300">${formatCurrency(totalWithdrawals, 'EUR')}</td>
+            <td class="py-2 px-2 font-bold text-red-300">${formatCurrency(totalDeposits, 'EUR')}</td>
+            <td class="py-2 px-2 font-bold text-green-300">${formatCurrency(totalWithdrawals, 'EUR')}</td>
             <td class="py-2 px-2 font-bold ${totalNetClass}">${formatCurrency(totalNet, 'EUR')}</td>
         </tr>
     `;
