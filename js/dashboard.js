@@ -1911,13 +1911,15 @@ function updateCashFlowSummary() {
     
     if (totalDepositsEl) {
         totalDepositsEl.textContent = formatCurrency(totalDeposits, 'EUR');
+        totalDepositsEl.className = 'text-2xl font-bold text-red-400'; // Deposits are money out
     }
     if (totalWithdrawalsEl) {
         totalWithdrawalsEl.textContent = formatCurrency(totalWithdrawals, 'EUR');
+        totalWithdrawalsEl.className = 'text-2xl font-bold text-emerald-400'; // Withdrawals are money in
     }
     if (netCashFlowEl) {
         netCashFlowEl.textContent = formatCurrency(netCashFlow, 'EUR');
-        // Color code based on positive/negative
+        // Color code based on positive/negative (same logic: green for net in, red for net out)
         if (netCashFlow >= 0) {
             netCashFlowEl.className = 'text-2xl font-bold text-emerald-400';
         } else {
