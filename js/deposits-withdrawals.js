@@ -298,15 +298,43 @@ function renderDepositsSummary() {
         const groupNet = groupWit - groupDep;
         // Green for withdrawals (money in), red for deposits (money out)
         const groupNetClass = groupNet >= 0 ? 'text-green-400' : 'text-red-400';
+    
+    let html = '';
+    let filteredAccounts = Object.keys(totals).sort();
+    
+    // Filter out low-value accounts if enabled
+    if (hideLowValue) {
+        filteredAccounts = filteredAccounts.filter(account => {
+            const accountTotals = totals[account];
+            const dep = accountTotals.deposit || 0;
+            const wit = accountTotals.withdrawal || 0;
+            const net = Math.abs(dep - wit);
+            return net >= threshold;
+        });
+    }
+    
+    // Render accounts
+    filteredAccounts.forEach(account => {
+        const accountTotals = totals[account];
+        const dep = accountTotals.deposit || 0;
+        const wit = accountTotals.withdrawal || 0;
+        const net = dep - wit;
+        const netClass = net >= 0 ? 'text-red-400' : 'text-green-400';
+        
         html += `
             <tr class="border-b-2 border-emerald-500 bg-gray-800">
                 <td colspan="4" class="py-2 px-2 font-bold text-emerald-300">${label} (${groupAccounts.length} account${groupAccounts.length > 1 ? 's' : ''})</td>
             </tr>
             <tr class="border-b border-gray-700">
+
                 <td class="py-2 px-2 font-semibold">Group Total</td>
                 <td class="py-2 px-2 text-red-300">${formatCurrency(groupDep, 'EUR')}</td>
                 <td class="py-2 px-2 text-green-300">${formatCurrency(groupWit, 'EUR')}</td>
                 <td class="py-2 px-2 ${groupNetClass} font-bold">${formatCurrency(groupNet, 'EUR')}</td>
+                <td class="py-2 px-2 font-semibold">${account}</td>
+                <td class="py-2 px-2 text-red-300">${formatCurrency(dep, 'EUR')}</td>
+                <td class="py-2 px-2 text-green-300">${formatCurrency(wit, 'EUR')}</td>
+                <td class="py-2 px-2 ${netClass} font-bold">${formatCurrency(net, 'EUR')}</td>
             </tr>
         `;
         // Individual accounts in group
@@ -330,6 +358,9 @@ function renderDepositsSummary() {
     const totalNet = totalWithdrawals - totalDeposits;
     const totalNetClass = totalNet >= 0 ? 'text-green-400' : 'text-red-400';
 
+    const totalNet = totalDeposits - totalWithdrawals;
+    const totalNetClass = totalNet >= 0 ? 'text-red-400' : 'text-green-400';
+    
     html += `
         <tr class="border-t-2 border-emerald-500 bg-gray-900">
             <td class="py-2 px-2 font-bold text-emerald-300">Total</td>
