@@ -131,7 +131,7 @@
                     <canvas id="portfolio-multicurrency-chart"></canvas>
                 </div>
             </div>
-            
+
             <!-- Benchmark Comparison Chart -->
             <div class="glass-chart-container">
                 <h2 class="text-xl font-semibold mb-2">Portfolio vs Market Benchmarks</h2>
@@ -141,9 +141,21 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Correlation Matrix and Retirement Chart Section -->
+
+
+        <!-- Invested Assets vs Net Cash Flow and Correlation Matrix Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <!-- Invested Assets vs Net Cash Flow Chart -->
+            <div class="glass-chart-container">
+                <h2 class="text-xl font-semibold mb-2">Invested Assets vs Net Cash Flow</h2>
+                <p class="text-sm text-gray-400 mb-4">
+                    This chart compares your invested assets (portfolio value minus cash & savings) with your cumulative net cash flow over time. The delta line shows the difference between investment growth and your own contributions.
+                </p>
+                <div class="h-72">
+                    <canvas id="invested-vs-cashflow-chart"></canvas>
+                </div>
+            </div>
+
             <!-- Correlation Matrix Chart -->
             <div class="glass-chart-container">
                 <h2 class="text-xl font-semibold mb-2">Asset Correlation Matrix</h2>
@@ -152,42 +164,39 @@
                     <canvas id="correlation-matrix-chart"></canvas>
                 </div>
             </div>
-            
-            <!-- Portfolio Growth Projections -->
-            <div class="glass-chart-container">
-                <h2 class="text-xl font-semibold mb-2">Portfolio Growth Projections</h2>
-                <p class="text-sm text-gray-400 mb-4">Projected growth until 2065 assuming 10% annual returns</p>
-                
-                <!-- Retirement Projection Controls -->
-                <div class="mb-4 p-3 glass-effect rounded-lg">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <!-- Monthly Contributions -->
-                        <div class="space-y-3">
-                            <div class="flex items-center gap-2">
-                                <label for="monthly-allocation-amount" class="text-sm font-medium text-gray-300">Monthly Contributions:</label>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="number" id="monthly-allocation-amount" value="0" min="0" step="50" class="w-24 px-2 py-1 glass-input text-sm">
-                                <span class="text-sm text-gray-400">€/month</span>
-                            </div>
+        </div>
+
+        <!-- Portfolio Growth Projections (full width) -->
+        <div class="glass-chart-container mb-6">
+            <h2 class="text-xl font-semibold mb-2">Portfolio Growth Projections</h2>
+            <p class="text-sm text-gray-400 mb-4">Projected growth until 2065 assuming 10% annual returns</p>
+            <!-- Retirement Projection Controls -->
+            <div class="mb-4 p-3 glass-effect rounded-lg">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Monthly Contributions -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <label for="monthly-allocation-amount" class="text-sm font-medium text-gray-300">Monthly Contributions:</label>
                         </div>
-                        
-                        <!-- Annual Returns -->
-                        <div class="space-y-3">
-                            <div class="flex items-center gap-2">
-                                <label for="annual-return-rate" class="text-sm font-medium text-gray-300">Annual Return Rate:</label>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <input type="number" id="annual-return-rate" value="10" min="0" max="30" step="0.5" class="w-20 px-2 py-1 glass-input text-sm">
-                                <span class="text-sm text-gray-400">%</span>
-                            </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="monthly-allocation-amount" value="0" min="0" step="50" class="w-24 px-2 py-1 glass-input text-sm">
+                            <span class="text-sm text-gray-400">€/month</span>
+                        </div>
+                    </div>
+                    <!-- Annual Returns -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-2">
+                            <label for="annual-return-rate" class="text-sm font-medium text-gray-300">Annual Return Rate:</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="annual-return-rate" value="10" min="0" max="30" step="0.5" class="w-20 px-2 py-1 glass-input text-sm">
+                            <span class="text-sm text-gray-400">%</span>
                         </div>
                     </div>
                 </div>
-                
-                <div class="h-64">
-                    <canvas id="retirement-chart"></canvas>
-                </div>
+            </div>
+            <div class="h-64">
+                <canvas id="retirement-chart"></canvas>
             </div>
         </div>
 
@@ -220,7 +229,10 @@
                 <div class="text-lg font-bold" id="dashboard-asset-count">0</div>
                 <div class="text-xs text-gray-400">Holdings</div>
             </div>
-            
+        </div>
+
+        <!-- Performance Summary Grid: Monthly, Yearly, and Avg Daily Return Side by Side -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <!-- Monthly Performance Summary -->
             <div class="metric-card">
                 <h3 class="text-sm font-semibold mb-2">Monthly Performance</h3>
@@ -229,7 +241,7 @@
                 </div>
                 <div class="text-xs text-gray-400 mt-2" id="monthly-performance-period">--</div>
             </div>
-            
+
             <!-- Yearly Performance Summary -->
             <div class="metric-card">
                 <h3 class="text-sm font-semibold mb-2">Yearly Performance</h3>
@@ -238,19 +250,18 @@
                 </div>
                 <div class="text-xs text-gray-400 mt-2" id="yearly-performance-period">--</div>
             </div>
-            
-        </div>
-        
-        
-        <!-- Performance Metrics Row -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+
             <!-- Average Daily Return Card -->
             <div class="metric-card">
                 <h3 class="text-sm font-semibold text-cyan-400 mb-1">Avg Daily Return</h3>
                 <div class="text-lg font-bold" id="avg-daily-return">--</div>
                 <div class="text-xs text-gray-400" id="daily-return-period">--</div>
             </div>
-            
+        </div>
+        
+        
+        <!-- Performance Metrics Row (excluding Avg Daily Return) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <!-- Best Day Card -->
             <div class="metric-card">
                 <h3 class="text-sm font-semibold text-emerald-400 mb-1">Best Day</h3>
@@ -300,16 +311,7 @@
         </div>
 
 
-        <!-- Invested Assets vs Net Cash Flow Chart -->
-        <div class="glass-chart-container mb-6">
-            <h2 class="text-xl font-semibold mb-2">Invested Assets vs Net Cash Flow</h2>
-            <p class="text-sm text-gray-400 mb-4">
-                This chart compares your invested assets (portfolio value minus cash & savings) with your cumulative net cash flow over time. The delta line shows the difference between investment growth and your own contributions.
-            </p>
-            <div class="h-72">
-                <canvas id="invested-vs-cashflow-chart"></canvas>
-            </div>
-        </div>
+
 
         <!-- Recent Activity -->
         <div class="glass-chart-container mb-6">
