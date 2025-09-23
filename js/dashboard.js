@@ -1,3 +1,109 @@
+// --- INVESTED ASSETS VS NET CASH FLOW CHART ---
+function initializeInvestedVsCashflowChart() {
+    const ctx = document.getElementById('invested-vs-cashflow-chart');
+    if (!ctx) return;
+
+    const validatedHistory = loadValidatedHistory();
+    if (validatedHistory.length === 0) return;
+
+    // Prepare date labels
+    const labels = validatedHistory.map(entry => entry.date);
+
+    // Invested assets = total - static (cash & savings)
+    const investedAssets = validatedHistory.map(entry => {
+        const total = entry.total || 0;
+        const cash = entry.static || 0;
+        return total - cash;
+    });
+
+    // Cumulative net cash flow up to each date
+    // We'll sum all deposit/withdrawal transactions up to each date
+    const depositTransactions = loadDepositTransactions();
+    let cumulativeNetCashFlow = [];
+    let runningNet = 0;
+    let txIdx = 0;
+    depositTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+    labels.forEach(date => {
+        // Add all transactions up to and including this date
+        while (txIdx < depositTransactions.length && depositTransactions[txIdx].date <= date) {
+            const tx = depositTransactions[txIdx];
+            if (tx.type === 'deposit') runningNet -= tx.amount;
+            if (tx.type === 'withdrawal') runningNet += tx.amount;
+            txIdx++;
+        }
+        cumulativeNetCashFlow.push(runningNet);
+    });
+
+    // Delta = invested assets + net cash flow (since net cash flow is withdrawals - deposits, and deposits are negative for the user)
+    const delta = investedAssets.map((val, i) => val + cumulativeNetCashFlow[i]);
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Invested Assets',
+                    data: investedAssets,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4
+                },
+                {
+                    label: 'Cumulative Net Cash Flow',
+                    data: cumulativeNetCashFlow,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4
+                },
+                {
+                    label: 'Delta (Growth Above Cash Flow)',
+                    data: delta,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: false,
+                    ticks: {
+                        callback: function(value) {
+                            return '€' + value.toLocaleString();
+                        }
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+}
 // Dashboard-specific functionality
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize charts
@@ -7,6 +113,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeBenchmarkComparisonChart();
     initializeCorrelationMatrixChart();
     initializeRetirementChart();
+
+    // Initialize invested vs net cash flow chart
+    initializeInvestedVsCashflowChart();
     
     // Setup retirement chart controls
     setupRetirementControls();
