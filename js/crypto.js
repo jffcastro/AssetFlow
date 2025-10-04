@@ -653,7 +653,7 @@ function handleBuyCrypto() {
         originalPrice: currency === 'USD' ? finalPrice : null,
         originalCurrency: currency === 'USD' ? 'USD' : null,
         date: date,
-        note: note || `Bought ${quantity} units of ${name} at €${priceInEur.toFixed(2)} per unit`,
+    note: note || `Bought ${quantity} units of ${name} at €${priceInEur.toFixed(8)} per unit`,
         timestamp: new Date().toISOString()
     };
     
@@ -719,7 +719,7 @@ function handleSellCrypto() {
         originalPrice: currency === 'USD' ? finalPrice : null,
         originalCurrency: currency === 'USD' ? 'USD' : null,
         date: date,
-        note: note || `Sold ${quantity} units of ${name} at €${priceInEur.toFixed(2)} per unit`,
+    note: note || `Sold ${quantity} units of ${name} at €${priceInEur.toFixed(8)} per unit`,
         timestamp: new Date().toISOString()
     };
     
@@ -759,7 +759,7 @@ function renderCryptoTransactions() {
         if (tx.originalPrice && tx.originalCurrency === 'USD') {
             const price = tx.price || 0;
             const originalPrice = tx.originalPrice || 0;
-            priceDisplay = `€${price.toFixed(2)} ($${originalPrice.toFixed(2)})`;
+            priceDisplay = `€${price.toFixed(8)} ($${originalPrice.toFixed(8)})`;
         }
         
         html += `
@@ -1004,12 +1004,12 @@ async function renderSoldAssets() {
             
             const formatCurrency = (value) => {
                 if (value === null || value === undefined) return '--';
-                return `€${value.toFixed(2)}`;
+                return `€${value.toFixed(8)}`;
             };
             
             const formatPnL = (value) => {
                 if (value === null || value === undefined) return '--';
-                const formatted = `€${Math.abs(value).toFixed(2)}`;
+                const formatted = `€${Math.abs(value).toFixed(8)}`;
                 return value >= 0 ? `+${formatted}` : `-${formatted}`;
             };
             
