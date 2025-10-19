@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     stockModal.addEventListener('click', (e) => {
         if (e.target === stockModal) closeStockModal();
     });
-    tbody.innerHTML = html;
     
     stockForm.addEventListener('submit', (e) => {
         e.preventDefault();
