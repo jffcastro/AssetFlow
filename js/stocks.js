@@ -828,7 +828,6 @@ function renderStockTransactions() {
     }
 
     // --- Realized P&L per sell transaction ---
-    // --- Realized P&L per sell transaction (FIFO) ---
     function calculateSellPnL(transactions, sellTx) {
         // Only consider buys before this sell
         const buys = transactions.filter(tx => tx.assetType === 'stocks' && tx.symbol === sellTx.symbol && tx.type === 'buy' && new Date(tx.date) <= new Date(sellTx.date));
