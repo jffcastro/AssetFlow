@@ -618,7 +618,7 @@ function handleBuyCrypto() {
     }
     
     // Validate that either price or total is provided
-    if (!price && !total) {
+     if ((price === null || price === undefined || isNaN(price)) && (total === null || total === undefined || isNaN(total))) {
         showNotification('Please provide either price per unit or total amount', 'error');
         return;
     }
