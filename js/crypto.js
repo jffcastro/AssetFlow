@@ -869,7 +869,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const date = document.getElementById('edit-crypto-transaction-date').value;
             const note = document.getElementById('edit-crypto-transaction-note').value.trim();
             
-            if (!name || !quantity || !price || !total || !date) {
+            if (!name || isNaN(quantity) || isNaN(price) || isNaN(total) || !date) {
                 showNotification('Please fill in all fields', 'error');
                 return;
             }
