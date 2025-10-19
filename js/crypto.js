@@ -869,7 +869,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const date = document.getElementById('edit-crypto-transaction-date').value;
             const note = document.getElementById('edit-crypto-transaction-note').value.trim();
             
-            if (!name || !quantity || !price || !total || !date) {
+            if (!name || isNaN(quantity) || isNaN(price) || isNaN(total) || !date) {
                 showNotification('Please fill in all fields', 'error');
                 return;
             }
@@ -1001,40 +1001,34 @@ async function renderSoldAssets() {
         updatedAssets.forEach(asset => {
             const row = document.createElement('tr');
             row.className = 'hover:bg-gray-800/50';
-            
             const formatCurrency = (value) => {
                 if (value === null || value === undefined) return '--';
                 return `€${value.toFixed(8)}`;
             };
-            
             const formatPnL = (value) => {
                 if (value === null || value === undefined) return '--';
                 const formatted = `€${Math.abs(value).toFixed(8)}`;
                 return value >= 0 ? `+${formatted}` : `-${formatted}`;
             };
-            
             const formatDate = (dateStr) => {
                 if (dateStr.includes(' - ')) {
-                    // Date range format
                     const [start, end] = dateStr.split(' - ');
                     return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`;
                 } else {
-                    // Single date format
                     return new Date(dateStr).toLocaleDateString();
                 }
             };
-            
             row.innerHTML = `
                 <td class="py-3 px-3 font-medium">${asset.symbol}</td>
                 <td class="py-3 px-3">${asset.quantity}</td>
                 <td class="py-3 px-3">${formatCurrency(asset.averageSellPrice)}</td>
+                <td class="py-3 px-3">${formatCurrency(asset.buyPrice)}</td>
                 <td class="py-3 px-3">${formatCurrency(asset.currentPrice)}</td>
                 <td class="py-3 px-3 ${asset.realizedPnL >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.realizedPnL)}</td>
                 <td class="py-3 px-3 ${asset.ifHeldPnL >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.ifHeldPnL)}</td>
                 <td class="py-3 px-3 ${asset.difference >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.difference)}</td>
                 <td class="py-3 px-3 text-gray-400">${formatDate(asset.sellDate)}</td>
             `;
-            
             soldAssetsTbody.appendChild(row);
         });
         

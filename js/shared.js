@@ -433,37 +433,39 @@ function getSoldAssetsAnalysis(transactions, assetType) {
             const lastSellDate = sellDates[sellDates.length - 1];
             const sellDateRange = sellDates.length === 1 ? firstSellDate : `${firstSellDate} - ${lastSellDate}`;
             
-            // Calculate average cost basis using FIFO
+            // Calculate average cost basis and FIFO buy price
             let remainingBuys = [...asset.buys].sort((a, b) => new Date(a.date) - new Date(b.date));
             let totalCostBasis = 0;
+            let totalBuyPrice = 0;
             let sellQuantity = totalSoldQuantity;
-            
+            let buyQtyMatched = 0;
             while (sellQuantity > 0 && remainingBuys.length > 0) {
                 const buy = remainingBuys[0];
                 const buyQuantity = buy.quantity;
-                
                 if (buyQuantity <= sellQuantity) {
-                    // Use EUR total directly (already stored in EUR)
                     totalCostBasis += buy.total;
+                    totalBuyPrice += buy.price * buyQuantity;
+                    buyQtyMatched += buyQuantity;
                     sellQuantity -= buyQuantity;
                     remainingBuys.shift();
                 } else {
-                    // Partial buy - calculate proportional cost basis
                     totalCostBasis += buy.total * (sellQuantity / buy.quantity);
+                    totalBuyPrice += buy.price * sellQuantity;
+                    buyQtyMatched += sellQuantity;
                     sellQuantity = 0;
                 }
             }
-            
             const averageSellPrice = totalSoldValue / totalSoldQuantity;
             const averageCostBasis = totalCostBasis / totalSoldQuantity;
             const realizedPnL = totalSoldValue - totalCostBasis;
-            
+            const fifoBuyPrice = buyQtyMatched > 0 ? totalBuyPrice / buyQtyMatched : null;
             soldAssets.push({
                 symbol: asset.symbol,
                 quantity: totalSoldQuantity,
                 averageSellPrice: averageSellPrice,
                 averageCostBasis: averageCostBasis,
                 realizedPnL: realizedPnL,
+                buyPrice: fifoBuyPrice,
                 sellDate: sellDateRange,
                 sellDates: sellDates, // Keep individual dates for reference
                 currentPrice: null // Will be fetched separately
