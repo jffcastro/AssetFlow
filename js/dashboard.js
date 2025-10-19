@@ -1300,6 +1300,20 @@ window.debugCashFlow = function() {
 function updateDashboardStats() {
     const totalValue = calculateTotalValue();
     const breakdown = calculatePortfolioBreakdown();
+    // Update total value percentage change (from first entry in history)
+    const totalChangeEl = document.getElementById('dashboard-total-change');
+    if (totalChangeEl) {
+        const validatedHistory = loadValidatedHistory();
+        let percentage = 0;
+        if (validatedHistory.length > 0) {
+            const firstValue = validatedHistory[0].eur || validatedHistory[0].total || 0;
+            if (firstValue > 0) {
+                percentage = ((totalValue - firstValue) / firstValue) * 100;
+            }
+        }
+        totalChangeEl.textContent = (percentage >= 0 ? '+' : '') + percentage.toFixed(2) + '%';
+        totalChangeEl.className = 'text-xs ' + (percentage >= 0 ? 'text-emerald-400' : 'text-red-400');
+    }
     
     // Update total value
     const totalValueEl = document.getElementById('dashboard-total-value');
