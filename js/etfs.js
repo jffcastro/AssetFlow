@@ -891,6 +891,7 @@ async function renderSoldAssets() {
                 <td class="py-3 px-3 font-medium">${asset.symbol}</td>
                 <td class="py-3 px-3">${asset.quantity}</td>
                 <td class="py-3 px-3">${formatCurrency(asset.averageSellPrice)}</td>
+                <td class="py-3 px-3">${formatCurrency(asset.buyPrice)}</td>
                 <td class="py-3 px-3">${formatCurrency(asset.currentPrice)}</td>
                 <td class="py-3 px-3 ${asset.realizedPnL >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.realizedPnL)}</td>
                 <td class="py-3 px-3 ${asset.ifHeldPnL >= 0 ? 'text-green-400' : 'text-red-400'}">${formatPnL(asset.ifHeldPnL)}</td>
