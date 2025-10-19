@@ -610,30 +610,80 @@ function handleSellEtf() {
 function renderEtfTransactions() {
     const tbody = document.getElementById('etf-transactions-tbody');
     if (!tbody) return;
-    
-    const transactions = loadTransactions().filter(tx => tx.assetType === 'etfs');
-    
+
+    // --- Filter UI ---
+    const filterContainer = document.getElementById('etf-transactions-filter-container');
+    if (filterContainer && !filterContainer.hasChildNodes()) {
+        // Year filter
+        const yearSelect = document.createElement('select');
+        yearSelect.id = 'etf-transactions-year-filter';
+        yearSelect.className = 'glass-button text-xs mr-2';
+        yearSelect.innerHTML = '<option value="">All Years</option>';
+        // Type filter
+        const typeSelect = document.createElement('select');
+        typeSelect.id = 'etf-transactions-type-filter';
+        typeSelect.className = 'glass-button text-xs mr-2';
+        typeSelect.innerHTML = '<option value="">All Types</option><option value="buy">Buy</option><option value="sell">Sell</option>';
+        filterContainer.appendChild(yearSelect);
+        filterContainer.appendChild(typeSelect);
+        yearSelect.addEventListener('change', renderEtfTransactions);
+        typeSelect.addEventListener('change', renderEtfTransactions);
+    }
+
+    let transactions = loadTransactions().filter(tx => tx.assetType === 'etfs');
+
+    // --- Filtering ---
+    const yearFilter = document.getElementById('etf-transactions-year-filter');
+    const typeFilter = document.getElementById('etf-transactions-type-filter');
+    if (yearFilter && yearFilter.value) {
+        transactions = transactions.filter(tx => new Date(tx.date).getFullYear().toString() === yearFilter.value);
+    }
+    if (typeFilter && typeFilter.value) {
+        transactions = transactions.filter(tx => tx.type === typeFilter.value);
+    }
+
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No ETF transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-gray-400">No ETF transactions yet.</td></tr>';
         return;
     }
-    
+
     // Sort by date (newest first)
     transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
+    // --- Year options ---
+    if (yearFilter && yearFilter.options.length === 1) {
+        const years = [...new Set(loadTransactions().filter(tx => tx.assetType === 'etfs').map(tx => new Date(tx.date).getFullYear()))];
+        years.sort((a, b) => b - a);
+        years.forEach(year => {
+            const opt = document.createElement('option');
+            opt.value = year;
+            opt.textContent = year;
+            yearFilter.appendChild(opt);
+        });
+    }
+
+    // --- Realized P&L per sell transaction ---
+    const allTransactions = loadTransactions();
+    const { byAsset } = calculateRealizedPnL(allTransactions);
     let html = '';
     transactions.forEach(tx => {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
         const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
-        
-        // Format price display with original USD if available
         let priceDisplay = formatCurrency(tx.price, 'EUR');
         if (tx.originalPrice && tx.originalCurrency === 'USD') {
             const price = tx.price || 0;
             const originalPrice = tx.originalPrice || 0;
             priceDisplay = `€${price.toFixed(2)} ($${originalPrice.toFixed(2)})`;
         }
-        
+        let realizedPnLCell = '';
+        if (tx.type === 'sell') {
+            const assetKey = `etfs-${tx.symbol}`;
+            const realizedPnL = byAsset[assetKey] || 0;
+            const realizedPnLClass = realizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+            realizedPnLCell = `<td class="py-2 px-2 ${realizedPnLClass}">${formatCurrency(realizedPnL, 'EUR')}</td>`;
+        } else {
+            realizedPnLCell = `<td class="py-2 px-2">--</td>`;
+        }
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 text-gray-300">${new Date(tx.date).toLocaleDateString()}</td>
@@ -645,6 +695,7 @@ function renderEtfTransactions() {
                 <td class="py-2 px-2 text-gray-300">${tx.originalCurrency || 'EUR'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.historicalRate ? tx.historicalRate.toFixed(4) : '--'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
+                ${realizedPnLCell}
                 <td class="py-2 px-2">
                     <div class="flex gap-1">
                         <button onclick="editEtfTransaction('${tx.id}')" class="glass-button text-xs px-2 py-1" title="Edit">
@@ -658,7 +709,6 @@ function renderEtfTransactions() {
             </tr>
         `;
     });
-    
     tbody.innerHTML = html;
 }
 

@@ -738,30 +738,81 @@ function handleSellCrypto() {
 function renderCryptoTransactions() {
     const tbody = document.getElementById('crypto-transactions-tbody');
     if (!tbody) return;
-    
-    const transactions = loadTransactions().filter(tx => tx.assetType === 'crypto');
-    
+
+    // --- Filter UI ---
+    const filterContainer = document.getElementById('crypto-transactions-filter-container');
+    if (filterContainer && !filterContainer.hasChildNodes()) {
+        // Year filter
+        const yearSelect = document.createElement('select');
+        yearSelect.id = 'crypto-transactions-year-filter';
+        yearSelect.className = 'glass-button text-xs mr-2';
+        yearSelect.innerHTML = '<option value="">All Years</option>';
+        // Type filter
+        const typeSelect = document.createElement('select');
+        typeSelect.id = 'crypto-transactions-type-filter';
+        typeSelect.className = 'glass-button text-xs mr-2';
+        typeSelect.innerHTML = '<option value="">All Types</option><option value="buy">Buy</option><option value="sell">Sell</option>';
+        filterContainer.appendChild(yearSelect);
+        filterContainer.appendChild(typeSelect);
+        yearSelect.addEventListener('change', renderCryptoTransactions);
+        typeSelect.addEventListener('change', renderCryptoTransactions);
+    }
+
+    let transactions = loadTransactions().filter(tx => tx.assetType === 'crypto');
+
+    // --- Filtering ---
+    const yearFilter = document.getElementById('crypto-transactions-year-filter');
+    const typeFilter = document.getElementById('crypto-transactions-type-filter');
+    if (yearFilter && yearFilter.value) {
+        transactions = transactions.filter(tx => new Date(tx.date).getFullYear().toString() === yearFilter.value);
+    }
+    if (typeFilter && typeFilter.value) {
+        transactions = transactions.filter(tx => tx.type === typeFilter.value);
+    }
+
     if (transactions.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No crypto transactions yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11" class="text-center py-4 text-gray-400">No crypto transactions yet.</td></tr>';
         return;
     }
-    
+
     // Sort by date (newest first)
     transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
+    // --- Year options ---
+    if (yearFilter && yearFilter.options.length === 1) {
+        const years = [...new Set(loadTransactions().filter(tx => tx.assetType === 'crypto').map(tx => new Date(tx.date).getFullYear()))];
+        years.sort((a, b) => b - a);
+        years.forEach(year => {
+            const opt = document.createElement('option');
+            opt.value = year;
+            opt.textContent = year;
+            yearFilter.appendChild(opt);
+        });
+    }
+
+    // --- Realized P&L per sell transaction ---
+    const allTransactions = loadTransactions();
+    const { byAsset } = calculateRealizedPnL(allTransactions);
     let html = '';
     transactions.forEach(tx => {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
         const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
-        
-        // Format price display with original USD if available
         let priceDisplay = formatCurrency(tx.price, 'EUR');
         if (tx.originalPrice && tx.originalCurrency === 'USD') {
             const price = tx.price || 0;
             const originalPrice = tx.originalPrice || 0;
             priceDisplay = `€${price.toFixed(8)} ($${originalPrice.toFixed(8)})`;
         }
-        
+        // Realized P&L for sell
+        let realizedPnLCell = '';
+        if (tx.type === 'sell') {
+            const assetKey = `crypto-${tx.symbol}`;
+            const realizedPnL = byAsset[assetKey] || 0;
+            const realizedPnLClass = realizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+            realizedPnLCell = `<td class="py-2 px-2 ${realizedPnLClass}">${formatCurrency(realizedPnL, 'EUR')}</td>`;
+        } else {
+            realizedPnLCell = `<td class="py-2 px-2">--</td>`;
+        }
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 text-gray-300">${new Date(tx.date).toLocaleDateString()}</td>
@@ -773,6 +824,7 @@ function renderCryptoTransactions() {
                 <td class="py-2 px-2 text-gray-300">${tx.originalCurrency || 'EUR'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.historicalRate ? tx.historicalRate.toFixed(4) : '--'}</td>
                 <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
+                ${realizedPnLCell}
                 <td class="py-2 px-2">
                     <button onclick="editCryptoTransaction('${tx.id}')" class="glass-button text-xs px-2 py-1 mr-1">✏️</button>
                     <button onclick="deleteCryptoTransaction('${tx.id}')" class="glass-button glass-button-danger text-xs px-2 py-1">🗑️</button>
@@ -780,7 +832,6 @@ function renderCryptoTransactions() {
             </tr>
         `;
     });
-    
     tbody.innerHTML = html;
 }
 

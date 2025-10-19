@@ -317,8 +317,9 @@
             </button>
         </div>
         <div class="mb-4">
-            <input type="text" id="etf-transactions-filter" placeholder="Filter by Symbol or Note..." 
-                   class="w-full glass-input p-3 rounded-lg">
+         <div id="etf-transactions-filter-container" class="flex gap-2 mb-2"></div>
+         <input type="text" id="etf-transactions-filter" placeholder="Filter by Symbol or Note..." 
+             class="w-full glass-input p-3 rounded-lg">
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -333,6 +334,7 @@
                         <th class="text-left py-2 px-2 text-gray-300">Currency</th>
                         <th class="text-left py-2 px-2 text-gray-300">Rate</th>
                         <th class="text-left py-2 px-2 text-gray-300">Note</th>
+                        <th class="text-left py-2 px-2 text-gray-300">Realized P&L</th>
                         <th class="text-left py-2 px-2 text-gray-300">Actions</th>
                     </tr>
                 </thead>
