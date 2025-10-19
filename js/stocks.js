@@ -195,44 +195,6 @@ function deleteStock(id) {
         console.log('After deletion - transactions count:', updatedTransactions.length);
         saveTransactions(updatedTransactions);
         
-            let html = '';
-            transactions.forEach(tx => {
-                const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
-                const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
-                let priceDisplay = formatCurrency(tx.price, 'EUR');
-                if (tx.originalPrice && tx.originalCurrency === 'USD') {
-                    const price = tx.price || 0;
-                    const originalPrice = tx.originalPrice || 0;
-                    priceDisplay = '€' + price.toFixed(2) + ' ($' + originalPrice.toFixed(2) + ')';
-                }
-                let realizedPnLCell = '';
-                if (tx.type === 'sell') {
-                    const realizedPnL = calculateSellPnL(allTransactions, tx);
-                    const realizedPnLClass = realizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
-                    realizedPnLCell = '<td class="py-2 px-2 ' + realizedPnLClass + '">' + (realizedPnL !== null ? formatCurrency(realizedPnL, 'EUR') : '--') + '</td>';
-                } else {
-                    realizedPnLCell = '<td class="py-2 px-2">--</td>';
-                }
-                html += '<tr class="border-b border-gray-700">' +
-                    '<td class="py-2 px-2 text-gray-300">' + new Date(tx.date).toLocaleDateString() + '</td>' +
-                    '<td class="py-2 px-2 ' + typeColor + '">' + typeText + '</td>' +
-                    '<td class="py-2 px-2 text-white font-medium">' + tx.symbol + '</td>' +
-                    '<td class="py-2 px-2 text-gray-300">' + tx.quantity + '</td>' +
-                    '<td class="py-2 px-2 text-gray-300">' + priceDisplay + '</td>' +
-                    '<td class="py-2 px-2 text-gray-300">' + formatCurrency(tx.total, 'EUR') + '</td>' +
-                    '<td class="py-2 px-2 text-gray-300">' + (tx.originalCurrency || 'EUR') + '</td>' +
-                    '<td class="py-2 px-2 text-gray-300">' + (tx.historicalRate ? tx.historicalRate.toFixed(4) : '--') + '</td>' +
-                    '<td class="py-2 px-2 text-gray-300">' + (tx.note || '-') + '</td>' +
-                    realizedPnLCell +
-                    '<td class="py-2 px-2">' +
-                        '<div class="flex gap-1">' +
-                            '<button onclick="editStockTransaction(\'' + tx.id + '\')" class="glass-button text-xs px-2 py-1" title="Edit">✏️</button>' +
-                            '<button onclick="deleteStockTransaction(\'' + tx.id + '\')" class="glass-button glass-button-danger text-xs px-2 py-1" title="Delete">🗑️</button>' +
-                        '</div>' +
-                    '</td>' +
-                '</tr>';
-            });
-        tbody.innerHTML = html;
     
     // Second pass: render rows with allocation percentages
     portfolio.stocks.forEach(stock => {
