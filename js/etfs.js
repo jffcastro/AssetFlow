@@ -662,9 +662,28 @@ function renderEtfTransactions() {
         });
     }
 
-    // --- Realized P&L per sell transaction ---
+    // --- Realized P&L per sell transaction (FIFO) ---
+    function calculateSellPnL(transactions, sellTx) {
+        // Only consider buys before this sell
+        const buys = transactions.filter(tx => tx.assetType === 'etfs' && tx.symbol === sellTx.symbol && tx.type === 'buy' && new Date(tx.date) <= new Date(sellTx.date));
+        let remainingBuys = buys.map(buy => ({...buy})).sort((a, b) => new Date(a.date) - new Date(b.date));
+        let sellQty = sellTx.quantity;
+        let costBasis = 0;
+        let matchedQty = 0;
+        while (sellQty > 0 && remainingBuys.length > 0) {
+            const buy = remainingBuys[0];
+            const qtyToMatch = Math.min(buy.quantity, sellQty);
+            costBasis += buy.price * qtyToMatch;
+            matchedQty += qtyToMatch;
+            sellQty -= qtyToMatch;
+            buy.quantity -= qtyToMatch;
+            if (buy.quantity === 0) remainingBuys.shift();
+        }
+        if (matchedQty === 0) return null;
+        return sellTx.total - costBasis;
+    }
+
     const allTransactions = loadTransactions();
-    const { byAsset } = calculateRealizedPnL(allTransactions);
     let html = '';
     transactions.forEach(tx => {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
@@ -677,10 +696,9 @@ function renderEtfTransactions() {
         }
         let realizedPnLCell = '';
         if (tx.type === 'sell') {
-            const assetKey = `etfs-${tx.symbol}`;
-            const realizedPnL = byAsset[assetKey] || 0;
+            const realizedPnL = calculateSellPnL(allTransactions, tx);
             const realizedPnLClass = realizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
-            realizedPnLCell = `<td class="py-2 px-2 ${realizedPnLClass}">${formatCurrency(realizedPnL, 'EUR')}</td>`;
+            realizedPnLCell = `<td class="py-2 px-2 ${realizedPnLClass}">${realizedPnL !== null ? formatCurrency(realizedPnL, 'EUR') : '--'}</td>`;
         } else {
             realizedPnLCell = `<td class="py-2 px-2">--</td>`;
         }

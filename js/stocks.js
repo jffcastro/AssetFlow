@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     stockModal.addEventListener('click', (e) => {
         if (e.target === stockModal) closeStockModal();
     });
+    tbody.innerHTML = html;
     
     stockForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -195,52 +196,44 @@ function deleteStock(id) {
         console.log('After deletion - transactions count:', updatedTransactions.length);
         saveTransactions(updatedTransactions);
         
-        // Remove the stock from portfolio
-        portfolio.stocks = portfolio.stocks.filter(s => s.id != id);
-        saveData();
-        
-        // Recalculate portfolio from transactions (source of truth)
-        console.log('Recalculating portfolio from transactions...');
-        calculatePortfolioFromTransactions();
-        console.log('Portfolio after recalculation:', portfolio);
-        renderStocks();
-        renderStockTransactions(); // Refresh transaction history
-        showNotification('Stock and all associated transactions deleted successfully!', 'success');
-    }
-}
-
-function renderStocks() {
-    const stocksTbody = document.getElementById('stocks-tbody');
-    const stocksCount = document.getElementById('stocks-count');
-    if (!stocksTbody) return;
-    
-    console.log('Rendering stocks. Portfolio stocks:', portfolio.stocks);
-    
-    // Update count
-    if (stocksCount) {
-        stocksCount.textContent = portfolio.stocks.length;
-    }
-    
-    if (portfolio.stocks.length === 0) {
-        stocksTbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No stocks added yet.</td></tr>';
-        return;
-    }
-    
-    let html = '';
-    let totalValue = 0;
-    let totalPnl = 0;
-    
-    // First pass: calculate total values
-    portfolio.stocks.forEach(stock => {
-        const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
-        const currentPrice = cachedData.price || 0; // Price is already in EUR
-        const value = currentPrice * stock.quantity;
-        const purchaseValue = stock.purchasePrice * stock.quantity;
-        const pnl = value - purchaseValue;
-        
-        totalValue += value;
-        totalPnl += pnl;
-    });
+            let html = '';
+            transactions.forEach(tx => {
+                const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
+                const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
+                let priceDisplay = formatCurrency(tx.price, 'EUR');
+                if (tx.originalPrice && tx.originalCurrency === 'USD') {
+                    const price = tx.price || 0;
+                    const originalPrice = tx.originalPrice || 0;
+                    priceDisplay = '€' + price.toFixed(2) + ' ($' + originalPrice.toFixed(2) + ')';
+                }
+                let realizedPnLCell = '';
+                if (tx.type === 'sell') {
+                    const realizedPnL = calculateSellPnL(allTransactions, tx);
+                    const realizedPnLClass = realizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
+                    realizedPnLCell = '<td class="py-2 px-2 ' + realizedPnLClass + '">' + (realizedPnL !== null ? formatCurrency(realizedPnL, 'EUR') : '--') + '</td>';
+                } else {
+                    realizedPnLCell = '<td class="py-2 px-2">--</td>';
+                }
+                html += '<tr class="border-b border-gray-700">' +
+                    '<td class="py-2 px-2 text-gray-300">' + new Date(tx.date).toLocaleDateString() + '</td>' +
+                    '<td class="py-2 px-2 ' + typeColor + '">' + typeText + '</td>' +
+                    '<td class="py-2 px-2 text-white font-medium">' + tx.symbol + '</td>' +
+                    '<td class="py-2 px-2 text-gray-300">' + tx.quantity + '</td>' +
+                    '<td class="py-2 px-2 text-gray-300">' + priceDisplay + '</td>' +
+                    '<td class="py-2 px-2 text-gray-300">' + formatCurrency(tx.total, 'EUR') + '</td>' +
+                    '<td class="py-2 px-2 text-gray-300">' + (tx.originalCurrency || 'EUR') + '</td>' +
+                    '<td class="py-2 px-2 text-gray-300">' + (tx.historicalRate ? tx.historicalRate.toFixed(4) : '--') + '</td>' +
+                    '<td class="py-2 px-2 text-gray-300">' + (tx.note || '-') + '</td>' +
+                    realizedPnLCell +
+                    '<td class="py-2 px-2">' +
+                        '<div class="flex gap-1">' +
+                            '<button onclick="editStockTransaction(\'' + tx.id + '\')" class="glass-button text-xs px-2 py-1" title="Edit">✏️</button>' +
+                            '<button onclick="deleteStockTransaction(\'' + tx.id + '\')" class="glass-button glass-button-danger text-xs px-2 py-1" title="Delete">🗑️</button>' +
+                        '</div>' +
+                    '</td>' +
+                '</tr>';
+            });
+        tbody.innerHTML = html;
     
     // Second pass: render rows with allocation percentages
     portfolio.stocks.forEach(stock => {
@@ -836,8 +829,28 @@ function renderStockTransactions() {
     }
 
     // --- Realized P&L per sell transaction ---
+    // --- Realized P&L per sell transaction (FIFO) ---
+    function calculateSellPnL(transactions, sellTx) {
+        // Only consider buys before this sell
+        const buys = transactions.filter(tx => tx.assetType === 'stocks' && tx.symbol === sellTx.symbol && tx.type === 'buy' && new Date(tx.date) <= new Date(sellTx.date));
+        let remainingBuys = buys.map(buy => ({...buy})).sort((a, b) => new Date(a.date) - new Date(b.date));
+        let sellQty = sellTx.quantity;
+        let costBasis = 0;
+        let matchedQty = 0;
+        while (sellQty > 0 && remainingBuys.length > 0) {
+            const buy = remainingBuys[0];
+            const qtyToMatch = Math.min(buy.quantity, sellQty);
+            costBasis += buy.price * qtyToMatch;
+            matchedQty += qtyToMatch;
+            sellQty -= qtyToMatch;
+            buy.quantity -= qtyToMatch;
+            if (buy.quantity === 0) remainingBuys.shift();
+        }
+        if (matchedQty === 0) return null;
+        return sellTx.total - costBasis;
+    }
+
     const allTransactions = loadTransactions();
-    const { byAsset } = calculateRealizedPnL(allTransactions);
     let html = '';
     transactions.forEach(tx => {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
@@ -850,10 +863,9 @@ function renderStockTransactions() {
         }
         let realizedPnLCell = '';
         if (tx.type === 'sell') {
-            const assetKey = `stocks-${tx.symbol}`;
-            const realizedPnL = byAsset[assetKey] || 0;
+            const realizedPnL = calculateSellPnL(allTransactions, tx);
             const realizedPnLClass = realizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
-            realizedPnLCell = `<td class="py-2 px-2 ${realizedPnLClass}">${formatCurrency(realizedPnL, 'EUR')}</td>`;
+            realizedPnLCell = `<td class="py-2 px-2 ${realizedPnLClass}">${realizedPnL !== null ? formatCurrency(realizedPnL, 'EUR') : '--'}</td>`;
         } else {
             realizedPnLCell = `<td class="py-2 px-2">--</td>`;
         }

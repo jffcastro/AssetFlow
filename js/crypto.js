@@ -790,9 +790,28 @@ function renderCryptoTransactions() {
         });
     }
 
-    // --- Realized P&L per sell transaction ---
+    // --- Realized P&L per sell transaction (FIFO) ---
+    function calculateSellPnL(transactions, sellTx) {
+        // Only consider buys before this sell
+        const buys = transactions.filter(tx => tx.assetType === 'crypto' && tx.symbol === sellTx.symbol && tx.type === 'buy' && new Date(tx.date) <= new Date(sellTx.date));
+        let remainingBuys = buys.map(buy => ({...buy})).sort((a, b) => new Date(a.date) - new Date(b.date));
+        let sellQty = sellTx.quantity;
+        let costBasis = 0;
+        let matchedQty = 0;
+        while (sellQty > 0 && remainingBuys.length > 0) {
+            const buy = remainingBuys[0];
+            const qtyToMatch = Math.min(buy.quantity, sellQty);
+            costBasis += buy.price * qtyToMatch;
+            matchedQty += qtyToMatch;
+            sellQty -= qtyToMatch;
+            buy.quantity -= qtyToMatch;
+            if (buy.quantity === 0) remainingBuys.shift();
+        }
+        if (matchedQty === 0) return null;
+        return sellTx.total - costBasis;
+    }
+
     const allTransactions = loadTransactions();
-    const { byAsset } = calculateRealizedPnL(allTransactions);
     let html = '';
     transactions.forEach(tx => {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
@@ -806,28 +825,27 @@ function renderCryptoTransactions() {
         // Realized P&L for sell
         let realizedPnLCell = '';
         if (tx.type === 'sell') {
-            const assetKey = `crypto-${tx.symbol}`;
-            const realizedPnL = byAsset[assetKey] || 0;
+            const realizedPnL = calculateSellPnL(allTransactions, tx);
             const realizedPnLClass = realizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
-            realizedPnLCell = `<td class="py-2 px-2 ${realizedPnLClass}">${formatCurrency(realizedPnL, 'EUR')}</td>`;
+            realizedPnLCell = `<td class=\"py-2 px-2 ${realizedPnLClass}\">${realizedPnL !== null ? formatCurrency(realizedPnL, 'EUR') : '--'}</td>`;
         } else {
-            realizedPnLCell = `<td class="py-2 px-2">--</td>`;
+            realizedPnLCell = `<td class=\"py-2 px-2\">--</td>`;
         }
         html += `
-            <tr class="border-b border-gray-700">
-                <td class="py-2 px-2 text-gray-300">${new Date(tx.date).toLocaleDateString()}</td>
-                <td class="py-2 px-2 ${typeColor}">${typeText}</td>
-                <td class="py-2 px-2 text-white font-medium">${tx.symbol}</td>
-                <td class="py-2 px-2 text-gray-300">${tx.quantity.toFixed(8)}</td>
-                <td class="py-2 px-2 text-gray-300">${priceDisplay}</td>
-                <td class="py-2 px-2 text-gray-300">${formatCurrency(tx.total, 'EUR')}</td>
-                <td class="py-2 px-2 text-gray-300">${tx.originalCurrency || 'EUR'}</td>
-                <td class="py-2 px-2 text-gray-300">${tx.historicalRate ? tx.historicalRate.toFixed(4) : '--'}</td>
-                <td class="py-2 px-2 text-gray-300">${tx.note || '-'}</td>
+            <tr class=\"border-b border-gray-700\">
+                <td class=\"py-2 px-2 text-gray-300\">${new Date(tx.date).toLocaleDateString()}</td>
+                <td class=\"py-2 px-2 ${typeColor}\">${typeText}</td>
+                <td class=\"py-2 px-2 text-white font-medium\">${tx.symbol}</td>
+                <td class=\"py-2 px-2 text-gray-300\">${tx.quantity.toFixed(8)}</td>
+                <td class=\"py-2 px-2 text-gray-300\">${priceDisplay}</td>
+                <td class=\"py-2 px-2 text-gray-300\">${formatCurrency(tx.total, 'EUR')}</td>
+                <td class=\"py-2 px-2 text-gray-300\">${tx.originalCurrency || 'EUR'}</td>
+                <td class=\"py-2 px-2 text-gray-300\">${tx.historicalRate ? tx.historicalRate.toFixed(4) : '--'}</td>
+                <td class=\"py-2 px-2 text-gray-300\">${tx.note || '-'}</td>
                 ${realizedPnLCell}
-                <td class="py-2 px-2">
-                    <button onclick="editCryptoTransaction('${tx.id}')" class="glass-button text-xs px-2 py-1 mr-1">✏️</button>
-                    <button onclick="deleteCryptoTransaction('${tx.id}')" class="glass-button glass-button-danger text-xs px-2 py-1">🗑️</button>
+                <td class=\"py-2 px-2\">
+                    <button onclick=\"editCryptoTransaction('${tx.id}')\" class=\"glass-button text-xs px-2 py-1 mr-1\">✏️</button>
+                    <button onclick=\"deleteCryptoTransaction('${tx.id}')\" class=\"glass-button glass-button-danger text-xs px-2 py-1\">🗑️</button>
                 </td>
             </tr>
         `;
