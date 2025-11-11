@@ -983,9 +983,11 @@ async function renderSoldAssets() {
     soldAssetsTbody.innerHTML = '';
     
     try {
+        console.log('[renderSoldAssets] Starting render for crypto');
         // Get sold assets analysis
         const transactions = loadTransactions();
         const soldAssets = getSoldAssetsAnalysis(transactions, 'crypto');
+        console.log('[renderSoldAssets] soldAssets:', soldAssets);
         
         if (soldAssets.length === 0) {
             soldAssetsLoading.classList.add('hidden');
@@ -995,6 +997,7 @@ async function renderSoldAssets() {
         
         // Update with current prices
         const updatedAssets = updateSoldAssetsWithCurrentPrices(soldAssets, 'crypto');
+        console.log('[renderSoldAssets] updatedAssets:', updatedAssets);
         
         // Render the table
         soldAssetsTbody.innerHTML = '';

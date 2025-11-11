@@ -297,15 +297,21 @@ function calculateRealizedPnL(transactions) {
 
 // --- SOLD ASSETS ANALYSIS ---
 function getCurrentPriceForSoldAsset(assetType, symbol) {
+    console.log(`[getCurrentPriceForSoldAsset] Looking for ${assetType} ${symbol}`);
+    console.log(`[getCurrentPriceForSoldAsset] priceCache:`, priceCache);
+    console.log(`[getCurrentPriceForSoldAsset] soldAssetsCache:`, soldAssetsCache);
+    
     // First check the main priceCache (for assets still in portfolio)
     if (assetType === 'stocks' || assetType === 'etfs') {
         const cachedData = (priceCache[assetType] && priceCache[assetType][symbol]) || {};
         if (cachedData.price) {
+            console.log(`[getCurrentPriceForSoldAsset] Found in priceCache.${assetType}:`, cachedData.price);
             return cachedData.price; // Price is already in EUR
         }
     } else if (assetType === 'crypto') {
         const cachedData = (priceCache.crypto && priceCache.crypto[symbol]) || {};
         if (cachedData.price) {
+            console.log(`[getCurrentPriceForSoldAsset] Found in priceCache.crypto:`, cachedData.price);
             return cachedData.price; // Price is already in EUR
         }
     }
@@ -313,10 +319,13 @@ function getCurrentPriceForSoldAsset(assetType, symbol) {
     // If not in main cache, check sold assets cache
     const soldAssetKey = `${assetType}_${symbol}`;
     const soldAssetData = soldAssetsCache[soldAssetKey];
+    console.log(`[getCurrentPriceForSoldAsset] Checking soldAssetsCache[${soldAssetKey}]:`, soldAssetData);
     if (soldAssetData && soldAssetData.price) {
+        console.log(`[getCurrentPriceForSoldAsset] Found in soldAssetsCache:`, soldAssetData.price);
         return soldAssetData.price; // Price is already in EUR
     }
     
+    console.log(`[getCurrentPriceForSoldAsset] NOT FOUND for ${assetType} ${symbol}`);
     return null;
 }
 
@@ -361,11 +370,14 @@ async function fetchSoldAssetsPrices(assetType = null) {
                 
                 if (price) {
                     // Store in sold assets cache
+                    const priceValue = price.price || price;
+                    console.log(`[fetchSoldAssetsPrices] Storing ${assetKey}: price=${priceValue}, fullObject:`, price);
                     soldAssetsCache[assetKey] = {
-                        price: price.price || price, // Handle both formats
+                        price: priceValue, // Handle both formats
                         change24h: price.change24h || 0,
                         timestamp: Date.now()
                     };
+                    console.log(`[fetchSoldAssetsPrices] soldAssetsCache after store:`, soldAssetsCache);
                 }
             } catch (error) {
                 console.error(`Error fetching price for sold asset ${assetKey}:`, error);
@@ -477,10 +489,13 @@ function getSoldAssetsAnalysis(transactions, assetType) {
 }
 
 function updateSoldAssetsWithCurrentPrices(soldAssets, assetType) {
+    console.log(`[updateSoldAssetsWithCurrentPrices] Processing ${soldAssets.length} assets for ${assetType}`);
     const updatedAssets = [];
     
     for (const asset of soldAssets) {
+        console.log(`[updateSoldAssetsWithCurrentPrices] Processing asset:`, asset);
         const currentPriceEUR = getCurrentPriceForSoldAsset(assetType, asset.symbol);
+        console.log(`[updateSoldAssetsWithCurrentPrices] Got current price: ${currentPriceEUR}`);
         // Price is already in EUR from priceCache, no need to convert
         const ifHeldPnL = currentPriceEUR ? (currentPriceEUR - asset.averageCostBasis) * asset.quantity : null;
         const difference = ifHeldPnL !== null ? ifHeldPnL - asset.realizedPnL : null;
