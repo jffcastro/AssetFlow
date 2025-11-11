@@ -299,6 +299,14 @@ function calculateRealizedPnL(transactions) {
 function getCurrentPriceForSoldAsset(assetType, symbol) {
     console.log(`[getCurrentPriceForSoldAsset] Looking for ${assetType} ${symbol}`);
     
+    // Debug: Show all assets currently in portfolio for this type
+    if (portfolio[assetType]) {
+        const assetsInPortfolio = portfolio[assetType].map(a => a.name);
+        console.log(`[getCurrentPriceForSoldAsset] Assets in portfolio.${assetType}:`, assetsInPortfolio);
+    } else {
+        console.log(`[getCurrentPriceForSoldAsset] portfolio.${assetType} is empty or undefined`);
+    }
+    
     // Check if asset is still in active portfolio (partially sold)
     const isInPortfolio = portfolio[assetType] && portfolio[assetType].some(asset => asset.name === symbol);
     console.log(`[getCurrentPriceForSoldAsset] Is ${symbol} in active portfolio? ${isInPortfolio}`);
