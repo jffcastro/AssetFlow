@@ -298,31 +298,35 @@ function calculateRealizedPnL(transactions) {
 // --- SOLD ASSETS ANALYSIS ---
 function getCurrentPriceForSoldAsset(assetType, symbol) {
     console.log(`[getCurrentPriceForSoldAsset] Looking for ${assetType} ${symbol}`);
-    console.log(`[getCurrentPriceForSoldAsset] priceCache:`, priceCache);
-    console.log(`[getCurrentPriceForSoldAsset] soldAssetsCache:`, soldAssetsCache);
     
-    // First check the main priceCache (for assets still in portfolio)
-    if (assetType === 'stocks' || assetType === 'etfs') {
-        const cachedData = (priceCache[assetType] && priceCache[assetType][symbol]) || {};
-        if (cachedData.price) {
-            console.log(`[getCurrentPriceForSoldAsset] Found in priceCache.${assetType}:`, cachedData.price);
-            return cachedData.price; // Price is already in EUR
-        }
-    } else if (assetType === 'crypto') {
-        const cachedData = (priceCache.crypto && priceCache.crypto[symbol]) || {};
-        if (cachedData.price) {
-            console.log(`[getCurrentPriceForSoldAsset] Found in priceCache.crypto:`, cachedData.price);
-            return cachedData.price; // Price is already in EUR
+    // Check if asset is still in active portfolio (partially sold)
+    const isInPortfolio = portfolio[assetType] && portfolio[assetType].some(asset => asset.name === symbol);
+    console.log(`[getCurrentPriceForSoldAsset] Is ${symbol} in active portfolio? ${isInPortfolio}`);
+    
+    if (isInPortfolio) {
+        // Asset still in portfolio (partially sold) - use priceCache for consistency
+        if (assetType === 'stocks' || assetType === 'etfs') {
+            const cachedData = (priceCache[assetType] && priceCache[assetType][symbol]) || {};
+            if (cachedData.price) {
+                console.log(`[getCurrentPriceForSoldAsset] Using priceCache.${assetType} (partially sold):`, cachedData.price);
+                return cachedData.price;
+            }
+        } else if (assetType === 'crypto') {
+            const cachedData = (priceCache.crypto && priceCache.crypto[symbol]) || {};
+            if (cachedData.price) {
+                console.log(`[getCurrentPriceForSoldAsset] Using priceCache.crypto (partially sold):`, cachedData.price);
+                return cachedData.price;
+            }
         }
     }
     
-    // If not in main cache, check sold assets cache
+    // Asset NOT in portfolio (100% sold) - use soldAssetsCache
     const soldAssetKey = `${assetType}_${symbol}`;
     const soldAssetData = soldAssetsCache[soldAssetKey];
-    console.log(`[getCurrentPriceForSoldAsset] Checking soldAssetsCache[${soldAssetKey}]:`, soldAssetData);
+    console.log(`[getCurrentPriceForSoldAsset] Using soldAssetsCache[${soldAssetKey}] (fully sold):`, soldAssetData);
     if (soldAssetData && soldAssetData.price) {
-        console.log(`[getCurrentPriceForSoldAsset] Found in soldAssetsCache:`, soldAssetData.price);
-        return soldAssetData.price; // Price is already in EUR
+        console.log(`[getCurrentPriceForSoldAsset] Found price:`, soldAssetData.price);
+        return soldAssetData.price;
     }
     
     console.log(`[getCurrentPriceForSoldAsset] NOT FOUND for ${assetType} ${symbol}`);
