@@ -340,6 +340,12 @@ async function updateEtfPrices() {
     
     renderEtfs();
     
+    // Re-render sold assets if they're currently visible
+    const soldAssetsContainer = document.getElementById('sold-assets-container');
+    if (soldAssetsContainer && !soldAssetsContainer.classList.contains('hidden')) {
+        await renderSoldAssets();
+    }
+    
     if (getEtfsPricesBtn) {
         getEtfsPricesBtn.disabled = false;
         getEtfsPricesBtn.textContent = 'Update Prices';

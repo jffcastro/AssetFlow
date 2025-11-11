@@ -403,6 +403,12 @@ async function updateStockPrices() {
     
     renderStocks();
     
+    // Re-render sold assets if they're currently visible
+    const soldAssetsContainer = document.getElementById('sold-assets-container');
+    if (soldAssetsContainer && !soldAssetsContainer.classList.contains('hidden')) {
+        await renderSoldAssets();
+    }
+    
     if (getStocksPricesBtn) {
         getStocksPricesBtn.disabled = false;
         getStocksPricesBtn.textContent = 'Update Prices';
