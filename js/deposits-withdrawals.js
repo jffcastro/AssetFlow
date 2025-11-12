@@ -195,7 +195,7 @@ function renderTransactionsList() {
     let html = '';
     
     displayTransactions.forEach(tx => {
-        const typeColor = tx.type === 'deposit' ? 'text-green-400' : 'text-red-400';
+        const typeColor = tx.type === 'deposit' ? 'text-red-400' : 'text-green-400';
         const typeIcon = tx.type === 'deposit' ? '↗' : '↘';
         
         html += `
@@ -283,7 +283,7 @@ function renderDepositsSummary() {
         const dep = totals[account].deposit || 0;
         const wit = totals[account].withdrawal || 0;
         const net = Math.abs(dep - wit);
-        if (hideLowValue && net < threshold) return;
+        if (hideLowValue && dep < threshold) return;
         const label = accountLabels[account] || 'Ungrouped';
         if (!groups[label]) groups[label] = [];
         groups[label].push({ account, dep, wit, net });
