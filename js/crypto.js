@@ -6,14 +6,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const cryptoCancelBtn = document.getElementById('crypto-cancel-btn');
     const cryptoModalTitle = document.getElementById('crypto-modal-title');
     // Price update button removed - handled automatically from dashboard
-    
+
     const cryptoIdInput = document.getElementById('crypto-id');
     const cryptoNameInput = document.getElementById('crypto-name');
     const cryptoQuantityInput = document.getElementById('crypto-quantity');
     const cryptoPurchasePriceInput = document.getElementById('crypto-purchase-price');
     const cryptoCurrencySelect = document.getElementById('crypto-currency');
     const cryptoTbody = document.getElementById('crypto-tbody');
-    
+
     // Buy/Sell DOM elements
     const buyCryptoBtn = document.getElementById('buy-crypto-btn');
     const sellCryptoBtn = document.getElementById('sell-crypto-btn');
@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cryptoModal.addEventListener('click', (e) => {
         if (e.target === cryptoModal) closeCryptoModal();
     });
-    
+
     cryptoForm.addEventListener('submit', (e) => {
         e.preventDefault();
         saveCrypto();
@@ -50,44 +50,44 @@ document.addEventListener('DOMContentLoaded', () => {
     sellCryptoModal.addEventListener('click', (e) => {
         if (e.target === sellCryptoModal) closeSellCryptoModal();
     });
-    
+
     buyCryptoForm.addEventListener('submit', (e) => {
         e.preventDefault();
         handleBuyCrypto();
     });
-    
+
     sellCryptoForm.addEventListener('submit', (e) => {
         e.preventDefault();
         handleSellCrypto();
     });
-    
+
     refreshCryptoTransactionsBtn.addEventListener('click', renderCryptoTransactions);
     refreshCryptoEventsBtn.addEventListener('click', loadCryptoEvents);
     cryptoTransactionsFilter.addEventListener('input', filterCryptoTransactions);
-    
+
     // Set up auto-calculation for buy form
     setupAutoCalculation('buy-crypto-quantity', 'buy-crypto-price', 'buy-crypto-total');
-    
+
     // Set up auto-calculation for sell form
     setupAutoCalculation('sell-crypto-quantity', 'sell-crypto-price', 'sell-crypto-total');
-    
+
     // Price updates are now handled automatically from the dashboard
-    
+
     // Initial render
     renderCrypto();
     loadCryptoEvents();
-    
+
     // Sold Assets functionality
     const toggleSoldAssetsBtn = document.getElementById('toggle-sold-assets-btn');
     const refreshSoldAssetsBtn = document.getElementById('refresh-sold-assets-btn');
     const soldAssetsContainer = document.getElementById('sold-assets-container');
     const soldAssetsToggleText = document.getElementById('sold-assets-toggle-text');
-    
+
     let soldAssetsVisible = false;
-    
+
     toggleSoldAssetsBtn.addEventListener('click', async () => {
         soldAssetsVisible = !soldAssetsVisible;
-        
+
         if (soldAssetsVisible) {
             soldAssetsContainer.classList.remove('hidden');
             soldAssetsToggleText.textContent = 'Hide';
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             refreshSoldAssetsBtn.style.display = 'none';
         }
     });
-    
+
     refreshSoldAssetsBtn.addEventListener('click', async () => {
         await renderSoldAssets();
     });
@@ -113,11 +113,11 @@ function openCryptoModal(mode = 'add', crypto = null) {
     const cryptoQuantityInput = document.getElementById('crypto-quantity');
     const cryptoPurchasePriceInput = document.getElementById('crypto-purchase-price');
     const cryptoCurrencySelect = document.getElementById('crypto-currency');
-    
+
     cryptoForm.reset();
     cryptoModalTitle.textContent = mode === 'add' ? 'Add New Cryptocurrency' : 'Edit Cryptocurrency';
     cryptoIdInput.value = crypto ? crypto.id : '';
-    
+
     if (crypto) {
         cryptoNameInput.value = crypto.name;
         cryptoQuantityInput.value = crypto.quantity;
@@ -126,7 +126,7 @@ function openCryptoModal(mode = 'add', crypto = null) {
     } else {
         cryptoCurrencySelect.value = 'EUR';
     }
-    
+
     document.getElementById('crypto-modal').classList.remove('hidden');
 }
 
@@ -140,7 +140,7 @@ function saveCrypto() {
     const cryptoQuantityInput = document.getElementById('crypto-quantity');
     const cryptoPurchasePriceInput = document.getElementById('crypto-purchase-price');
     const cryptoCurrencySelect = document.getElementById('crypto-currency');
-    
+
     const cryptoData = {
         id: cryptoIdInput.value ? parseInt(cryptoIdInput.value) : Date.now(),
         name: cryptoNameInput.value,
@@ -148,7 +148,7 @@ function saveCrypto() {
         purchasePrice: parseFloat(cryptoPurchasePriceInput.value),
         currency: cryptoCurrencySelect.value
     };
-    
+
     if (cryptoIdInput.value) {
         // Edit existing crypto
         const index = portfolio.crypto.findIndex(c => c.id == cryptoIdInput.value);
@@ -159,7 +159,7 @@ function saveCrypto() {
         // Add new crypto
         portfolio.crypto.push(cryptoData);
     }
-    
+
     saveData();
     renderCrypto();
     closeCryptoModal();
@@ -174,16 +174,16 @@ function deleteCrypto(id) {
             showNotification('Cryptocurrency not found', 'error');
             return;
         }
-        
+
         // Remove all transactions for this crypto
         const transactions = loadTransactions();
         const updatedTransactions = transactions.filter(tx => !(tx.assetType === 'crypto' && tx.symbol === crypto.name));
         saveTransactions(updatedTransactions);
-        
+
         // Remove the crypto from portfolio
         portfolio.crypto = portfolio.crypto.filter(c => c.id != id);
         saveData();
-        
+
         // Recalculate portfolio from transactions (source of truth)
         calculatePortfolioFromTransactions();
         renderCrypto();
@@ -196,21 +196,21 @@ function renderCrypto() {
     const cryptoTbody = document.getElementById('crypto-tbody');
     const cryptoCount = document.getElementById('crypto-count');
     if (!cryptoTbody) return;
-    
+
     // Update count
     if (cryptoCount) {
         cryptoCount.textContent = portfolio.crypto.length;
     }
-    
+
     if (portfolio.crypto.length === 0) {
         cryptoTbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No cryptocurrencies added yet.</td></tr>';
         return;
     }
-    
+
     let html = '';
     let totalValue = 0;
     let totalPnl = 0;
-    
+
     // First pass: calculate total values
     portfolio.crypto.forEach(crypto => {
         const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
@@ -218,7 +218,7 @@ function renderCrypto() {
         const value = currentPrice * crypto.quantity;
         const purchaseValue = crypto.purchasePrice * crypto.quantity;
         const pnl = value - purchaseValue;
-        
+
         // Convert to EUR for total calculation
         let valueEur = value;
         let pnlEur = pnl;
@@ -226,11 +226,11 @@ function renderCrypto() {
             valueEur = value / eurUsdRate;
             pnlEur = pnl / eurUsdRate;
         }
-        
+
         totalValue += valueEur;
         totalPnl += pnlEur;
     });
-    
+
     // Second pass: render rows with allocation percentages
     portfolio.crypto.forEach(crypto => {
         const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
@@ -240,7 +240,7 @@ function renderCrypto() {
         const purchaseValue = crypto.purchasePrice * crypto.quantity;
         const pnl = value - purchaseValue;
         const pnlPercentage = purchaseValue > 0 ? (pnl / purchaseValue) * 100 : 0;
-        
+
         // Convert to EUR for total calculation
         let valueEur = value;
         let pnlEur = pnl;
@@ -248,31 +248,31 @@ function renderCrypto() {
             valueEur = value / eurUsdRate;
             pnlEur = pnl / eurUsdRate;
         }
-        
+
         const pnlClass = pnl >= 0 ? 'positive-gain' : 'negative-gain';
         const pnlSign = pnl >= 0 ? '+' : '';
-        
+
         // Calculate allocation percentage
         const allocationPercentage = totalValue > 0 ? (valueEur / totalValue) * 100 : 0;
-        
+
         // Format 24h change
         const change24hClass = change24h >= 0 ? 'text-emerald-400' : 'text-red-400';
         const change24hSign = change24h >= 0 ? '+' : '';
         const change24hDisplay = currentPrice > 0 ? `${change24hSign}${change24h.toFixed(2)}%` : '--';
-        
+
         // Calculate holding time
         const transactions = loadTransactions();
         const holdingTime = calculateHoldingTime(transactions, 'crypto', crypto.name);
-        const holdingTimeDisplay = holdingTime ? 
-            `${holdingTime.years > 0 ? holdingTime.years + 'y ' : ''}${holdingTime.months > 0 ? holdingTime.months + 'm ' : ''}${holdingTime.daysRemainder}d` : 
+        const holdingTimeDisplay = holdingTime ?
+            `${holdingTime.years > 0 ? holdingTime.years + 'y ' : ''}${holdingTime.months > 0 ? holdingTime.months + 'm ' : ''}${holdingTime.daysRemainder}d` :
             '--';
-        
+
         // Calculate realized P&L for this crypto
         const realizedPnL = calculateRealizedPnL(transactions);
         const cryptoRealizedPnL = realizedPnL.byAsset[`crypto-${crypto.name}`] || 0;
         const realizedPnLDisplay = cryptoRealizedPnL !== 0 ? formatCurrency(cryptoRealizedPnL, 'EUR') : '--';
         const realizedPnLClass = cryptoRealizedPnL >= 0 ? 'text-emerald-400' : 'text-red-400';
-        
+
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 font-semibold">
@@ -280,7 +280,7 @@ function renderCrypto() {
                         ${crypto.name}
                     </a>
                 </td>
-                <td class="py-2 px-2">${crypto.quantity}</td>
+                <td class="py-2 px-2">${formatQuantity(crypto.quantity)}</td>
                 <td class="py-2 px-2">${formatCurrency(crypto.purchasePrice, crypto.currency)}</td>
                 <td class="py-2 px-2">${currentPrice > 0 ? formatCurrency(currentPrice, crypto.currency) : '--'}</td>
                 <td class="py-2 px-2 ${change24hClass}">${change24hDisplay}</td>
@@ -297,13 +297,13 @@ function renderCrypto() {
             </tr>
         `;
     });
-    
+
     // Add total row
     if (portfolio.crypto.length > 0) {
         const totalPnlClass = totalPnl >= 0 ? 'positive-gain' : 'negative-gain';
         const totalPnlSign = totalPnl >= 0 ? '+' : '';
         const totalPnlPercentage = totalValue > 0 ? (totalPnl / (totalValue - totalPnl)) * 100 : 0;
-        
+
         html += `
             <tr class="border-t-2 border-emerald-500 bg-gray-900">
                 <td colspan="4" class="py-2 px-2 font-bold text-emerald-300">Total</td>
@@ -319,7 +319,7 @@ function renderCrypto() {
             </tr>
         `;
     }
-    
+
     cryptoTbody.innerHTML = html;
 }
 
@@ -336,7 +336,7 @@ async function updateCryptoPrices() {
         getCryptoPricesBtn.disabled = true;
         getCryptoPricesBtn.textContent = 'Updating...';
     }
-    
+
     let updatedCount = 0;
     const promises = portfolio.crypto.map(async (crypto) => {
         try {
@@ -350,40 +350,40 @@ async function updateCryptoPrices() {
             console.error(`Error fetching price for ${crypto.name}:`, error);
         }
     });
-    
+
     await Promise.all(promises);
     savePriceCache();
-    
+
     // Also update sold assets prices (crypto only)
     await fetchSoldAssetsPrices('crypto');
-    
+
     renderCrypto();
-    
+
     // Re-render sold assets if they're currently visible
     const soldAssetsContainer = document.getElementById('sold-assets-container');
     if (soldAssetsContainer && !soldAssetsContainer.classList.contains('hidden')) {
         await renderSoldAssets();
     }
-    
+
     if (getCryptoPricesBtn) {
         getCryptoPricesBtn.disabled = false;
         getCryptoPricesBtn.textContent = 'Update Prices';
     }
-    
+
     showNotification(`Updated prices for ${updatedCount} cryptocurrencies`, 'success');
 }
 
 async function loadCryptoEvents() {
     const cryptoEventsDiv = document.getElementById('crypto-events');
     if (!cryptoEventsDiv) return;
-    
+
     try {
         const symbols = getCryptoSymbols();
         if (symbols.length === 0) {
             cryptoEventsDiv.innerHTML = '<div class="text-gray-400">No crypto assets added to show events.</div>';
             return;
         }
-        
+
         // Check if CoinMarketCal API key is configured
         const apiKey = getApiKey('CoinMarketCal');
         if (!apiKey) {
@@ -396,20 +396,20 @@ async function loadCryptoEvents() {
             `;
             return;
         }
-        
+
         // Show loading state
         cryptoEventsDiv.innerHTML = '<div class="text-gray-400">Loading crypto events...</div>';
-        
+
         // Check for cached data first, then fetch if needed
         let eventsData = getCachedCryptoEventsForCoins(symbols);
-        
+
         if (!eventsData) {
             // If no cached data, fetch from API
             eventsData = await fetchCryptoEvents(symbols, 15);
         } else {
             console.log('Using cached crypto events data');
         }
-        
+
         if (!eventsData || !eventsData.body || eventsData.body.length === 0) {
             cryptoEventsDiv.innerHTML = `
                 <div class="text-gray-400 mb-2">No upcoming crypto events found.</div>
@@ -419,7 +419,7 @@ async function loadCryptoEvents() {
             `;
             return;
         }
-        
+
         // Get the timestamp from cached data if available
         let lastFetchedTime = null;
         const cached = getCachedCryptoEvents();
@@ -428,10 +428,10 @@ async function loadCryptoEvents() {
         if (coinData && coinData.timestamp) {
             lastFetchedTime = new Date(coinData.timestamp);
         }
-        
+
         // Display events
         let eventsHtml = '<div class="space-y-1">';
-        
+
         // Add last fetched timestamp at the top
         if (lastFetchedTime) {
             eventsHtml += `
@@ -440,12 +440,12 @@ async function loadCryptoEvents() {
                 </div>
             `;
         }
-        
+
         eventsData.body.forEach(event => {
             const eventDate = new Date(event.date_event);
             const today = new Date();
             const daysUntil = Math.ceil((eventDate - today) / (1000 * 60 * 60 * 24));
-            
+
             let dateText = '';
             if (daysUntil === 0) {
                 dateText = 'Today';
@@ -456,19 +456,19 @@ async function loadCryptoEvents() {
             } else {
                 return; // Skip past events
             }
-            
+
             // Format coins involved
             const coinsText = event.coins ? event.coins.map(coin => coin.symbol).join(', ') : 'Various';
-            
+
             // Format category
             const categoryText = event.categories ? event.categories[0].name : 'General';
-            
+
             // Format confidence (votes) - CoinMarketCal doesn't provide vote_count in this response
             const confidenceText = 'Verified Event';
-            
+
             // Get title (prefer English, fallback to any available)
             const eventTitle = event.title?.en || event.title || event['-'] || 'Untitled Event';
-            
+
             eventsHtml += `
                 <div class="p-2 bg-gray-700 rounded border-l-2 border-orange-400">
                     <div class="flex justify-between items-center mb-1">
@@ -488,10 +488,10 @@ async function loadCryptoEvents() {
                 </div>
             `;
         });
-        
+
         eventsHtml += '</div>';
         cryptoEventsDiv.innerHTML = eventsHtml;
-        
+
     } catch (error) {
         console.error('Error loading crypto events:', error);
         cryptoEventsDiv.innerHTML = `
@@ -513,17 +513,17 @@ function getCryptoSymbols() {
 function initializeNotes() {
     const notesTextarea = document.getElementById('crypto-notes');
     const charCount = document.getElementById('notes-char-count');
-    
+
     if (notesTextarea && charCount) {
         // Load existing notes
         loadNotes();
-        
+
         // Event listeners
         notesTextarea.addEventListener('input', () => {
             updateCharCount();
             autoSaveNotes();
         });
-        
+
         // Auto-save on blur
         notesTextarea.addEventListener('blur', autoSaveNotes);
     }
@@ -532,7 +532,7 @@ function initializeNotes() {
 function loadNotes() {
     const notesTextarea = document.getElementById('crypto-notes');
     const charCount = document.getElementById('notes-char-count');
-    
+
     if (notesTextarea && charCount) {
         const notes = localStorage.getItem('cryptoNotes') || '';
         notesTextarea.value = notes;
@@ -542,7 +542,7 @@ function loadNotes() {
 
 function autoSaveNotes() {
     const notesTextarea = document.getElementById('crypto-notes');
-    
+
     if (notesTextarea) {
         const notes = notesTextarea.value;
         localStorage.setItem('cryptoNotes', notes);
@@ -552,7 +552,7 @@ function autoSaveNotes() {
 function updateCharCount() {
     const notesTextarea = document.getElementById('crypto-notes');
     const charCount = document.getElementById('notes-char-count');
-    
+
     if (notesTextarea && charCount) {
         const count = notesTextarea.value.length;
         charCount.textContent = count;
@@ -577,7 +577,7 @@ function openSellCryptoModal() {
     const modal = document.getElementById('sell-crypto-modal');
     const dateInput = document.getElementById('sell-crypto-date');
     const nameSelect = document.getElementById('sell-crypto-name');
-    
+
     // Populate crypto names dropdown
     nameSelect.innerHTML = '<option value="">Select a cryptocurrency to sell</option>';
     if (portfolio.crypto) {
@@ -590,7 +590,7 @@ function openSellCryptoModal() {
             }
         });
     }
-    
+
     dateInput.value = new Date().toISOString().split('T')[0];
     modal.classList.remove('hidden');
 }
@@ -610,25 +610,25 @@ function handleBuyCrypto() {
     const currency = document.getElementById('buy-crypto-currency').value;
     const date = document.getElementById('buy-crypto-date').value;
     const note = document.getElementById('buy-crypto-note').value.trim();
-    
+
     // Validate required fields
     if (!name || !quantity || !date) {
         showNotification('Please fill in all required fields', 'error');
         return;
     }
-    
+
     // Validate exchange rate for USD transactions
     if (currency === 'USD' && (isNaN(eurUsdRate) || eurUsdRate === 0)) {
         showNotification('Exchange rate not available. Please update rates first by clicking "Update All" on the dashboard.', 'error');
         return;
     }
-    
+
     // Validate that either price or total is provided
-     if ((price === null || price === undefined || isNaN(price)) && (total === null || total === undefined || isNaN(total))) {
+    if ((price === null || price === undefined || isNaN(price)) && (total === null || total === undefined || isNaN(total))) {
         showNotification('Please provide either price per unit or total amount', 'error');
         return;
     }
-    
+
     // Calculate missing value
     let finalPrice = price;
     let finalTotal = total;
@@ -637,7 +637,7 @@ function handleBuyCrypto() {
     } else if (total && !price) {
         finalPrice = total / quantity;
     }
-    
+
     // Convert to EUR if needed
     let priceInEur = finalPrice;
     let totalInEur = finalTotal;
@@ -645,7 +645,9 @@ function handleBuyCrypto() {
         priceInEur = finalPrice / eurUsdRate;
         totalInEur = finalTotal / eurUsdRate;
     }
-    
+
+    const priceFormatted = formatCurrency(priceInEur, 'EUR');
+
     // Record transaction
     const transaction = {
         id: Date.now().toString(),
@@ -659,10 +661,10 @@ function handleBuyCrypto() {
         originalPrice: currency === 'USD' ? finalPrice : null,
         originalCurrency: currency === 'USD' ? 'USD' : null,
         date: date,
-    note: note || `Bought ${quantity} units of ${name} at €${priceInEur.toFixed(8)} per unit`,
+        note: note || `Bought ${quantity} units of ${name} at ${priceFormatted} per unit`,
         timestamp: new Date().toISOString()
     };
-    
+
     addTransaction(transaction);
     saveData();
     // Recalculate portfolio from transactions (source of truth)
@@ -670,7 +672,7 @@ function handleBuyCrypto() {
     renderCrypto();
     renderCryptoTransactions();
     closeBuyCryptoModal();
-    
+
     showNotification(`Successfully bought ${quantity} units of ${name}`, 'success');
 }
 
@@ -682,19 +684,19 @@ function handleSellCrypto() {
     const currency = document.getElementById('sell-crypto-currency').value;
     const date = document.getElementById('sell-crypto-date').value;
     const note = document.getElementById('sell-crypto-note').value.trim();
-    
+
     // Validate required fields
     if (!name || !quantity || !date) {
         showNotification('Please fill in all required fields', 'error');
         return;
     }
-    
+
     // Validate that either price or total is provided
     if (!price && !total) {
         showNotification('Please provide either price per unit or total amount', 'error');
         return;
     }
-    
+
     // Calculate missing value
     let finalPrice = price;
     let finalTotal = total;
@@ -703,7 +705,7 @@ function handleSellCrypto() {
     } else if (total && !price) {
         finalPrice = total / quantity;
     }
-    
+
     // Convert to EUR if needed
     let priceInEur = finalPrice;
     let totalInEur = finalTotal;
@@ -711,7 +713,9 @@ function handleSellCrypto() {
         priceInEur = finalPrice / eurUsdRate;
         totalInEur = finalTotal / eurUsdRate;
     }
-    
+
+    const priceFormatted = formatCurrency(priceInEur, 'EUR');
+
     // Record transaction
     const transaction = {
         id: Date.now().toString(),
@@ -725,10 +729,10 @@ function handleSellCrypto() {
         originalPrice: currency === 'USD' ? finalPrice : null,
         originalCurrency: currency === 'USD' ? 'USD' : null,
         date: date,
-    note: note || `Sold ${quantity} units of ${name} at €${priceInEur.toFixed(8)} per unit`,
+        note: note || `Sold ${quantity} units of ${name} at ${priceFormatted} per unit`,
         timestamp: new Date().toISOString()
     };
-    
+
     addTransaction(transaction);
     saveData();
     // Recalculate portfolio from transactions (source of truth)
@@ -736,7 +740,7 @@ function handleSellCrypto() {
     renderCrypto();
     renderCryptoTransactions();
     closeSellCryptoModal();
-    
+
     showNotification(`Successfully sold ${quantity} units of ${name}`, 'success');
 }
 
@@ -744,30 +748,30 @@ function handleSellCrypto() {
 function renderCryptoTransactions() {
     const tbody = document.getElementById('crypto-transactions-tbody');
     if (!tbody) return;
-    
+
     const transactions = loadTransactions().filter(tx => tx.assetType === 'crypto');
-    
+
     if (transactions.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-gray-400">No crypto transactions yet.</td></tr>';
         return;
     }
-    
+
     // Sort by date (newest first)
     transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
     let html = '';
     transactions.forEach(tx => {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
         const typeText = tx.type === 'buy' ? 'Buy' : 'Sell';
-        
+
         // Format price display with original USD if available
         let priceDisplay = formatCurrency(tx.price, 'EUR');
         if (tx.originalPrice && tx.originalCurrency === 'USD') {
             const price = tx.price || 0;
             const originalPrice = tx.originalPrice || 0;
-            priceDisplay = `€${price.toFixed(8)} ($${originalPrice.toFixed(8)})`;
+            priceDisplay = `${formatCurrency(price, 'EUR')} (${formatCurrency(originalPrice, 'USD')})`;
         }
-        
+
         html += `
             <tr class="border-b border-gray-700">
                 <td class="py-2 px-2 text-gray-300">${new Date(tx.date).toLocaleDateString()}</td>
@@ -786,7 +790,7 @@ function renderCryptoTransactions() {
             </tr>
         `;
     });
-    
+
     tbody.innerHTML = html;
 }
 
@@ -794,12 +798,12 @@ function renderCryptoTransactions() {
 function editCryptoTransaction(transactionId) {
     const transactions = loadTransactions();
     const transaction = transactions.find(tx => tx.id === transactionId);
-    
+
     if (!transaction) {
         showNotification('Transaction not found', 'error');
         return;
     }
-    
+
     // Populate the edit modal
     document.getElementById('edit-crypto-transaction-id').value = transaction.id;
     document.getElementById('edit-crypto-transaction-type').value = transaction.type;
@@ -815,10 +819,10 @@ function editCryptoTransaction(transactionId) {
         document.getElementById('edit-crypto-transaction-price').value = transaction.price;
         document.getElementById('edit-crypto-transaction-total').value = transaction.total;
     }
-    
+
     document.getElementById('edit-crypto-transaction-date').value = transaction.date;
     document.getElementById('edit-crypto-transaction-note').value = transaction.note || '';
-    
+
     // Show the modal
     document.getElementById('edit-crypto-transaction-modal').classList.remove('hidden');
 }
@@ -827,24 +831,24 @@ function deleteCryptoTransaction(transactionId) {
     if (!confirm('Are you sure you want to delete this transaction?')) {
         return;
     }
-    
+
     const transactions = loadTransactions();
     const transaction = transactions.find(tx => tx.id === transactionId);
-    
+
     if (!transaction) {
         showNotification('Transaction not found', 'error');
         return;
     }
-    
+
     // Remove the transaction
     const updatedTransactions = transactions.filter(tx => tx.id !== transactionId);
     saveTransactions(updatedTransactions);
-    
+
     // Recalculate portfolio from transactions (source of truth)
     calculatePortfolioFromTransactions();
     renderCrypto();
     renderCryptoTransactions();
-    
+
     showNotification('Transaction deleted successfully', 'success');
 }
 
@@ -852,19 +856,19 @@ function deleteCryptoTransaction(transactionId) {
 document.addEventListener('DOMContentLoaded', () => {
     initializeNotes();
     renderCryptoTransactions();
-    
+
     // Add event listeners for edit crypto transaction modal
     const editCryptoTransactionForm = document.getElementById('edit-crypto-transaction-form');
     const editCryptoTransactionCancelBtn = document.getElementById('edit-crypto-transaction-cancel-btn');
     const editCryptoTransactionModal = document.getElementById('edit-crypto-transaction-modal');
-    
+
     if (editCryptoTransactionForm) {
         // Setup auto-calculation for edit form
         setupAutoCalculation('edit-crypto-transaction-quantity', 'edit-crypto-transaction-price', 'edit-crypto-transaction-total');
-        
+
         editCryptoTransactionForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const transactionId = document.getElementById('edit-crypto-transaction-id').value;
             const type = document.getElementById('edit-crypto-transaction-type').value;
             const name = document.getElementById('edit-crypto-transaction-name').value;
@@ -874,20 +878,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const currency = document.getElementById('edit-crypto-transaction-currency').value;
             const date = document.getElementById('edit-crypto-transaction-date').value;
             const note = document.getElementById('edit-crypto-transaction-note').value.trim();
-            
+
             if (!name || isNaN(quantity) || isNaN(price) || isNaN(total) || !date) {
                 showNotification('Please fill in all fields', 'error');
                 return;
             }
-            
+
             const transactions = loadTransactions();
             const transactionIndex = transactions.findIndex(tx => tx.id === transactionId);
-            
+
             if (transactionIndex === -1) {
                 showNotification('Transaction not found', 'error');
                 return;
             }
-            
+
             // Convert to EUR if needed using historical rate
             let priceInEur = price;
             let totalInEur = total;
@@ -906,7 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     historicalRate = eurUsdRate;
                 }
             }
-            
+
             // Update the transaction
             transactions[transactionIndex] = {
                 ...transactions[transactionIndex],
@@ -923,27 +927,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 note: note || transactions[transactionIndex].note,
                 timestamp: new Date().toISOString()
             };
-            
+
             saveTransactions(transactions);
-            
+
             // Recalculate portfolio from transactions (source of truth)
             calculatePortfolioFromTransactions();
             renderCrypto();
             renderCryptoTransactions();
-            
+
             // Close modal
             editCryptoTransactionModal.classList.add('hidden');
-            
+
             showNotification('Transaction updated successfully', 'success');
         });
     }
-    
+
     if (editCryptoTransactionCancelBtn) {
         editCryptoTransactionCancelBtn.addEventListener('click', () => {
             editCryptoTransactionModal.classList.add('hidden');
         });
     }
-    
+
     if (editCryptoTransactionModal) {
         editCryptoTransactionModal.addEventListener('click', (e) => {
             if (e.target === editCryptoTransactionModal) {
@@ -957,19 +961,19 @@ function filterCryptoTransactions() {
     const filterValue = document.getElementById('crypto-transactions-filter').value.toLowerCase();
     const tbody = document.getElementById('crypto-transactions-tbody');
     const rows = tbody.querySelectorAll('tr');
-    
+
     rows.forEach(row => {
         if (row.querySelector('td[colspan]')) {
             // Skip the "no transactions" row
             return;
         }
-        
+
         const nameCell = row.cells[2]; // Name column
         const noteCell = row.cells[7]; // Note column
-        
+
         const name = nameCell ? nameCell.textContent.toLowerCase() : '';
         const note = noteCell ? noteCell.textContent.toLowerCase() : '';
-        
+
         const matches = name.includes(filterValue) || note.includes(filterValue);
         row.style.display = matches ? '' : 'none';
     });
@@ -980,31 +984,31 @@ async function renderSoldAssets() {
     const soldAssetsTbody = document.getElementById('sold-assets-tbody');
     const soldAssetsLoading = document.getElementById('sold-assets-loading');
     const soldAssetsEmpty = document.getElementById('sold-assets-empty');
-    
+
     if (!soldAssetsTbody) return;
-    
+
     // Show loading state
     soldAssetsLoading.classList.remove('hidden');
     soldAssetsEmpty.classList.add('hidden');
     soldAssetsTbody.innerHTML = '';
-    
+
     try {
         console.log('[renderSoldAssets] Starting render for crypto');
         // Get sold assets analysis
         const transactions = loadTransactions();
         const soldAssets = getSoldAssetsAnalysis(transactions, 'crypto');
         console.log('[renderSoldAssets] soldAssets:', soldAssets);
-        
+
         if (soldAssets.length === 0) {
             soldAssetsLoading.classList.add('hidden');
             soldAssetsEmpty.classList.remove('hidden');
             return;
         }
-        
+
         // Update with current prices
         const updatedAssets = updateSoldAssetsWithCurrentPrices(soldAssets, 'crypto');
         console.log('[renderSoldAssets] updatedAssets:', updatedAssets);
-        
+
         // Render the table
         soldAssetsTbody.innerHTML = '';
         updatedAssets.forEach(asset => {
@@ -1040,9 +1044,9 @@ async function renderSoldAssets() {
             `;
             soldAssetsTbody.appendChild(row);
         });
-        
+
         soldAssetsLoading.classList.add('hidden');
-        
+
     } catch (error) {
         console.error('Error rendering sold assets:', error);
         soldAssetsLoading.classList.add('hidden');
