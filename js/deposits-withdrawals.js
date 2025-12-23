@@ -1,4 +1,8 @@
 // Transactions page functionality
+
+// Global variable to store chart instance
+let monthlyCashflowChartInstance = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     // DOM elements
     const addTransactionBtn = document.getElementById('add-transaction-btn');
@@ -70,6 +74,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial render
     renderTransactionsList();
     renderDepositsSummary();
+    renderMonthlyCashflowChart();
+
+    // Add toggle listener for monthly chart
+    const toggleCashflowChartBtn = document.getElementById('toggle-cashflow-chart-period');
+    if (toggleCashflowChartBtn) {
+        toggleCashflowChartBtn.addEventListener('click', () => {
+            const currentPeriod = toggleCashflowChartBtn.dataset.period;
+            const newPeriod = currentPeriod === 'year' ? 'all' : 'year';
+            toggleCashflowChartBtn.dataset.period = newPeriod;
+            toggleCashflowChartBtn.textContent = newPeriod === 'year' ? 'Show All Time' : 'Show Last Year';
+            renderMonthlyCashflowChart(newPeriod);
+        });
+    }
 });
 
 function openTransactionModal(mode = 'add', tx = null) {
@@ -216,6 +233,11 @@ function renderTransactionsList() {
     });
     
     transactionsListDiv.innerHTML = html;
+    
+    // Refresh the monthly chart, preserving current period
+    const toggleBtn = document.getElementById('toggle-cashflow-chart-period');
+    const currentPeriod = toggleBtn ? toggleBtn.dataset.period : 'year';
+    renderMonthlyCashflowChart(currentPeriod);
 }
 
 function applyFilters(transactions) {
@@ -417,3 +439,116 @@ function debugDepositSeparation() {
 window.debugDepositSeparation = debugDepositSeparation;
 
 // Deposit transaction functions are now available globally from shared.js
+
+// Render monthly deposit/withdrawal chart
+function renderMonthlyCashflowChart(period = 'year') {
+    const ctx = document.getElementById('monthly-cashflow-chart');
+    if (!ctx) return;
+
+    // Destroy existing chart instance
+    if (monthlyCashflowChartInstance) {
+        monthlyCashflowChartInstance.destroy();
+    }
+
+    // Get all deposit/withdrawal transactions
+    let transactions = loadDepositTransactions();
+
+    // Filter by period if 'year'
+    if (period === 'year') {
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        transactions = transactions.filter(tx => new Date(tx.date) >= oneYearAgo);
+    }
+
+    // Group transactions by month
+    const monthlyData = groupTransactionsByMonth(transactions, 'type');
+
+    if (monthlyData.labels.length === 0) {
+        ctx.parentElement.innerHTML = '<div class="text-center py-8 text-gray-400">No deposit/withdrawal transactions yet</div>';
+        return;
+    }
+
+    // Format labels to display as "MMM YYYY"
+    const formattedLabels = monthlyData.labels.map(label => {
+        const [year, month] = label.split('-');
+        const date = new Date(year, month - 1);
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    });
+
+    // Create the chart
+    monthlyCashflowChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: formattedLabels,
+            datasets: [
+                {
+                    label: 'Deposits (EUR)',
+                    data: monthlyData.datasets.deposit || [],
+                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                    borderColor: 'rgba(239, 68, 68, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Withdrawals (EUR)',
+                    data: monthlyData.datasets.withdrawal || [],
+                    backgroundColor: 'rgba(34, 197, 94, 0.6)',
+                    borderColor: 'rgba(34, 197, 94, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: '#d1d5db',
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += '€' + context.parsed.y.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#9ca3af',
+                        callback: function(value) {
+                            return '€' + value.toLocaleString();
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#9ca3af'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            }
+        }
+    });
+}

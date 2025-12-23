@@ -104,6 +104,207 @@ function initializeInvestedVsCashflowChart() {
         }
     });
 }
+
+// --- CUMULATIVE INVESTMENT ASSETS CHART (Stocks + ETFs + Crypto) ---
+function initializeCumulativeInvestmentChart() {
+    const ctx = document.getElementById('cumulative-investment-chart');
+    if (!ctx) return;
+
+    // Get all buy/sell transactions for stocks, ETFs, and crypto
+    const transactions = loadTransactions();
+    const investmentTransactions = transactions.filter(tx => 
+        tx.assetType === 'stocks' || tx.assetType === 'etfs' || tx.assetType === 'crypto'
+    );
+
+    if (investmentTransactions.length === 0) {
+        ctx.parentElement.innerHTML = '<div class="text-center py-8 text-gray-400">No investment transactions yet</div>';
+        return;
+    }
+
+    // Sort transactions by date
+    investmentTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Calculate cumulative values
+    const dataPoints = [];
+    let cumulativeBuys = 0;
+    let cumulativeSells = 0;
+    let cumulativeStocksBuys = 0;
+    let cumulativeStocksSells = 0;
+    let cumulativeEtfsBuys = 0;
+    let cumulativeEtfsSells = 0;
+    let cumulativeCryptoBuys = 0;
+    let cumulativeCryptoSells = 0;
+
+    investmentTransactions.forEach(tx => {
+        // Convert to EUR
+        let eurAmount = tx.total;
+        if (tx.currency === 'USD') {
+            const rate = tx.historicalRate || eurUsdRate;
+            eurAmount = eurAmount / rate;
+        }
+
+        // Add to cumulative totals
+        if (tx.type === 'buy') {
+            cumulativeBuys += eurAmount;
+            if (tx.assetType === 'stocks') cumulativeStocksBuys += eurAmount;
+            else if (tx.assetType === 'etfs') cumulativeEtfsBuys += eurAmount;
+            else if (tx.assetType === 'crypto') cumulativeCryptoBuys += eurAmount;
+        } else if (tx.type === 'sell') {
+            cumulativeSells += eurAmount;
+            if (tx.assetType === 'stocks') cumulativeStocksSells += eurAmount;
+            else if (tx.assetType === 'etfs') cumulativeEtfsSells += eurAmount;
+            else if (tx.assetType === 'crypto') cumulativeCryptoSells += eurAmount;
+        }
+
+        dataPoints.push({
+            date: tx.date,
+            cumulativeBuys,
+            cumulativeSells,
+            netInvestment: cumulativeBuys - cumulativeSells,
+            stocks: cumulativeStocksBuys - cumulativeStocksSells,
+            etfs: cumulativeEtfsBuys - cumulativeEtfsSells,
+            crypto: cumulativeCryptoBuys - cumulativeCryptoSells
+        });
+    });
+
+    // Extract labels and data
+    const labels = dataPoints.map(dp => dp.date);
+    const cumulativeBuysData = dataPoints.map(dp => dp.cumulativeBuys);
+    const cumulativeSellsData = dataPoints.map(dp => dp.cumulativeSells);
+    const netInvestmentData = dataPoints.map(dp => dp.netInvestment);
+    const stocksData = dataPoints.map(dp => dp.stocks);
+    const etfsData = dataPoints.map(dp => dp.etfs);
+    const cryptoData = dataPoints.map(dp => dp.crypto);
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Net Investment (Buys - Sells)',
+                    data: netInvestmentData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4
+                },
+                {
+                    label: 'Cumulative Buys',
+                    data: cumulativeBuysData,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    borderDash: [5, 5]
+                },
+                {
+                    label: 'Cumulative Sells',
+                    data: cumulativeSellsData,
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 2,
+                    fill: false,
+                    tension: 0.4,
+                    borderDash: [5, 5]
+                },
+                {
+                    label: 'Stocks Net',
+                    data: stocksData,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    borderWidth: 1,
+                    fill: false,
+                    tension: 0.4,
+                    hidden: true
+                },
+                {
+                    label: 'ETFs Net',
+                    data: etfsData,
+                    borderColor: '#f59e0b',
+                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    borderWidth: 1,
+                    fill: false,
+                    tension: 0.4,
+                    hidden: true
+                },
+                {
+                    label: 'Crypto Net',
+                    data: cryptoData,
+                    borderColor: '#06b6d4',
+                    backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                    borderWidth: 1,
+                    fill: false,
+                    tension: 0.4,
+                    hidden: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: {
+                            size: 12
+                        },
+                        color: '#d1d5db'
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += '€' + context.parsed.y.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#9ca3af',
+                        callback: function (value) {
+                            return '€' + value.toLocaleString();
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#9ca3af',
+                        maxTicksLimit: 15
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            }
+        }
+    });
+}
+
 // Dashboard-specific functionality
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize charts
@@ -116,6 +317,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize invested vs net cash flow chart
     initializeInvestedVsCashflowChart();
+    
+    // Initialize cumulative investment assets chart
+    initializeCumulativeInvestmentChart();
 
     // Setup retirement chart controls
     setupRetirementControls();

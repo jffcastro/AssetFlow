@@ -1,4 +1,8 @@
 // ETFs page functionality
+
+// Global variable to store chart instance
+let monthlyEtfVolumeChartInstance = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     // DOM elements
     const etfModal = document.getElementById('etf-modal');
@@ -73,6 +77,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initial render
     renderEtfs();
+    renderMonthlyEtfVolumeChart();
+
+    // Add toggle listener for monthly chart
+    const toggleEtfChartBtn = document.getElementById('toggle-etf-chart-period');
+    if (toggleEtfChartBtn) {
+        toggleEtfChartBtn.addEventListener('click', () => {
+            const currentPeriod = toggleEtfChartBtn.dataset.period;
+            const newPeriod = currentPeriod === 'year' ? 'all' : 'year';
+            toggleEtfChartBtn.dataset.period = newPeriod;
+            toggleEtfChartBtn.textContent = newPeriod === 'year' ? 'Show All Time' : 'Show Last Year';
+            renderMonthlyEtfVolumeChart(newPeriod);
+        });
+    }
 
     // Sold Assets functionality
     const toggleSoldAssetsBtn = document.getElementById('toggle-sold-assets-btn');
@@ -666,6 +683,11 @@ function renderEtfTransactions() {
     });
 
     tbody.innerHTML = html;
+    
+    // Refresh the monthly chart, preserving current period
+    const toggleBtn = document.getElementById('toggle-etf-chart-period');
+    const currentPeriod = toggleBtn ? toggleBtn.dataset.period : 'year';
+    renderMonthlyEtfVolumeChart(currentPeriod);
 }
 
 // Edit ETF transaction
@@ -915,4 +937,118 @@ async function renderSoldAssets() {
         soldAssetsLoading.classList.add('hidden');
         soldAssetsTbody.innerHTML = '<tr><td colspan="8" class="text-center text-red-400 py-4">Error loading sold assets</td></tr>';
     }
+}
+
+// Render monthly buy/sell volume chart
+function renderMonthlyEtfVolumeChart(period = 'year') {
+    const ctx = document.getElementById('monthly-etf-volume-chart');
+    if (!ctx) return;
+
+    // Destroy existing chart instance
+    if (monthlyEtfVolumeChartInstance) {
+        monthlyEtfVolumeChartInstance.destroy();
+    }
+
+    // Get all ETF transactions
+    const transactions = loadTransactions();
+    let etfTransactions = transactions.filter(tx => tx.assetType === 'etfs');
+
+    // Filter by period if 'year'
+    if (period === 'year') {
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        etfTransactions = etfTransactions.filter(tx => new Date(tx.date) >= oneYearAgo);
+    }
+
+    // Group transactions by month
+    const monthlyData = groupTransactionsByMonth(etfTransactions, 'type');
+
+    if (monthlyData.labels.length === 0) {
+        ctx.parentElement.innerHTML = '<div class="text-center py-8 text-gray-400">No ETF transactions yet</div>';
+        return;
+    }
+
+    // Format labels to display as "MMM YYYY"
+    const formattedLabels = monthlyData.labels.map(label => {
+        const [year, month] = label.split('-');
+        const date = new Date(year, month - 1);
+        return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    });
+
+    // Create the chart
+    monthlyEtfVolumeChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: formattedLabels,
+            datasets: [
+                {
+                    label: 'Buys (EUR)',
+                    data: monthlyData.datasets.buy || [],
+                    backgroundColor: 'rgba(34, 197, 94, 0.6)',
+                    borderColor: 'rgba(34, 197, 94, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Sells (EUR)',
+                    data: monthlyData.datasets.sell || [],
+                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                    borderColor: 'rgba(239, 68, 68, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: '#d1d5db',
+                        font: {
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += '€' + context.parsed.y.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                            });
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#9ca3af',
+                        callback: function(value) {
+                            return '€' + value.toLocaleString();
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#9ca3af'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                }
+            }
+        }
+    });
 }

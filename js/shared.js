@@ -1625,6 +1625,75 @@ function updateTotalValueBar(eurValue) {
     }
 }
 
+/**
+ * Groups transactions by month and calculates EUR totals
+ * @param {Array} transactions - Array of transaction objects
+ * @param {string} typeKey - Key to group by (e.g., 'type' for buy/sell or 'type' for deposit/withdrawal)
+ * @returns {Object} Object with labels (months) and datasets for each type
+ */
+function groupTransactionsByMonth(transactions, typeKey = 'type') {
+    if (!transactions || transactions.length === 0) {
+        return { labels: [], datasets: {} };
+    }
+
+    // Create a map to store totals by month and type
+    const monthlyData = {};
+    const typeSet = new Set();
+
+    transactions.forEach(tx => {
+        if (!tx.date || !tx[typeKey]) return;
+
+        const date = new Date(tx.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const txType = tx[typeKey];
+
+        typeSet.add(txType);
+
+        if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = {};
+        }
+
+        if (!monthlyData[monthKey][txType]) {
+            monthlyData[monthKey][txType] = 0;
+        }
+
+        // Calculate EUR amount
+        let eurAmount = 0;
+        
+        // For buy/sell transactions (have 'total' field)
+        if (tx.total !== undefined) {
+            eurAmount = tx.total;
+            
+            // Convert to EUR if needed
+            if (tx.currency === 'USD') {
+                const rate = tx.historicalRate || eurUsdRate;
+                eurAmount = eurAmount / rate;
+            }
+        } 
+        // For deposit/withdrawal transactions (have 'amount' field)
+        else if (tx.amount !== undefined) {
+            eurAmount = tx.amount;
+            // Deposits/withdrawals are already in EUR
+        }
+
+        monthlyData[monthKey][txType] += eurAmount;
+    });
+
+    // Sort months chronologically
+    const sortedMonths = Object.keys(monthlyData).sort();
+
+    // Create datasets for each type
+    const datasets = {};
+    typeSet.forEach(type => {
+        datasets[type] = sortedMonths.map(month => monthlyData[month][type] || 0);
+    });
+
+    return {
+        labels: sortedMonths,
+        datasets: datasets
+    };
+}
+
 // --- EXPORT/IMPORT FUNCTIONS ---
 function exportToCsv() {
     let csvContent = 'data:text/csv;charset=utf-8,';
@@ -2725,6 +2794,9 @@ window.soldAssetsCache = soldAssetsCache;
 // Formatter functions
 window.formatCurrency = formatCurrency;
 window.formatQuantity = formatQuantity;
+
+// Utility functions
+window.groupTransactionsByMonth = groupTransactionsByMonth;
 
 // UI functions
 window.showNotification = showNotification;

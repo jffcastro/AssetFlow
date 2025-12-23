@@ -9,6 +9,7 @@
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link href="css/glass-theme.css" rel="stylesheet">
     <style>
         .positive-gain {
@@ -321,6 +322,19 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Monthly Buy/Sell Volume Chart -->
+    <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6 max-w-7xl mx-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-semibold text-emerald-400">Monthly Trading Volume (EUR)</h3>
+            <button id="toggle-crypto-chart-period" class="glass-button text-sm" data-period="year">
+                Show All Time
+            </button>
+        </div>
+        <div class="relative" style="height: 300px;">
+            <canvas id="monthly-crypto-volume-chart"></canvas>
         </div>
     </div>
 
