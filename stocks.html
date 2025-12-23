@@ -1,21 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stocks - AssetFlow</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="css/glass-theme.css" rel="stylesheet">
     <style>
-        .positive-gain { color: #22c55e !important; /* green-500 */ }
-        .negative-gain { color: #ef4444 !important; /* red-500 */ }
+        .positive-gain {
+            color: #22c55e !important;
+            /* green-500 */
+        }
+
+        .negative-gain {
+            color: #ef4444 !important;
+            /* red-500 */
+        }
+
         .modal-backdrop {
             background-color: rgba(0, 0, 0, 0.5);
         }
     </style>
 </head>
+
 <body class="text-white">
     <div class="container mx-auto p-4 md:p-6">
         <!-- Header with Navigation -->
@@ -147,22 +158,25 @@
             <h2 id="stock-modal-title" class="text-xl font-bold mb-6 text-center">Add New Stock</h2>
             <form id="stock-form">
                 <input type="hidden" id="stock-id">
-                
+
                 <div class="mb-4">
                     <label for="stock-name" class="block mb-2">Ticker (e.g., AAPL)</label>
-                    <input type="text" id="stock-name" placeholder="e.g., AAPL" class="w-full glass-input p-2 rounded-lg" required>
+                    <input type="text" id="stock-name" placeholder="e.g., AAPL"
+                        class="w-full glass-input p-2 rounded-lg" required>
                 </div>
-                
+
                 <div class="mb-4">
                     <label for="stock-quantity" class="block mb-2">Quantity</label>
-                    <input type="number" id="stock-quantity" step="any" placeholder="e.g., 10" class="w-full glass-input p-2 rounded-lg" required>
+                    <input type="number" id="stock-quantity" step="any" placeholder="e.g., 10"
+                        class="w-full glass-input p-2 rounded-lg" required>
                 </div>
-                
+
                 <div class="mb-4">
                     <label for="stock-purchase-price" class="block mb-2">Purchase Price</label>
-                    <input type="number" id="stock-purchase-price" step="any" placeholder="e.g., 150.25" class="w-full glass-input p-2 rounded-lg" required>
+                    <input type="number" id="stock-purchase-price" step="any" placeholder="e.g., 150.25"
+                        class="w-full glass-input p-2 rounded-lg" required>
                 </div>
-                
+
                 <div class="mb-6">
                     <label for="stock-currency" class="block mb-2">Currency</label>
                     <select id="stock-currency" class="w-full glass-input p-2 rounded-lg">
@@ -170,7 +184,7 @@
                         <option value="USD">USD</option>
                     </select>
                 </div>
-                
+
                 <div class="flex gap-3">
                     <button type="submit" class="flex-1 glass-button glass-button-primary">
                         Save
@@ -191,12 +205,12 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Stock Symbol</label>
                     <input type="text" id="buy-stock-symbol" placeholder="e.g., AAPL" required
-                           class="w-full glass-input p-3 rounded-lg">
+                        class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
-                    <input type="number" id="buy-stock-quantity" placeholder="Number of shares" required min="0" step="0.00000001"
-                           class="w-full glass-input p-3 rounded-lg">
+                    <input type="number" id="buy-stock-quantity" placeholder="Number of shares" required min="0"
+                        step="0.00000001" class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Currency</label>
@@ -208,22 +222,21 @@
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share</label>
                     <input type="number" id="buy-stock-price" placeholder="Price per share" min="0" step="0.01"
-                           class="w-full glass-input p-3 rounded-lg">
+                        class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Total Amount</label>
                     <input type="number" id="buy-stock-total" placeholder="Total amount" min="0" step="0.01"
-                           class="w-full glass-input p-3 rounded-lg">
+                        class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
-                    <input type="date" id="buy-stock-date" required
-                           class="w-full glass-input p-3 rounded-lg">
+                    <input type="date" id="buy-stock-date" required class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Note (Optional)</label>
                     <input type="text" id="buy-stock-note" placeholder="e.g., Broker name, exchange"
-                           class="w-full glass-input p-3 rounded-lg">
+                        class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="flex gap-3">
                     <button type="submit" class="flex-1 glass-button glass-button-secondary">
@@ -238,49 +251,48 @@
     </div>
 
     <!-- Sell Stock Modal -->
-    <div id="sell-stock-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+    <div id="sell-stock-modal"
+        class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
         <div class="glass-modal p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
             <h3 class="text-xl font-semibold mb-4 text-red-400">Sell Stock</h3>
             <form id="sell-stock-form">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Stock Symbol</label>
-                    <select id="sell-stock-symbol" required
-                            class="w-full glass-input p-3 rounded-lg">
+                    <select id="sell-stock-symbol" required class="w-full glass-input p-3 rounded-lg">
                         <option value="">Select a stock to sell</option>
                     </select>
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
-                    <input type="number" id="sell-stock-quantity" placeholder="Number of shares" required min="0" step="0.00000001"
-                           class="w-full glass-input p-3 rounded-lg">
+                    <input type="number" id="sell-stock-quantity" placeholder="Number of shares" required min="0"
+                        step="0.00000001" class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share</label>
                     <input type="number" id="sell-stock-price" placeholder="Price per share" min="0" step="0.01"
-                           class="w-full glass-input p-3 rounded-lg">
+                        class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Total Amount</label>
                     <input type="number" id="sell-stock-total" placeholder="Total amount" min="0" step="0.01"
-                           class="w-full glass-input p-3 rounded-lg">
+                        class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Currency</label>
                     <select id="sell-stock-currency" required
-                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                        class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
                         <option value="EUR">EUR</option>
                         <option value="USD">USD</option>
                     </select>
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
-                    <input type="date" id="sell-stock-date" required
-                           class="w-full glass-input p-3 rounded-lg">
+                    <input type="date" id="sell-stock-date" required class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Note (Optional)</label>
                     <input type="text" id="sell-stock-note" placeholder="e.g., Broker name, exchange"
-                           class="w-full glass-input p-3 rounded-lg">
+                        class="w-full glass-input p-3 rounded-lg">
                 </div>
                 <div class="flex gap-3">
                     <button type="submit" class="flex-1 glass-button glass-button-danger">
@@ -298,13 +310,14 @@
     <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6 max-w-7xl mx-auto">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-semibold text-emerald-400">Stock Transaction History</h3>
-            <button id="refresh-transactions-btn" class="bg-gray-600 hover:glass-input text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+            <button id="refresh-transactions-btn"
+                class="bg-gray-600 hover:glass-input text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                 Refresh
             </button>
         </div>
         <div class="mb-4">
-            <input type="text" id="stock-transactions-filter" placeholder="Filter by Symbol or Note..." 
-                   class="w-full glass-input p-3 rounded-lg">
+            <input type="text" id="stock-transactions-filter" placeholder="Filter by Symbol or Note..."
+                class="w-full glass-input p-3 rounded-lg">
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -339,19 +352,21 @@
                 <span id="notes-char-count">0</span> characters • Auto-saved
             </div>
         </div>
-        <p class="text-gray-400 text-sm mb-4">Keep track of your investment thoughts, strategies, and observations about your stock portfolio.</p>
-        <textarea id="stocks-notes" placeholder="Write your investment notes here..." 
-                  class="w-full glass-input p-4 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500 text-white resize-none" 
-                  rows="6"></textarea>
+        <p class="text-gray-400 text-sm mb-4">Keep track of your investment thoughts, strategies, and observations about
+            your stock portfolio.</p>
+        <textarea id="stocks-notes" placeholder="Write your investment notes here..."
+            class="w-full glass-input p-4 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500 text-white resize-none"
+            rows="6"></textarea>
     </div>
 
     <!-- Edit Stock Transaction Modal -->
-    <div id="edit-stock-transaction-modal" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
+    <div id="edit-stock-transaction-modal"
+        class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop hidden">
         <div class="glass-modal p-6 rounded-xl shadow-lg w-full max-w-md mx-4">
             <h3 class="text-xl font-semibold mb-4 text-blue-400">Edit Stock Transaction</h3>
             <form id="edit-stock-transaction-form">
                 <input type="hidden" id="edit-transaction-id">
-                
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Transaction Type</label>
                     <select id="edit-transaction-type" class="w-full glass-input p-3 rounded-lg">
@@ -359,31 +374,31 @@
                         <option value="sell">Sell</option>
                     </select>
                 </div>
-                
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Stock Symbol</label>
                     <input type="text" id="edit-transaction-symbol" placeholder="e.g., AAPL" required readonly
-                           class="w-full glass-input p-3 rounded-lg bg-gray-700 cursor-not-allowed">
+                        class="w-full glass-input p-3 rounded-lg bg-gray-700 cursor-not-allowed">
                 </div>
-                
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Quantity</label>
-                    <input type="number" id="edit-transaction-quantity" placeholder="Number of shares" required min="0" step="0.00000001"
-                           class="w-full glass-input p-3 rounded-lg">
+                    <input type="number" id="edit-transaction-quantity" placeholder="Number of shares" required min="0"
+                        step="0.00000001" class="w-full glass-input p-3 rounded-lg">
                 </div>
-                
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Price per Share</label>
-                    <input type="number" id="edit-transaction-price" placeholder="Price per share" required min="0" step="0.01"
-                           class="w-full glass-input p-3 rounded-lg">
+                    <input type="number" id="edit-transaction-price" placeholder="Price per share" required min="0"
+                        step="0.01" class="w-full glass-input p-3 rounded-lg">
                 </div>
-                
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Total Amount</label>
                     <input type="number" id="edit-transaction-total" placeholder="Total amount" min="0" step="0.01"
-                           class="w-full glass-input p-3 rounded-lg">
+                        class="w-full glass-input p-3 rounded-lg">
                 </div>
-                
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Currency</label>
                     <select id="edit-transaction-currency" class="w-full glass-input p-3 rounded-lg">
@@ -391,19 +406,18 @@
                         <option value="USD">USD</option>
                     </select>
                 </div>
-                
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Date</label>
-                    <input type="date" id="edit-transaction-date" required
-                           class="w-full glass-input p-3 rounded-lg">
+                    <input type="date" id="edit-transaction-date" required class="w-full glass-input p-3 rounded-lg">
                 </div>
-                
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-gray-300 mb-2">Note (Optional)</label>
                     <input type="text" id="edit-transaction-note" placeholder="e.g., Broker name, exchange"
-                           class="w-full glass-input p-3 rounded-lg">
+                        class="w-full glass-input p-3 rounded-lg">
                 </div>
-                
+
                 <div class="flex gap-3">
                     <button type="submit" class="flex-1 glass-button glass-button-primary">
                         Update Transaction
@@ -417,8 +431,9 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/shared.js"></script>
-    <script src="js/stocks.js"></script>
+    <script type="module" src="js/shared.js"></script>
+    <script type="module" src="js/stocks.js"></script>
     <script src="js/theme-switcher.js"></script>
 </body>
+
 </html>

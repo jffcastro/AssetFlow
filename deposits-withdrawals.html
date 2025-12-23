@@ -1,21 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deposits & Withdrawals - AssetFlow</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="css/glass-theme.css" rel="stylesheet">
     <style>
-        .positive-gain { color: #22c55e; /* green-500 */ }
-        .negative-gain { color: #ef4444; /* red-500 */ }
+        .positive-gain {
+            color: #22c55e;
+            /* green-500 */
+        }
+
+        .negative-gain {
+            color: #ef4444;
+            /* red-500 */
+        }
+
         .modal-backdrop {
             background-color: rgba(0, 0, 0, 0.5);
         }
     </style>
 </head>
+
 <body class="text-white">
     <div class="container mx-auto p-4 md:p-6">
         <!-- Header with Navigation -->
@@ -29,7 +40,8 @@
                     <a href="crypto.html" class="nav-button text-xs">Crypto</a>
                     <a href="static-assets.html" class="nav-button text-xs">Cash & Savings</a>
                     <a href="cs2.html" class="nav-button text-xs">CS2 Items</a>
-                    <a href="deposits-withdrawals.html" class="nav-button text-xs bg-emerald-500/30">Deposits & Withdrawals</a>
+                    <a href="deposits-withdrawals.html" class="nav-button text-xs bg-emerald-500/30">Deposits &
+                        Withdrawals</a>
                     <a href="configurations.html" class="nav-button text-xs">Configurations</a>
                 </nav>
             </div>
@@ -38,12 +50,14 @@
         <!-- Page Title -->
         <div class="mb-6">
             <h2 class="text-3xl font-bold text-emerald-400 mb-2">Deposits & Withdrawals</h2>
-            <p class="text-gray-400">Track money flow in and out of your brokerage accounts (separate from asset transactions)</p>
+            <p class="text-gray-400">Track money flow in and out of your brokerage accounts (separate from asset
+                transactions)</p>
         </div>
 
         <!-- Add Transaction Button -->
         <div class="mb-6">
-            <button id="add-transaction-btn" class="glass-button glass-button-primary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+            <button id="add-transaction-btn"
+                class="glass-button glass-button-primary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                 Add New Transaction
             </button>
         </div>
@@ -53,17 +67,19 @@
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h3 class="text-xl font-semibold">Money Flow Summary</h3>
-                    <p class="text-sm text-gray-400">This tracks cash deposits and withdrawals to/from your brokerage accounts, not individual asset transactions.</p>
+                    <p class="text-sm text-gray-400">This tracks cash deposits and withdrawals to/from your brokerage
+                        accounts, not individual asset transactions.</p>
                 </div>
             </div>
-            
+
             <!-- Display Controls -->
             <div class="mb-4 flex flex-wrap items-center gap-4">
                 <label class="flex items-center gap-2">
                     <input type="checkbox" id="hide-low-value" checked class="rounded">
                     <span class="text-sm text-gray-300">Hide accounts under</span>
                 </label>
-                <input type="number" id="value-threshold" value="50" min="0" step="0.01" class="glass-input p-2 rounded-lg text-sm w-20">
+                <input type="number" id="value-threshold" value="50" min="0" step="0.01"
+                    class="glass-input p-2 rounded-lg text-sm w-20">
                 <span class="text-sm text-gray-300">EUR</span>
             </div>
             <div class="overflow-x-auto">
@@ -91,17 +107,18 @@
                     <span id="transactions-count">0</span> transactions
                 </div>
             </div>
-            
+
             <!-- Filter Controls -->
             <div class="mb-4 flex flex-wrap gap-4 items-center">
                 <div class="flex items-center gap-2">
                     <label class="text-sm text-gray-300">Filter by Account:</label>
-                    <input type="text" id="account-filter" placeholder="Search accounts..." class="glass-input p-2 rounded-lg text-sm">
+                    <input type="text" id="account-filter" placeholder="Search accounts..."
+                        class="glass-input p-2 rounded-lg text-sm">
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-sm text-gray-300">Search Note:</label>
-                    <input type="text" id="note-search" placeholder="Search in notes..." 
-                           class="glass-input p-2 rounded-lg text-sm w-48">
+                    <input type="text" id="note-search" placeholder="Search in notes..."
+                        class="glass-input p-2 rounded-lg text-sm w-48">
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="flex items-center gap-2">
@@ -139,40 +156,52 @@
             <h2 id="transaction-modal-title" class="text-2xl font-bold mb-6">Add Transaction</h2>
             <form id="transaction-form">
                 <input type="hidden" id="transaction-id">
-                
+
                 <div class="mb-4">
                     <label for="transaction-type" class="block mb-2">Transaction Type</label>
-                    <select id="transaction-type" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <select id="transaction-type"
+                        class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500"
+                        required>
                         <option value="deposit">Deposit</option>
                         <option value="withdrawal">Withdrawal</option>
                     </select>
                 </div>
-                
+
                 <div class="mb-4">
                     <label for="transaction-account" class="block mb-2">Account</label>
-                    <input type="text" id="transaction-account" placeholder="e.g., Trading 212, Binance, Interactive Brokers" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <input type="text" id="transaction-account"
+                        placeholder="e.g., Trading 212, Binance, Interactive Brokers"
+                        class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500"
+                        required>
                 </div>
-                
+
                 <div class="mb-4">
                     <label for="transaction-amount" class="block mb-2">Amount (EUR)</label>
-                    <input type="number" id="transaction-amount" step="any" placeholder="e.g., 1000.00" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <input type="number" id="transaction-amount" step="any" placeholder="e.g., 1000.00"
+                        class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500"
+                        required>
                 </div>
-                
+
                 <div class="mb-4">
                     <label for="transaction-date" class="block mb-2">Date</label>
-                    <input type="date" id="transaction-date" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500" required>
+                    <input type="date" id="transaction-date"
+                        class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500"
+                        required>
                 </div>
-                
+
                 <div class="mb-6">
                     <label for="transaction-note" class="block mb-2">Note (Optional)</label>
-                    <input type="text" id="transaction-note" placeholder="e.g., Monthly investment" class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500">
+                    <input type="text" id="transaction-note" placeholder="e.g., Monthly investment"
+                        class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500">
                 </div>
-                
+
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 glass-button glass-button-primary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="submit"
+                        class="flex-1 glass-button glass-button-primary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                         Save
                     </button>
-                    <button type="button" id="transaction-cancel-btn" class="flex-1 bg-gray-600 hover:glass-input text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    <button type="button" id="transaction-cancel-btn"
+                        class="flex-1 bg-gray-600 hover:glass-input text-white font-bold py-2 px-4 rounded-lg transition duration-300">
                         Cancel
                     </button>
                 </div>
@@ -182,8 +211,9 @@
 
 
     <!-- Scripts -->
-    <script src="js/shared.js"></script>
-    <script src="js/deposits-withdrawals.js"></script>
+    <script type="module" src="js/shared.js"></script>
+    <script type="module" src="js/deposits-withdrawals.js"></script>
     <script src="js/theme-switcher.js"></script>
 </body>
+
 </html>

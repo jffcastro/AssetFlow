@@ -91,7 +91,7 @@ function initializeInvestedVsCashflowChart() {
                 y: {
                     beginAtZero: false,
                     ticks: {
-                        callback: function(value) {
+                        callback: function (value) {
                             return '€' + value.toLocaleString();
                         }
                     }
@@ -116,31 +116,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize invested vs net cash flow chart
     initializeInvestedVsCashflowChart();
-    
+
     // Setup retirement chart controls
     setupRetirementControls();
-    
-    // Update dashboard stats
+
+    // Initial metrics update
     updateDashboardStats();
     updateCashFlowSummary();
-    
+    updateBenchmarkMetrics();
+
     // Load recent activity
     loadRecentActivity();
-    
+
     // Load performance summaries
     loadMonthlyPerformance();
     loadYearlyPerformance();
-    
+
     // Update auto-updates status
     updateAutoUpdatesStatus();
-    
+
     // Load and update exchange rates
     loadExchangeRate();
     updateExchangeRateLabel();
-    
+
     // Start scheduled updates
     startScheduledUpdates();
-    
+
     // Set up validate history button
     const validateHistoryBtn = document.getElementById('validate-history-btn');
     if (validateHistoryBtn) {
@@ -151,10 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializePortfolioChart() {
     const ctx = document.getElementById('portfolio-chart');
     if (!ctx) return;
-    
+
     const validatedHistory = loadValidatedHistory();
     const labels = validatedHistory.map(entry => entry.date);
-    
+
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -236,7 +237,7 @@ function initializePortfolioChart() {
                 y: {
                     beginAtZero: false,
                     ticks: {
-                        callback: function(value) {
+                        callback: function (value) {
                             return '€' + value.toLocaleString();
                         }
                     }
@@ -253,16 +254,16 @@ function initializePortfolioChart() {
 function initializeMultiCurrencyChart() {
     const ctx = document.getElementById('portfolio-multicurrency-chart');
     if (!ctx) return;
-    
+
     const validatedHistory = loadValidatedHistory();
     if (validatedHistory.length === 0) return;
-    
+
     const labels = validatedHistory.map(entry => entry.date);
     const eurData = validatedHistory.map(entry => entry.eur || 0);
     const usdData = validatedHistory.map(entry => entry.usd || 0);
     const btcData = validatedHistory.map(entry => entry.btc || 0);
     const ethData = validatedHistory.map(entry => entry.eth || 0);
-    
+
     // Normalize all values to start at 100 for easy comparison
     const normalizeToIndex = (data) => {
         if (data.length === 0) return [];
@@ -270,12 +271,12 @@ function initializeMultiCurrencyChart() {
         if (firstValue === 0) return data.map(() => 0);
         return data.map(value => (value / firstValue) * 100);
     };
-    
+
     const eurIndex = normalizeToIndex(eurData);
     const usdIndex = normalizeToIndex(usdData);
     const btcIndex = normalizeToIndex(btcData);
     const ethIndex = normalizeToIndex(ethData);
-    
+
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -340,7 +341,7 @@ function initializeMultiCurrencyChart() {
                         font: {
                             size: 12
                         },
-                        filter: function(legendItem) {
+                        filter: function (legendItem) {
                             // Make EUR label bold
                             if (legendItem.text.includes('EUR')) {
                                 legendItem.font = { weight: 'bold', size: 13 };
@@ -351,11 +352,11 @@ function initializeMultiCurrencyChart() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const label = context.dataset.label || '';
                             const indexValue = context.parsed.y;
                             const originalValue = context.raw;
-                            
+
                             // Get original data for this point
                             const dataIndex = context.dataIndex;
                             let originalData;
@@ -363,13 +364,13 @@ function initializeMultiCurrencyChart() {
                             else if (label.includes('USD')) originalData = usdData[dataIndex];
                             else if (label.includes('BTC')) originalData = btcData[dataIndex];
                             else if (label.includes('ETH')) originalData = ethData[dataIndex];
-                            
-                            const formattedValue = originalData ? 
+
+                            const formattedValue = originalData ?
                                 (label.includes('EUR') ? `€${originalData.toLocaleString()}` :
-                                 label.includes('USD') ? `$${originalData.toLocaleString()}` :
-                                 label.includes('BTC') ? `₿${originalData.toFixed(6)}` :
-                                 `Ξ${originalData.toFixed(6)}`) : '';
-                            
+                                    label.includes('USD') ? `$${originalData.toLocaleString()}` :
+                                        label.includes('BTC') ? `₿${originalData.toFixed(6)}` :
+                                            `Ξ${originalData.toFixed(6)}`) : '';
+
                             return `${label}: ${formattedValue} (Index: ${indexValue.toFixed(1)})`;
                         }
                     }
@@ -380,7 +381,7 @@ function initializeMultiCurrencyChart() {
                     beginAtZero: false,
                     min: 80, // Start a bit below 100 for better visualization
                     ticks: {
-                        callback: function(value) {
+                        callback: function (value) {
                             return value.toFixed(0);
                         }
                     },
@@ -413,19 +414,19 @@ function initializeMultiCurrencyChart() {
 function initializeBenchmarkComparisonChart() {
     const ctx = document.getElementById('benchmark-comparison-chart');
     if (!ctx) return;
-    
+
     const validatedHistory = loadValidatedHistory();
     if (validatedHistory.length === 0) return;
-    
+
     const labels = validatedHistory.map(entry => entry.date);
     const portfolioData = validatedHistory.map(entry => entry.eur || 0);
-    
+
     // Normalize portfolio data to start at 100
     const portfolioIndex = normalizeToIndex(portfolioData);
-    
+
     // Get optimized benchmark data from cached data by date
     let benchmarkData;
-    
+
     // First try the new optimized approach (cached data by date)
     const optimizedData = generateOptimizedBenchmarkData(labels, portfolioData);
     if (optimizedData.sp500.some(val => val !== null) || optimizedData.nasdaq.some(val => val !== null)) {
@@ -443,7 +444,7 @@ function initializeBenchmarkComparisonChart() {
             console.log('Using generated benchmark data');
         }
     }
-    
+
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -506,14 +507,14 @@ function initializeBenchmarkComparisonChart() {
                     borderColor: '#4b5563',
                     borderWidth: 1,
                     callbacks: {
-                        title: function(context) {
+                        title: function (context) {
                             return context[0].label;
                         },
-                        label: function(context) {
+                        label: function (context) {
                             const datasetLabel = context.dataset.label;
                             const value = context.parsed.y;
                             const index = context.dataIndex;
-                            
+
                             if (datasetLabel === 'Your Portfolio') {
                                 const actualValue = portfolioData[index];
                                 return `${datasetLabel}: ${value.toFixed(1)} (€${actualValue.toLocaleString()})`;
@@ -534,7 +535,7 @@ function initializeBenchmarkComparisonChart() {
                     beginAtZero: false,
                     min: 80,
                     ticks: {
-                        callback: function(value) {
+                        callback: function (value) {
                             return value.toFixed(0);
                         }
                     },
@@ -576,23 +577,23 @@ function generateRealBenchmarkData(labels, portfolioData, benchmarkHistory) {
     const nasdaqData = [];
     const sp500Values = [];
     const nasdaqValues = [];
-    
+
     // Create a map of benchmark data by date for quick lookup
     const sp500Map = {};
     const nasdaqMap = {};
-    
+
     benchmarkHistory.sp500History.forEach(item => {
         sp500Map[item.date] = item.value;
     });
-    
+
     benchmarkHistory.nasdaqHistory.forEach(item => {
         nasdaqMap[item.date] = item.value;
     });
-    
+
     // Find the starting values for normalization
     let sp500StartValue = null;
     let nasdaqStartValue = null;
-    
+
     // Find the first available benchmark data
     for (const label of labels) {
         if (sp500Map[label] && sp500StartValue === null) {
@@ -603,12 +604,12 @@ function generateRealBenchmarkData(labels, portfolioData, benchmarkHistory) {
         }
         if (sp500StartValue && nasdaqStartValue) break;
     }
-    
+
     // Generate normalized benchmark data
     labels.forEach((label, index) => {
         const sp500Value = sp500Map[label];
         const nasdaqValue = nasdaqMap[label];
-        
+
         if (sp500Value && sp500StartValue) {
             const normalizedSp500 = (sp500Value / sp500StartValue) * 100;
             sp500Data.push(normalizedSp500);
@@ -617,7 +618,7 @@ function generateRealBenchmarkData(labels, portfolioData, benchmarkHistory) {
             sp500Data.push(null);
             sp500Values.push(null);
         }
-        
+
         if (nasdaqValue && nasdaqStartValue) {
             const normalizedNasdaq = (nasdaqValue / nasdaqStartValue) * 100;
             nasdaqData.push(normalizedNasdaq);
@@ -627,9 +628,9 @@ function generateRealBenchmarkData(labels, portfolioData, benchmarkHistory) {
             nasdaqValues.push(null);
         }
     });
-    
-    return { 
-        sp500: sp500Data, 
+
+    return {
+        sp500: sp500Data,
         nasdaq: nasdaqData,
         sp500Values: sp500Values,
         nasdaqValues: nasdaqValues
@@ -642,14 +643,14 @@ function generateOptimizedBenchmarkData(labels, portfolioData) {
     const nasdaqData = [];
     const sp500Values = [];
     const nasdaqValues = [];
-    
+
     // Get cached benchmark data by date
     const cachedBenchmarkData = getCachedBenchmarkDataByDate();
-    
+
     // Find the starting values for normalization
     let sp500StartValue = null;
     let nasdaqStartValue = null;
-    
+
     // Find the first available benchmark data
     for (const label of labels) {
         const dateData = cachedBenchmarkData[label];
@@ -661,11 +662,11 @@ function generateOptimizedBenchmarkData(labels, portfolioData) {
         }
         if (sp500StartValue && nasdaqStartValue) break;
     }
-    
+
     // Generate normalized benchmark data
     labels.forEach((label, index) => {
         const dateData = cachedBenchmarkData[label];
-        
+
         if (dateData && dateData.sp500 && sp500StartValue) {
             const normalizedSp500 = (dateData.sp500 / sp500StartValue) * 100;
             sp500Data.push(normalizedSp500);
@@ -674,7 +675,7 @@ function generateOptimizedBenchmarkData(labels, portfolioData) {
             sp500Data.push(null);
             sp500Values.push(null);
         }
-        
+
         if (dateData && dateData.nasdaq && nasdaqStartValue) {
             const normalizedNasdaq = (dateData.nasdaq / nasdaqStartValue) * 100;
             nasdaqData.push(normalizedNasdaq);
@@ -684,9 +685,9 @@ function generateOptimizedBenchmarkData(labels, portfolioData) {
             nasdaqValues.push(null);
         }
     });
-    
-    return { 
-        sp500: sp500Data, 
+
+    return {
+        sp500: sp500Data,
         nasdaq: nasdaqData,
         sp500Values: sp500Values,
         nasdaqValues: nasdaqValues
@@ -698,30 +699,30 @@ function generateBenchmarkComparisonData(dataLength) {
     // In a real implementation, you'd fetch actual historical benchmark data
     const sp500Data = [];
     const nasdaqData = [];
-    
+
     // Generate realistic benchmark performance data
     let sp500Value = 100;
     let nasdaqValue = 100;
-    
+
     for (let i = 0; i < dataLength; i++) {
         // Add some realistic market volatility
         const sp500Change = (Math.random() - 0.5) * 0.02; // ±1% daily change
         const nasdaqChange = (Math.random() - 0.5) * 0.025; // ±1.25% daily change (more volatile)
-        
+
         sp500Value *= (1 + sp500Change);
         nasdaqValue *= (1 + nasdaqValue);
-        
+
         sp500Data.push(sp500Value);
         nasdaqData.push(nasdaqValue);
     }
-    
+
     return { sp500: sp500Data, nasdaq: nasdaqData };
 }
 
 function initializeCorrelationMatrixChart() {
     const ctx = document.getElementById('correlation-matrix-chart');
     if (!ctx) return;
-    
+
     const correlationData = calculateAssetCorrelations();
     if (!correlationData || correlationData.labels.length === 0) {
         // Show a message when no correlation data is available
@@ -737,7 +738,7 @@ function initializeCorrelationMatrixChart() {
         `;
         return;
     }
-    
+
     new Chart(ctx, {
         type: 'bar',
         data: {
@@ -767,10 +768,10 @@ function initializeCorrelationMatrixChart() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const value = context.parsed.y;
-                            const strength = Math.abs(value) > 0.7 ? 'Strong' : 
-                                           Math.abs(value) > 0.3 ? 'Moderate' : 'Weak';
+                            const strength = Math.abs(value) > 0.7 ? 'Strong' :
+                                Math.abs(value) > 0.3 ? 'Moderate' : 'Weak';
                             const direction = value > 0 ? 'positive' : 'negative';
                             return `${context.label}: ${value.toFixed(3)} (${strength} ${direction})`;
                         }
@@ -782,7 +783,7 @@ function initializeCorrelationMatrixChart() {
                     min: -1,
                     max: 1,
                     ticks: {
-                        callback: function(value) {
+                        callback: function (value) {
                             return value.toFixed(1);
                         }
                     },
@@ -814,42 +815,42 @@ function calculateAssetCorrelations() {
         console.log('Not enough history data for correlations:', validatedHistory.length);
         return null; // Need at least 3 data points
     }
-    
+
     // Get asset categories from history
     const categories = ['stocks', 'etfs', 'crypto', 'static', 'cs2'];
     const categoryData = {};
-    
+
     // Extract data for each category
     categories.forEach(category => {
         categoryData[category] = validatedHistory.map(entry => entry[category] || 0);
     });
-    
+
     // Calculate correlations between categories
     const correlations = [];
     const labels = [];
-    
+
     const categoryNames = {
         'stocks': 'Stocks',
-        'etfs': 'ETFs', 
+        'etfs': 'ETFs',
         'crypto': 'Crypto',
         'static': 'Cash & Savings',
         'cs2': 'CS2 Items'
     };
-    
+
     // Calculate correlation between each pair
     for (let i = 0; i < categories.length; i++) {
         for (let j = i + 1; j < categories.length; j++) {
             const cat1 = categories[i];
             const cat2 = categories[j];
-            
+
             // Only include if both categories have meaningful data
             const data1 = categoryData[cat1];
             const data2 = categoryData[cat2];
-            
+
             // Check if both categories have varying data (not all zeros or all same values)
             const hasVariation1 = data1.some(val => val > 0) && new Set(data1).size > 1;
             const hasVariation2 = data2.some(val => val > 0) && new Set(data2).size > 1;
-            
+
             if (hasVariation1 && hasVariation2) {
                 const correlation = calculateCorrelation(data1, data2);
                 correlations.push(correlation);
@@ -857,9 +858,9 @@ function calculateAssetCorrelations() {
             }
         }
     }
-    
+
     console.log('Correlation data:', { labels, correlations, historyLength: validatedHistory.length });
-    
+
     return {
         labels: labels,
         values: correlations
@@ -869,30 +870,30 @@ function calculateAssetCorrelations() {
 function calculateCorrelation(x, y) {
     const n = x.length;
     if (n === 0) return 0;
-    
+
     const sumX = x.reduce((a, b) => a + b, 0);
     const sumY = y.reduce((a, b) => a + b, 0);
     const sumXY = x.reduce((sum, xi, i) => sum + xi * y[i], 0);
     const sumX2 = x.reduce((sum, xi) => sum + xi * xi, 0);
     const sumY2 = y.reduce((sum, yi) => sum + yi * yi, 0);
-    
+
     const numerator = n * sumXY - sumX * sumY;
     const denominator = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
-    
+
     return denominator === 0 ? 0 : numerator / denominator;
 }
 
 function initializePortfolioBreakdownChart() {
     const ctx = document.getElementById('portfolio-breakdown-chart');
     if (!ctx) return;
-    
+
     const totalValue = calculateTotalValue();
     const breakdown = calculatePortfolioBreakdown();
-    
+
     const labels = [];
     const data = [];
     const colors = [];
-    
+
     Object.entries(breakdown).forEach(([category, value]) => {
         if (value > 0) {
             labels.push(category);
@@ -900,7 +901,7 @@ function initializePortfolioBreakdownChart() {
             colors.push(getCategoryColor(category));
         }
     });
-    
+
     new Chart(ctx, {
         type: 'pie',
         data: {
@@ -922,11 +923,11 @@ function initializePortfolioBreakdownChart() {
                 },
                 tooltip: {
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             const label = context.label || '';
                             const value = context.parsed;
                             const percent = totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : '0.0';
-                            return `${label}: €${value.toLocaleString(undefined, {maximumFractionDigits:2})} (${percent}%)`;
+                            return `${label}: €${value.toLocaleString(undefined, { maximumFractionDigits: 2 })} (${percent}%)`;
                         }
                     }
                 }
@@ -945,7 +946,7 @@ function calculatePortfolioBreakdown() {
         'Cash': 0,
         'CS2 Items': 0
     };
-    
+
     // Calculate stocks value
     portfolio.stocks.forEach(stock => {
         const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
@@ -953,7 +954,7 @@ function calculatePortfolioBreakdown() {
         const value = price * stock.quantity;
         breakdown['Stocks'] += value;
     });
-    
+
     // Calculate ETFs value
     portfolio.etfs.forEach(etf => {
         const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
@@ -961,7 +962,7 @@ function calculatePortfolioBreakdown() {
         const value = price * etf.quantity;
         breakdown['ETFs'] += value;
     });
-    
+
     // Calculate crypto value
     portfolio.crypto.forEach(crypto => {
         const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
@@ -970,7 +971,7 @@ function calculatePortfolioBreakdown() {
         if (crypto.currency === 'USD') value = value / eurUsdRate;
         breakdown['Crypto'] += value;
     });
-    
+
     // Calculate static assets value
     portfolio.static.forEach(asset => {
         if (asset.values && asset.values.length > 0) {
@@ -980,11 +981,11 @@ function calculatePortfolioBreakdown() {
             breakdown[asset.type] = (breakdown[asset.type] || 0) + value;
         }
     });
-    
+
     // Add CS2 value (now handles dynamic portfolios + pending funds)
     if (portfolio.cs2) {
         let cs2Value = 0;
-        
+
         // If we have the combined total in EUR (new structure)
         if (typeof portfolio.cs2.value === 'number' && portfolio.cs2.currency === 'EUR') {
             cs2Value = portfolio.cs2.value;
@@ -1002,15 +1003,15 @@ function calculatePortfolioBreakdown() {
             const totalUsd = playItemsValue + investmentItemsValue;
             cs2Value = totalUsd / eurUsdRate;
         }
-        
+
         // Add pending funds to CS2 total
         if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.total) {
             cs2Value += portfolio.cs2.pendingFunds.total / eurUsdRate;
         }
-        
+
         breakdown['CS2 Items'] += cs2Value;
     }
-    
+
     return breakdown;
 }
 
@@ -1030,7 +1031,7 @@ function getCategoryColor(category) {
 function calculateBestPerformer() {
     let bestAsset = null;
     let bestPercentage = -Infinity;
-    
+
     // Check stocks
     portfolio.stocks.forEach(stock => {
         const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
@@ -1046,7 +1047,7 @@ function calculateBestPerformer() {
             }
         }
     });
-    
+
     // Check ETFs
     portfolio.etfs.forEach(etf => {
         const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
@@ -1062,7 +1063,7 @@ function calculateBestPerformer() {
             }
         }
     });
-    
+
     // Check crypto
     portfolio.crypto.forEach(crypto => {
         const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
@@ -1078,14 +1079,14 @@ function calculateBestPerformer() {
             }
         }
     });
-    
+
     return bestAsset;
 }
 
 function calculateWorstPerformer() {
     let worstAsset = null;
     let worstPercentage = Infinity;
-    
+
     // Check stocks
     portfolio.stocks.forEach(stock => {
         const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
@@ -1101,7 +1102,7 @@ function calculateWorstPerformer() {
             }
         }
     });
-    
+
     // Check ETFs
     portfolio.etfs.forEach(etf => {
         const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
@@ -1117,7 +1118,7 @@ function calculateWorstPerformer() {
             }
         }
     });
-    
+
     // Check crypto
     portfolio.crypto.forEach(crypto => {
         const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
@@ -1133,13 +1134,13 @@ function calculateWorstPerformer() {
             }
         }
     });
-    
+
     return worstAsset;
 }
 
 function calculateTotalPnL() {
     let totalPnL = 0;
-    
+
     // Calculate stocks P&L
     portfolio.stocks.forEach(stock => {
         const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
@@ -1151,7 +1152,7 @@ function calculateTotalPnL() {
             totalPnL += pnl;
         }
     });
-    
+
     // Calculate ETFs P&L
     portfolio.etfs.forEach(etf => {
         const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
@@ -1163,7 +1164,7 @@ function calculateTotalPnL() {
             totalPnL += pnl;
         }
     });
-    
+
     // Calculate crypto P&L
     portfolio.crypto.forEach(crypto => {
         const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
@@ -1172,7 +1173,7 @@ function calculateTotalPnL() {
             const currentValue = currentPrice * crypto.quantity;
             const purchaseValue = crypto.purchasePrice * crypto.quantity;
             let pnl = currentValue - purchaseValue;
-            
+
             // Convert to EUR if needed
             if (crypto.currency === 'USD') {
                 pnl = pnl / eurUsdRate;
@@ -1180,16 +1181,16 @@ function calculateTotalPnL() {
             totalPnL += pnl;
         }
     });
-    
+
     // Static assets and CS2 don't have P&L (they're cash-like)
-    
+
     return totalPnL;
 }
 
 function calculateTotalPnLPercentage() {
     let totalPurchaseValue = 0;
     let totalCurrentValue = 0;
-    
+
     // Calculate stocks
     portfolio.stocks.forEach(stock => {
         const cachedData = (priceCache.stocks && priceCache.stocks[stock.name]) || {};
@@ -1197,12 +1198,12 @@ function calculateTotalPnLPercentage() {
         if (currentPrice > 0 && stock.purchasePrice > 0) {
             const currentValue = currentPrice * stock.quantity;
             const purchaseValue = stock.purchasePrice * stock.quantity;
-            
+
             totalCurrentValue += currentValue;
             totalPurchaseValue += purchaseValue;
         }
     });
-    
+
     // Calculate ETFs
     portfolio.etfs.forEach(etf => {
         const cachedData = (priceCache.etfs && priceCache.etfs[etf.name]) || {};
@@ -1210,12 +1211,12 @@ function calculateTotalPnLPercentage() {
         if (currentPrice > 0 && etf.purchasePrice > 0) {
             const currentValue = currentPrice * etf.quantity;
             const purchaseValue = etf.purchasePrice * etf.quantity;
-            
+
             totalCurrentValue += currentValue;
             totalPurchaseValue += purchaseValue;
         }
     });
-    
+
     // Calculate crypto
     portfolio.crypto.forEach(crypto => {
         const cachedData = (priceCache.crypto && priceCache.crypto[crypto.name]) || {};
@@ -1223,7 +1224,7 @@ function calculateTotalPnLPercentage() {
         if (currentPrice > 0 && crypto.purchasePrice > 0) {
             const currentValue = currentPrice * crypto.quantity;
             const purchaseValue = crypto.purchasePrice * crypto.quantity;
-            
+
             // Convert to EUR if needed
             if (crypto.currency === 'USD') {
                 totalCurrentValue += currentValue / eurUsdRate;
@@ -1234,7 +1235,7 @@ function calculateTotalPnLPercentage() {
             }
         }
     });
-    
+
     if (totalPurchaseValue === 0) return 0;
     return ((totalCurrentValue - totalPurchaseValue) / totalPurchaseValue) * 100;
 }
@@ -1242,11 +1243,11 @@ function calculateTotalPnLPercentage() {
 function updateAutoUpdatesStatus() {
     const updateStatuses = getUpdateStatuses();
     const autoUpdatesElement = document.querySelector('.text-emerald-400');
-    
+
     if (autoUpdatesElement && updateStatuses) {
         const assetTypes = ['rates', 'stocks', 'etfs', 'crypto'];
         const statusTexts = [];
-        
+
         assetTypes.forEach(type => {
             const status = updateStatuses[type];
             if (status && status.status === 'error') {
@@ -1255,7 +1256,7 @@ function updateAutoUpdatesStatus() {
                 statusTexts.push(`<span class="text-emerald-400">${type.charAt(0).toUpperCase() + type.slice(1)}</span>`);
             }
         });
-        
+
         autoUpdatesElement.innerHTML = statusTexts.join(', ');
     }
 }
@@ -1264,15 +1265,15 @@ function updateAutoUpdatesStatus() {
 window.updateAutoUpdatesStatus = updateAutoUpdatesStatus;
 
 // Debug function to test cash flow logic
-window.debugCashFlow = function() {
+window.debugCashFlow = function () {
     console.log('=== CASH FLOW DEBUG ===');
-    
+
     const depositTransactions = loadDepositTransactions();
     console.log('Deposit transactions:', depositTransactions);
-    
+
     let totalDeposits = 0;
     let totalWithdrawals = 0;
-    
+
     depositTransactions.forEach(transaction => {
         if (transaction.type === 'deposit') {
             totalDeposits += transaction.amount;
@@ -1280,15 +1281,15 @@ window.debugCashFlow = function() {
             totalWithdrawals += transaction.amount;
         }
     });
-    
+
     const netCashFlow = totalWithdrawals - totalDeposits;
-    
+
     console.log('Total Deposits:', totalDeposits);
     console.log('Total Withdrawals:', totalWithdrawals);
     console.log('Net Cash Flow (withdrawals - deposits):', netCashFlow);
     console.log('Should be GREEN if positive (money flowing INTO portfolio)');
     console.log('Should be RED if negative (money flowing OUT of portfolio)');
-    
+
     return {
         totalDeposits,
         totalWithdrawals,
@@ -1314,13 +1315,13 @@ function updateDashboardStats() {
         totalChangeEl.textContent = (percentage >= 0 ? '+' : '') + percentage.toFixed(2) + '%';
         totalChangeEl.className = 'text-xs ' + (percentage >= 0 ? 'text-emerald-400' : 'text-red-400');
     }
-    
+
     // Update total value
     const totalValueEl = document.getElementById('dashboard-total-value');
     if (totalValueEl) {
         totalValueEl.textContent = formatCurrency(totalValue);
     }
-    
+
     // Update total P&L (real calculation)
     const totalPnlEl = document.getElementById('dashboard-total-pnl');
     const pnlPercentageEl = document.getElementById('dashboard-pnl-percentage');
@@ -1330,7 +1331,7 @@ function updateDashboardStats() {
         totalPnlEl.textContent = formatCurrency(totalPnl);
         pnlPercentageEl.textContent = (pnlPercentage >= 0 ? '+' : '') + pnlPercentage.toFixed(2) + '%';
     }
-    
+
     // Update realized P&L
     const realizedPnlEl = document.getElementById('dashboard-realized-pnl');
     const realizedPnlPercentageEl = document.getElementById('dashboard-realized-pnl-percentage');
@@ -1339,23 +1340,23 @@ function updateDashboardStats() {
         const realizedPnL = calculateRealizedPnL(transactions);
         const totalValue = calculateTotalValue();
         const realizedPnlPercentage = totalValue > 0 ? (realizedPnL.total / totalValue) * 100 : 0;
-        
+
         realizedPnlEl.textContent = formatCurrency(realizedPnL.total, 'EUR');
         realizedPnlPercentageEl.textContent = (realizedPnL.total >= 0 ? '+' : '') + realizedPnlPercentage.toFixed(2) + '%';
-        
+
         // Color code based on positive/negative
         const realizedPnlClass = realizedPnL.total >= 0 ? 'text-emerald-400' : 'text-red-400';
         realizedPnlEl.className = `text-lg font-bold ${realizedPnlClass}`;
         realizedPnlPercentageEl.className = `text-xs text-gray-400 ${realizedPnlClass}`;
     }
-    
+
     // Update asset count
     const assetCountEl = document.getElementById('dashboard-asset-count');
     if (assetCountEl) {
         const assetCount = portfolio.stocks.length + portfolio.etfs.length + portfolio.crypto.length + portfolio.static.length;
         assetCountEl.textContent = assetCount;
     }
-    
+
     // Update best performer
     const bestPerformerEl = document.getElementById('dashboard-best-performer');
     const bestPercentageEl = document.getElementById('dashboard-best-percentage');
@@ -1369,7 +1370,7 @@ function updateDashboardStats() {
             bestPercentageEl.textContent = '+0.00%';
         }
     }
-    
+
     // Update worst performer
     const worstPerformerEl = document.getElementById('dashboard-worst-performer');
     const worstPercentageEl = document.getElementById('dashboard-worst-percentage');
@@ -1383,13 +1384,14 @@ function updateDashboardStats() {
             worstPercentageEl.textContent = '+0.00%';
         }
     }
-    
+
     // Update benchmark performance
     updateBenchmarkPerformance();
-    
+    updateBenchmarkMetrics();
+
     // Update daily return metrics
     updateDailyReturnMetrics();
-    
+
     // Update total value bar
     updateTotalValueBar(totalValue);
 }
@@ -1397,20 +1399,20 @@ function updateDashboardStats() {
 function updateBenchmarkPerformance() {
     const validatedHistory = loadValidatedHistory();
     // Don't return early - we want to show benchmark values even without history
-    
+
     const portfolioData = validatedHistory.map(entry => entry.eur || 0);
     const portfolioIndex = normalizeToIndex(portfolioData);
-    
+
     // Calculate portfolio performance (only if we have data)
     const portfolioPerformance = portfolioIndex.length > 0 ? portfolioIndex[portfolioIndex.length - 1] - 100 : 0;
-    
+
     // Get real benchmark data
     const cachedBenchmark = getCachedBenchmarkData();
     if (cachedBenchmark && cachedBenchmark.sp500 && cachedBenchmark.nasdaq) {
         // Show current benchmark values
         const sp500Value = cachedBenchmark.sp500;
         const nasdaqValue = cachedBenchmark.nasdaq;
-        
+
         // Update S&P 500 card with current value
         const sp500PerfEl = document.getElementById('sp500-performance');
         const sp500DiffEl = document.getElementById('sp500-difference');
@@ -1419,7 +1421,7 @@ function updateBenchmarkPerformance() {
             sp500DiffEl.textContent = `Current S&P 500 Value`;
             sp500PerfEl.className = 'text-2xl font-bold text-blue-400';
         }
-        
+
         // Update NASDAQ card with current value
         const nasdaqPerfEl = document.getElementById('nasdaq-performance');
         const nasdaqDiffEl = document.getElementById('nasdaq-difference');
@@ -1433,11 +1435,11 @@ function updateBenchmarkPerformance() {
         const benchmarkData = generateBenchmarkComparisonData(portfolioData.length);
         const sp500Performance = benchmarkData.sp500[benchmarkData.sp500.length - 1] - 100;
         const nasdaqPerformance = benchmarkData.nasdaq[benchmarkData.nasdaq.length - 1] - 100;
-        
+
         // Calculate differences
         const sp500Difference = portfolioPerformance - sp500Performance;
         const nasdaqDifference = portfolioPerformance - nasdaqPerformance;
-        
+
         // Update S&P 500 card
         const sp500PerfEl = document.getElementById('sp500-performance');
         const sp500DiffEl = document.getElementById('sp500-difference');
@@ -1446,7 +1448,7 @@ function updateBenchmarkPerformance() {
             sp500DiffEl.textContent = `vs S&P 500: ${sp500Difference >= 0 ? '+' : ''}${sp500Difference.toFixed(1)}%`;
             sp500PerfEl.className = sp500Difference >= 0 ? 'text-2xl font-bold text-emerald-400' : 'text-2xl font-bold text-red-400';
         }
-        
+
         // Update NASDAQ card
         const nasdaqPerfEl = document.getElementById('nasdaq-performance');
         const nasdaqDiffEl = document.getElementById('nasdaq-difference');
@@ -1458,30 +1460,59 @@ function updateBenchmarkPerformance() {
     }
 }
 
+/**
+ * Updates the S&P 500 and NASDAQ metric cards with current values and daily changes
+ */
+function updateBenchmarkMetrics() {
+    const sp500ValueEl = document.getElementById('dashboard-sp500-value');
+    const sp500ChangeEl = document.getElementById('dashboard-sp500-change');
+    const nasdaqValueEl = document.getElementById('dashboard-nasdaq-value');
+    const nasdaqChangeEl = document.getElementById('dashboard-nasdaq-change');
+
+    if (!sp500ValueEl || !nasdaqValueEl) return;
+
+    const cachedData = getCachedBenchmarkData();
+    if (cachedData && cachedData.sp500 && cachedData.nasdaq) {
+        // Update Values
+        sp500ValueEl.textContent = Number(cachedData.sp500).toLocaleString(undefined, { maximumFractionDigits: 2 });
+        nasdaqValueEl.textContent = Number(cachedData.nasdaq).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+        // Update Changes
+        if (sp500ChangeEl) sp500ChangeEl.textContent = "Current Index";
+        if (nasdaqChangeEl) nasdaqChangeEl.textContent = "Current Index";
+
+        sp500ValueEl.className = 'text-lg font-bold text-blue-400';
+        nasdaqValueEl.className = 'text-lg font-bold text-purple-400';
+    } else {
+        sp500ValueEl.textContent = "---";
+        nasdaqValueEl.textContent = "---";
+    }
+}
+
 function updateDailyReturnMetrics() {
     const validatedHistory = loadValidatedHistory();
     if (validatedHistory.length < 2) return;
-    
+
     const portfolioData = validatedHistory.map(entry => entry.eur || 0);
     const dailyReturns = calculateDailyReturns(portfolioData);
-    
+
     if (dailyReturns.length === 0) return;
-    
+
     // Calculate average daily return
     const avgDailyReturn = dailyReturns.reduce((sum, ret) => sum + ret, 0) / dailyReturns.length;
-    
+
     // Find best and worst days
     const bestDayIndex = dailyReturns.indexOf(Math.max(...dailyReturns));
     const worstDayIndex = dailyReturns.indexOf(Math.min(...dailyReturns));
-    
+
     const bestDayReturn = dailyReturns[bestDayIndex];
     const worstDayReturn = dailyReturns[worstDayIndex];
-    
+
     // Get dates (skip first entry as it has no previous day to compare)
     const dates = validatedHistory.map(entry => entry.date).slice(1);
     const bestDayDate = dates[bestDayIndex];
     const worstDayDate = dates[worstDayIndex];
-    
+
     // Update average daily return card
     const avgReturnEl = document.getElementById('avg-daily-return');
     const periodEl = document.getElementById('daily-return-period');
@@ -1490,7 +1521,7 @@ function updateDailyReturnMetrics() {
         avgReturnEl.className = avgDailyReturn >= 0 ? 'text-2xl font-bold text-emerald-400' : 'text-2xl font-bold text-red-400';
         periodEl.textContent = `Over ${dailyReturns.length} days`;
     }
-    
+
     // Update best day card
     const bestReturnEl = document.getElementById('best-day-return');
     const bestDateEl = document.getElementById('best-day-date');
@@ -1498,7 +1529,7 @@ function updateDailyReturnMetrics() {
         bestReturnEl.textContent = (bestDayReturn >= 0 ? '+' : '') + bestDayReturn.toFixed(2) + '%';
         bestDateEl.textContent = bestDayDate || '--';
     }
-    
+
     // Update worst day card
     const worstReturnEl = document.getElementById('worst-day-return');
     const worstDateEl = document.getElementById('worst-day-date');
@@ -1511,8 +1542,8 @@ function updateDailyReturnMetrics() {
 function calculateDailyReturns(values) {
     const returns = [];
     for (let i = 1; i < values.length; i++) {
-        if (values[i-1] > 0) {
-            const dailyReturn = ((values[i] - values[i-1]) / values[i-1]) * 100;
+        if (values[i - 1] > 0) {
+            const dailyReturn = ((values[i] - values[i - 1]) / values[i - 1]) * 100;
             returns.push(dailyReturn);
         }
     }
@@ -1523,27 +1554,27 @@ function loadMonthlyPerformance() {
     const monthlyList = document.getElementById('monthly-performance-list');
     const monthlyPeriod = document.getElementById('monthly-performance-period');
     if (!monthlyList) return;
-    
+
     const validatedHistory = loadValidatedHistory();
     if (validatedHistory.length === 0) {
         monthlyList.innerHTML = '<div class="text-gray-400 text-center py-4">No data available</div>';
         if (monthlyPeriod) monthlyPeriod.textContent = 'No data';
         return;
     }
-    
+
     const monthlyData = calculateMonthlyPerformance(validatedHistory);
-    
+
     if (monthlyData.length === 0) {
         monthlyList.innerHTML = '<div class="text-gray-400 text-center py-4">No monthly data available</div>';
         if (monthlyPeriod) monthlyPeriod.textContent = 'No data';
         return;
     }
-    
+
     let html = '';
     monthlyData.slice(-6).forEach(month => {
         const performanceClass = month.performance >= 0 ? 'text-emerald-400' : 'text-red-400';
         const performanceSign = month.performance >= 0 ? '+' : '';
-        
+
         html += `
             <div class="flex justify-between items-center p-1 bg-gray-700 rounded text-xs">
                 <div>
@@ -1556,9 +1587,9 @@ function loadMonthlyPerformance() {
             </div>
         `;
     });
-    
+
     monthlyList.innerHTML = html;
-    
+
     // Set period information with initial value
     if (monthlyPeriod && monthlyData.length > 0) {
         const firstMonth = monthlyData[0];
@@ -1571,27 +1602,27 @@ function loadYearlyPerformance() {
     const yearlyList = document.getElementById('yearly-performance-list');
     const yearlyPeriod = document.getElementById('yearly-performance-period');
     if (!yearlyList) return;
-    
+
     const validatedHistory = loadValidatedHistory();
     if (validatedHistory.length === 0) {
         yearlyList.innerHTML = '<div class="text-gray-400 text-center py-4">No data available</div>';
         if (yearlyPeriod) yearlyPeriod.textContent = 'No data';
         return;
     }
-    
+
     const yearlyData = calculateYearlyPerformance(validatedHistory);
-    
+
     if (yearlyData.length === 0) {
         yearlyList.innerHTML = '<div class="text-gray-400 text-center py-4">No yearly data available</div>';
         if (yearlyPeriod) yearlyPeriod.textContent = 'No data';
         return;
     }
-    
+
     let html = '';
     yearlyData.forEach(year => {
         const performanceClass = year.performance >= 0 ? 'text-emerald-400' : 'text-red-400';
         const performanceSign = year.performance >= 0 ? '+' : '';
-        
+
         html += `
             <div class="flex justify-between items-center p-1 bg-gray-700 rounded text-xs">
                 <div>
@@ -1604,9 +1635,9 @@ function loadYearlyPerformance() {
             </div>
         `;
     });
-    
+
     yearlyList.innerHTML = html;
-    
+
     // Set period information with initial value
     if (yearlyPeriod && yearlyData.length > 0) {
         const firstYear = yearlyData[0];
@@ -1617,12 +1648,12 @@ function loadYearlyPerformance() {
 
 function calculateMonthlyPerformance(history) {
     const monthlyData = {};
-    
+
     history.forEach(entry => {
         const date = new Date(entry.date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         const monthName = date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
-        
+
         if (!monthlyData[monthKey]) {
             monthlyData[monthKey] = {
                 month: monthName,
@@ -1632,17 +1663,17 @@ function calculateMonthlyPerformance(history) {
                 days: 0
             };
         }
-        
+
         monthlyData[monthKey].entries.push(entry);
         monthlyData[monthKey].endValue = entry.eur || 0;
         monthlyData[monthKey].days++;
     });
-    
+
     // Calculate performance for each month
     return Object.values(monthlyData).map(month => {
-        const performance = month.startValue > 0 ? 
+        const performance = month.startValue > 0 ?
             ((month.endValue - month.startValue) / month.startValue) * 100 : 0;
-        
+
         return {
             ...month,
             performance
@@ -1652,11 +1683,11 @@ function calculateMonthlyPerformance(history) {
 
 function calculateYearlyPerformance(history) {
     const yearlyData = {};
-    
+
     history.forEach(entry => {
         const date = new Date(entry.date);
         const year = date.getFullYear().toString();
-        
+
         if (!yearlyData[year]) {
             yearlyData[year] = {
                 year,
@@ -1665,16 +1696,16 @@ function calculateYearlyPerformance(history) {
                 endValue: entry.eur || 0
             };
         }
-        
+
         yearlyData[year].entries.push(entry);
         yearlyData[year].endValue = entry.eur || 0;
     });
-    
+
     // Calculate performance for each year
     return Object.values(yearlyData).map(year => {
-        const performance = year.startValue > 0 ? 
+        const performance = year.startValue > 0 ?
             ((year.endValue - year.startValue) / year.startValue) * 100 : 0;
-        
+
         return {
             ...year,
             performance,
@@ -1686,26 +1717,26 @@ function calculateYearlyPerformance(history) {
 function loadRecentActivity() {
     const recentActivityList = document.getElementById('recent-activity-list');
     if (!recentActivityList) return;
-    
+
     const transactions = loadTransactions();
     const recentTransactions = transactions
         .sort((a, b) => new Date(b.date) - new Date(a.date))
         .slice(0, 5);
-    
+
     if (recentTransactions.length === 0) {
         recentActivityList.innerHTML = '<div class="text-gray-400">No recent activity.</div>';
         return;
     }
-    
+
     let html = '';
     recentTransactions.forEach(tx => {
         const typeColor = tx.type === 'buy' ? 'text-green-400' : 'text-red-400';
         const typeIcon = tx.type === 'buy' ? '↗' : '↘';
-        const assetTypeDisplay = tx.assetType === 'stocks' ? 'Stock' : 
-                                tx.assetType === 'etfs' ? 'ETF' : 
-                                tx.assetType === 'crypto' ? 'Crypto' : 
-                                tx.assetType.charAt(0).toUpperCase() + tx.assetType.slice(1);
-        
+        const assetTypeDisplay = tx.assetType === 'stocks' ? 'Stock' :
+            tx.assetType === 'etfs' ? 'ETF' :
+                tx.assetType === 'crypto' ? 'Crypto' :
+                    tx.assetType.charAt(0).toUpperCase() + tx.assetType.slice(1);
+
         html += `
             <div class="flex justify-between items-center p-2 bg-gray-700 rounded">
                 <div class="flex items-center gap-2">
@@ -1719,7 +1750,7 @@ function loadRecentActivity() {
             </div>
         `;
     });
-    
+
     recentActivityList.innerHTML = html;
 }
 
@@ -1727,26 +1758,26 @@ function loadRecentActivity() {
 async function addToHistory() {
     const totalValue = calculateTotalValue();
     const breakdown = calculatePortfolioBreakdown();
-    
+
     // Use the same logic as updateTotalValueBar for currency conversions
     const cached = getCachedCryptoRates();
     let btcValue = 0;
     let ethValue = 0;
-    
+
     if (cached && cached.btc && cached.eth) {
         btcValue = totalValue / cached.btc; // Same as updateTotalValueBar
         ethValue = totalValue / cached.eth; // Same as updateTotalValueBar
     }
-    
+
     const today = new Date().toISOString().slice(0, 10);
-    
+
     // Fetch and cache benchmark data for today's date
     try {
         showNotification('Fetching benchmark data...', 'info');
-        
+
         // Check if we already have cached benchmark data for today
         const cachedBenchmarkData = getCachedBenchmarkDataForDate(today);
-        
+
         if (!cachedBenchmarkData) {
             // Fetch benchmark data for today
             const benchmarkData = await fetchBenchmarkDataForDate(today);
@@ -1763,7 +1794,7 @@ async function addToHistory() {
         console.error('Error fetching benchmark data:', error);
         // Continue with adding to history even if benchmark fetch fails
     }
-    
+
     const historyEntry = {
         date: today,
         total: totalValue,
@@ -1780,12 +1811,12 @@ async function addToHistory() {
         btc: btcValue,
         eth: ethValue
     };
-    
+
     const validatedHistory = loadValidatedHistory();
-    
+
     // Check if an entry for today already exists
     const existingIndex = validatedHistory.findIndex(entry => entry.date === today);
-    
+
     if (existingIndex !== -1) {
         // Replace existing entry for today
         validatedHistory[existingIndex] = historyEntry;
@@ -1795,9 +1826,9 @@ async function addToHistory() {
         validatedHistory.push(historyEntry);
         showNotification('Portfolio value added to history!', 'success');
     }
-    
+
     saveValidatedHistory(validatedHistory);
-    
+
     // Refresh charts
     setTimeout(() => {
         location.reload();
@@ -1808,18 +1839,18 @@ async function addToHistory() {
 function initializeRetirementChart() {
     const ctx = document.getElementById('retirement-chart');
     if (!ctx) return;
-    
+
     // Destroy existing chart if it exists
     if (window.retirementChart) {
         window.retirementChart.destroy();
     }
-    
+
     const validatedHistory = loadValidatedHistory();
     const transactions = loadTransactions();
-    
+
     // Calculate retirement progress data
     const retirementData = calculateRetirementProgress(validatedHistory, transactions);
-    
+
     window.retirementChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -1866,14 +1897,14 @@ function initializeRetirementChart() {
                     borderColor: '#4b5563',
                     borderWidth: 1,
                     callbacks: {
-                        title: function(context) {
+                        title: function (context) {
                             return context[0].label;
                         },
-                        label: function(context) {
+                        label: function (context) {
                             const datasetLabel = context.dataset.label;
                             const value = context.parsed.y;
                             const index = context.dataIndex;
-                            
+
                             if (datasetLabel === 'Total Portfolio Value') {
                                 const contributionValue = retirementData.contributionValues[index];
                                 const compoundInterest = value - contributionValue;
@@ -1902,7 +1933,7 @@ function initializeRetirementChart() {
                 y: {
                     ticks: {
                         color: '#9ca3af',
-                        callback: function(value) {
+                        callback: function (value) {
                             return '€' + value.toLocaleString();
                         }
                     },
@@ -1918,25 +1949,25 @@ function initializeRetirementChart() {
 function setupRetirementControls() {
     const amountInput = document.getElementById('monthly-allocation-amount');
     const returnRateInput = document.getElementById('annual-return-rate');
-    
+
     if (!amountInput || !returnRateInput) return;
-    
+
     // Safely get the description element
     const retirementChart = document.querySelector('#retirement-chart');
     const descriptionElement = retirementChart?.closest('.bg-gray-800')?.querySelector('.text-sm.text-gray-400.mb-4');
-    
+
     // Update chart when amount changes
-    amountInput.addEventListener('input', function() {
+    amountInput.addEventListener('input', function () {
         updateRetirementDescription();
         initializeRetirementChart();
     });
-    
+
     // Update chart when return rate changes
-    returnRateInput.addEventListener('input', function() {
+    returnRateInput.addEventListener('input', function () {
         updateRetirementDescription();
         initializeRetirementChart();
     });
-    
+
     // Update description based on current settings
     function updateRetirementDescription() {
         if (descriptionElement) {
@@ -1944,7 +1975,7 @@ function setupRetirementControls() {
             descriptionElement.textContent = `Projected growth until 2065 assuming ${returnRate}% annual returns`;
         }
     }
-    
+
     // Initial description update
     updateRetirementDescription();
 }
@@ -1953,34 +1984,34 @@ function calculateRetirementProgress(history, transactions) {
     const labels = [];
     const portfolioValues = [];
     const contributionValues = [];
-    
+
     // Get monthly allocation settings
     const monthlyAmount = parseFloat(document.getElementById('monthly-allocation-amount')?.value) || 0;
     const annualReturnRate = parseFloat(document.getElementById('annual-return-rate')?.value) || 10;
-    
+
     // Generate data points from now until 2065
     const startDate = new Date();
     const endDate = new Date(2065, 11, 31); // December 31, 2065
     const currentValue = history.length > 0 ? history[history.length - 1].eur : 0;
     const annualGrowthRate = annualReturnRate / 100; // Convert percentage to decimal
-    const monthlyGrowthRate = Math.pow(1 + annualGrowthRate, 1/12) - 1; // Monthly growth rate
-    
+    const monthlyGrowthRate = Math.pow(1 + annualGrowthRate, 1 / 12) - 1; // Monthly growth rate
+
     // Calculate total months from start to end
-    const totalMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 + 
-                       (endDate.getMonth() - startDate.getMonth());
-    
+    const totalMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 +
+        (endDate.getMonth() - startDate.getMonth());
+
     let runningValue = currentValue;
     let totalContributions = 0;
-    
+
     for (let i = 0; i <= totalMonths; i += 6) { // Every 6 months
         const date = new Date(startDate);
         date.setMonth(date.getMonth() + i);
-        
+
         // Stop if we've reached 2065
         if (date.getFullYear() > 2065) break;
-        
+
         labels.push(date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }));
-        
+
         // Calculate value for this point
         if (monthlyAmount > 0) {
             // Apply monthly contributions and growth for the 6-month period
@@ -1997,11 +2028,11 @@ function calculateRetirementProgress(history, transactions) {
             runningValue = currentValue * Math.pow(1 + annualGrowthRate, yearsElapsed);
             totalContributions = 0; // No new contributions
         }
-        
+
         portfolioValues.push(runningValue);
         contributionValues.push(totalContributions);
     }
-    
+
     return { labels, portfolioValues, contributionValues };
 }
 
@@ -2010,10 +2041,10 @@ function calculateRetirementProgress(history, transactions) {
 function updateCashFlowSummary() {
     // Use the new separate deposit/withdrawal storage
     const depositTransactions = loadDepositTransactions();
-    
+
     let totalDeposits = 0;
     let totalWithdrawals = 0;
-    
+
     depositTransactions.forEach(transaction => {
         if (transaction.type === 'deposit') {
             totalDeposits += transaction.amount;
@@ -2021,17 +2052,17 @@ function updateCashFlowSummary() {
             totalWithdrawals += transaction.amount;
         }
     });
-    
+
     // Net Cash Flow should be withdrawals - deposits
     // Positive = money flowing INTO portfolio (withdrawals > deposits) = GREEN
     // Negative = money flowing OUT of portfolio (deposits > withdrawals) = RED
     const netCashFlow = totalWithdrawals - totalDeposits;
-    
+
     // Update DOM elements
     const totalDepositsEl = document.getElementById('total-deposits');
     const totalWithdrawalsEl = document.getElementById('total-withdrawals');
     const netCashFlowEl = document.getElementById('net-cash-flow');
-    
+
     if (totalDepositsEl) {
         totalDepositsEl.textContent = formatCurrency(totalDeposits, 'EUR');
         totalDepositsEl.className = 'text-2xl font-bold text-red-400'; // Deposits are money out

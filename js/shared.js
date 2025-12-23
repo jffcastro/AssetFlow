@@ -1,7 +1,56 @@
 // Shared functionality for Portfolio Dashboard
 // This file contains common functions used across all pages
+// 
+// ARCHITECTURE NOTE: This file imports from ES Modules in ./modules/
+// and exposes functions globally via window.* for backward compatibility
+// with page-specific scripts (stocks.js, crypto.js, etc.)
+
+// --- IMPORTS FROM MODULES ---
+import {
+    formatCurrency as _formatCurrency,
+    formatQuantity as _formatQuantity
+} from './modules/formatter.js';
+
+import {
+    showNotification as _showNotification,
+    updateTotalValueBar as _updateTotalValueBar,
+    updateExchangeRateLabel as _updateExchangeRateLabel,
+    resetExchangeRateLabels as _resetExchangeRateLabels,
+    updateLastUpdateTime as _updateLastUpdateTime,
+    setLastUpdateTime as _setLastUpdateTime
+} from './modules/ui.js';
+
+import {
+    loadPortfolioData,
+    savePortfolioData,
+    loadExchangeRateFromStorage,
+    saveExchangeRateToStorage,
+    loadHistoricalRatesFromStorage,
+    saveHistoricalRatesToStorage,
+    loadSoldAssetsCacheFromStorage,
+    saveSoldAssetsCacheToStorage,
+    loadPriceCacheFromStorage,
+    savePriceCacheToStorage,
+    loadTransactions as _loadTransactions,
+    saveTransactions as _saveTransactions,
+    addTransaction as _addTransaction,
+    loadDepositTransactions as _loadDepositTransactions,
+    saveDepositTransactions as _saveDepositTransactions,
+    loadValidatedHistory as _loadValidatedHistory,
+    saveValidatedHistory as _saveValidatedHistory,
+    getCachedCryptoRates as _getCachedCryptoRates,
+    setCachedCryptoRates as _setCachedCryptoRates
+} from './modules/storage.js';
+
+import {
+    getTransactionTotals as _getTransactionTotals,
+    calculateHoldingTime as _calculateHoldingTime,
+    calculateRealizedPnL as _calculateRealizedPnL,
+    calculateTotalValue as _calculateTotalValue
+} from './modules/calculator.js';
 
 // --- STATE MANAGEMENT ---
+// These remain as mutable globals for backward compatibility
 let portfolio = {
     stocks: [],
     etfs: [],
@@ -31,7 +80,9 @@ function loadData() {
         const data = localStorage.getItem('portfolioPilotData');
         if (data) {
             const parsed = JSON.parse(data);
-            portfolio = { ...portfolio, ...parsed };
+            // Use Object.assign to MUTATE the existing portfolio object
+            // This preserves the window.portfolio reference
+            Object.assign(portfolio, parsed);
         }
         loadHistoricalRates();
         loadSoldAssetsCache();
@@ -68,16 +119,19 @@ function loadExchangeRate() {
 
         if (!isNaN(rate) && rate > 0) {
             eurUsdRate = rate;
+            window.eurUsdRate = eurUsdRate; // Sync global reference
             console.log('Loaded eurUsdRate from storage:', eurUsdRate);
         } else {
             console.log('Invalid stored rate, using default:', eurUsdRate);
             eurUsdRate = 1.0;
+            window.eurUsdRate = eurUsdRate; // Sync global reference
             // Try to fetch the current exchange rate
             fetchExchangeRate();
         }
     } else {
         // Ensure default rate is set when no stored value
         eurUsdRate = 1.0;
+        window.eurUsdRate = eurUsdRate; // Sync global reference
         console.log('No stored rate, using default:', eurUsdRate);
         // Try to fetch the current exchange rate
         fetchExchangeRate();
@@ -88,6 +142,7 @@ function loadExchangeRate() {
 function saveExchangeRate(rate) {
     console.log('Saving exchange rate:', rate);
     eurUsdRate = rate;
+    window.eurUsdRate = eurUsdRate; // Sync global reference
     localStorage.setItem('eurUsdRate', rate);
     console.log('Saved eurUsdRate to storage:', eurUsdRate);
     updateExchangeRateLabel();
@@ -98,11 +153,13 @@ function loadHistoricalRates() {
     try {
         const data = localStorage.getItem('historicalRates');
         if (data) {
-            historicalRates = JSON.parse(data);
+            // Clear existing and merge to preserve window.historicalRates reference
+            Object.keys(historicalRates).forEach(key => delete historicalRates[key]);
+            Object.assign(historicalRates, JSON.parse(data));
         }
     } catch (e) {
         console.error('Error loading historical rates:', e);
-        historicalRates = {};
+        Object.keys(historicalRates).forEach(key => delete historicalRates[key]);
     }
 }
 
@@ -155,11 +212,13 @@ function loadSoldAssetsCache() {
     try {
         const data = localStorage.getItem('soldAssetsCache');
         if (data) {
-            soldAssetsCache = JSON.parse(data);
+            // Clear existing and merge to preserve window.soldAssetsCache reference
+            Object.keys(soldAssetsCache).forEach(key => delete soldAssetsCache[key]);
+            Object.assign(soldAssetsCache, JSON.parse(data));
         }
     } catch (e) {
         console.error('Error loading sold assets cache:', e);
-        soldAssetsCache = {};
+        Object.keys(soldAssetsCache).forEach(key => delete soldAssetsCache[key]);
     }
 }
 
@@ -1144,15 +1203,15 @@ function loadPriceCache() {
         const cache = localStorage.getItem('portfolioPilotPriceCache');
         if (cache) {
             const parsedCache = JSON.parse(cache);
-            // Ensure all required properties exist
-            priceCache = {
-                stocks: parsedCache.stocks || {},
-                crypto: parsedCache.crypto || {},
-                etfs: parsedCache.etfs || {}
-            };
+            // Clear existing and merge to preserve window.priceCache reference
+            priceCache.stocks = parsedCache.stocks || {};
+            priceCache.crypto = parsedCache.crypto || {};
+            priceCache.etfs = parsedCache.etfs || {};
         }
     } catch (e) {
-        priceCache = { stocks: {}, crypto: {}, etfs: {} };
+        priceCache.stocks = {};
+        priceCache.crypto = {};
+        priceCache.etfs = {};
     }
 }
 
@@ -1945,12 +2004,16 @@ function importAllData(event) {
 }
 
 // --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
-    loadData();
-    loadExchangeRate();
-    loadPriceCache();
+// With ES Modules, the script runs deferred but core data loading should happen 
+// immediately at module load time to ensure it's ready before page scripts (DOMContentLoaded)
+loadData();
+loadExchangeRate();
+loadPriceCache();
+fetchBenchmarkData(); // Fetch current S&P 500 and NASDAQ values immediately
 
-    // Ensure exchange rate labels are properly initialized
+// Ensure exchange rate labels are properly initialized as soon as possible
+// Note: This might still need the DOM to be ready for some elements
+document.addEventListener('DOMContentLoaded', () => {
     resetExchangeRateLabels();
     updateExchangeRateLabel();
 
@@ -1969,6 +2032,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Update all asset prices with detailed feedback
+            await fetchBenchmarkData(); // Also update benchmark data
             const results = await fetchAllAssetPrices();
             if (results) {
                 // Show individual results for each asset class
@@ -1990,6 +2054,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof loadStocks === 'function') loadStocks();
                     if (typeof loadETFs === 'function') loadETFs();
                     if (typeof loadCrypto === 'function') loadCrypto();
+                    if (typeof updateBenchmarkMetrics === 'function') updateBenchmarkMetrics();
                 }, 1000);
             } else {
                 console.error('fetchAllAssetPrices returned false - check above logs for details');
@@ -2534,6 +2599,7 @@ window.decryptData = decryptData;
 window.trackApiUsage = trackApiUsage;
 window.fetchBenchmarkDataForDate = fetchBenchmarkDataForDate;
 window.setCachedBenchmarkDataForDate = setCachedBenchmarkDataForDate;
+window.getCachedBenchmarkDataByDate = getCachedBenchmarkDataByDate;
 window.getCachedBenchmarkDataForDate = getCachedBenchmarkDataForDate;
 window.getCachedStockEarningsForSymbol = getCachedStockEarningsForSymbol;
 window.getCachedStockEarnings = getCachedStockEarnings;
@@ -2644,3 +2710,113 @@ window.debugBackupCompatibility = function (backupData) {
 
     console.log('✅ Backup is compatible with current system');
 };
+
+// --- GLOBAL EXPORTS FOR BACKWARD COMPATIBILITY ---
+// Expose functions on window so page-specific scripts (stocks.js, crypto.js, etc.)
+// can continue to use them without importing
+
+// State (exposed as is - already global)
+window.portfolio = portfolio;
+window.priceCache = priceCache;
+window.eurUsdRate = eurUsdRate;
+window.historicalRates = historicalRates;
+window.soldAssetsCache = soldAssetsCache;
+
+// Formatter functions
+window.formatCurrency = formatCurrency;
+window.formatQuantity = formatQuantity;
+
+// UI functions
+window.showNotification = showNotification;
+
+// Storage functions
+window.loadData = loadData;
+window.saveData = saveData;
+window.loadExchangeRate = loadExchangeRate;
+window.saveExchangeRate = saveExchangeRate;
+window.loadHistoricalRates = loadHistoricalRates;
+window.saveHistoricalRates = saveHistoricalRates;
+window.getHistoricalRateForDate = getHistoricalRateForDate;
+window.loadSoldAssetsCache = loadSoldAssetsCache;
+window.saveSoldAssetsCache = saveSoldAssetsCache;
+window.loadTransactions = loadTransactions;
+window.saveTransactions = saveTransactions;
+window.addTransaction = addTransaction;
+window.loadDepositTransactions = loadDepositTransactions;
+window.saveDepositTransactions = saveDepositTransactions;
+window.loadValidatedHistory = loadValidatedHistory;
+window.saveValidatedHistory = saveValidatedHistory;
+window.loadPriceCache = loadPriceCache;
+window.savePriceCache = savePriceCache;
+window.getCachedCryptoRates = getCachedCryptoRates;
+window.setCachedCryptoRates = setCachedCryptoRates;
+window.updateSoldAssetsWithCurrentPrices = updateSoldAssetsWithCurrentPrices;
+window.addPendingFunds = addPendingFunds;
+window.removePendingFunds = removePendingFunds;
+window.updatePendingFundsTotal = updatePendingFundsTotal;
+window.getPendingFundsInEUR = getPendingFundsInEUR;
+window.getTotalCS2Exposure = getTotalCS2Exposure;
+window.migrateExistingUSDTransactions = migrateExistingUSDTransactions;
+window.getMigrationStatus = getMigrationStatus;
+
+// Calculator functions
+window.calculateTotalValue = calculateTotalValue;
+window.calculateRealizedPnL = calculateRealizedPnL;
+window.calculateHoldingTime = calculateHoldingTime;
+window.getTransactionTotals = getTransactionTotals;
+
+// API functions
+window.fetchStockPrice = fetchStockPrice;
+window.fetchCryptoPrice = fetchCryptoPrice;
+window.fetchExchangeRate = fetchExchangeRate;
+window.fetchAllAssetPrices = fetchAllAssetPrices;
+window.fetchHistoricalExchangeRate = fetchHistoricalExchangeRate;
+window.fetchSoldAssetsPrices = fetchSoldAssetsPrices;
+window.fetchBenchmarkData = fetchBenchmarkData;
+
+// Portfolio calculation
+window.calculatePortfolioFromTransactions = calculatePortfolioFromTransactions;
+window.updateTotalValueBar = updateTotalValueBar;
+window.updateExchangeRateLabel = updateExchangeRateLabel;
+window.resetExchangeRateLabels = resetExchangeRateLabels;
+window.updateLastUpdateTime = updateLastUpdateTime;
+window.setLastUpdateTime = setLastUpdateTime;
+window.updateAllAssetPrices = updateAllAssetPrices;
+window.startScheduledUpdates = startScheduledUpdates;
+
+// Benchmark functions
+window.getCachedBenchmarkData = getCachedBenchmarkData;
+window.setCachedBenchmarkData = setCachedBenchmarkData;
+window.setCachedBenchmarkHistory = setCachedBenchmarkHistory;
+window.getCachedBenchmarkHistory = getCachedBenchmarkHistory;
+
+// API key functions
+window.getApiKey = getApiKey;
+window.trackApiUsage = trackApiUsage;
+window.getEncryptedItem = getEncryptedItem;
+window.setEncryptedItem = setEncryptedItem;
+
+// Stock earnings functions
+window.setCachedStockEarnings = setCachedStockEarnings;
+window.getCachedStockEarnings = getCachedStockEarnings;
+window.getCachedStockEarningsForSymbol = getCachedStockEarningsForSymbol;
+window.fetchStockEarnings = fetchStockEarnings;
+
+// Crypto events functions
+window.setCachedCryptoEvents = setCachedCryptoEvents;
+window.getCachedCryptoEvents = getCachedCryptoEvents;
+window.getCachedCryptoEventsForCoins = getCachedCryptoEventsForCoins;
+window.fetchCryptoEvents = fetchCryptoEvents;
+
+// Export/Import functions
+window.exportToCsv = exportToCsv;
+window.importFromCsv = importFromCsv;
+window.exportAllData = exportAllData;
+window.importAllData = importAllData;
+
+// Misc utility functions
+window.getSoldAssetsAnalysis = getSoldAssetsAnalysis;
+window.setupAutoCalculation = setupAutoCalculation;
+window.createTransactionWithCurrencyConversion = createTransactionWithCurrencyConversion;
+
+console.log('✅ Shared.js loaded with ES Modules and global exports');
