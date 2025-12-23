@@ -85,7 +85,7 @@
             </div>
 
             <!-- CoinMarketCal API -->
-            <div class="mb-4 p-4 glass-effect rounded-lg">
+            <div class="mb-6 p-4 glass-effect rounded-lg">
                 <div class="flex justify-between items-center mb-3">
                     <div>
                         <h4 class="text-lg font-semibold text-orange-400">CoinMarketCal API</h4>
@@ -108,6 +108,33 @@
                 <div class="mt-2">
                     <a href="https://coinmarketcal.com/en/api" target="_blank"
                         class="text-xs text-orange-400 hover:text-orange-300 underline">Get CoinMarketCal API Key</a>
+                </div>
+            </div>
+
+            <!-- Pricempire API -->
+            <div class="mb-4 p-4 glass-effect rounded-lg">
+                <div class="flex justify-between items-center mb-3">
+                    <div>
+                        <h4 class="text-lg font-semibold text-red-400">Pricempire API</h4>
+                        <p class="text-gray-400 text-sm">CS2 portfolio tracking and real-time item valuations</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="pe-status" class="text-xs px-2 py-1 rounded-full glass-input text-gray-300">Not
+                            Configured</span>
+                        <span id="pe-usage" class="text-xs text-gray-400">0 calls today</span>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <input type="password" id="pe-api-key" placeholder="Enter your Pricempire API key"
+                        class="flex-1 glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500 text-white">
+                    <button id="save-pe-btn"
+                        class="glass-button text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        Save
+                    </button>
+                </div>
+                <div class="mt-2">
+                    <a href="https://pricempire.com/api" target="_blank"
+                        class="text-xs text-red-400 hover:text-red-300 underline">Get Pricempire API Key</a>
                 </div>
             </div>
         </div>

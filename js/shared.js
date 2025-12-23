@@ -1908,7 +1908,8 @@ function exportAllData() {
                     alphaVantage: getEncryptedItem('portfolioPilotAlphaVantage') ? '***CONFIGURED***' : null,
                     coinGecko: getEncryptedItem('portfolioPilotCoinGecko') ? '***CONFIGURED***' : null,
                     finnhub: getEncryptedItem('portfolioPilotFinnhub') ? '***CONFIGURED***' : null,
-                    coinMarketCal: getEncryptedItem('portfolioPilotCoinMarketCal') ? '***CONFIGURED***' : null
+                    coinMarketCal: getEncryptedItem('portfolioPilotCoinMarketCal') ? '***CONFIGURED***' : null,
+                    pricempire: getEncryptedItem('portfolioPilotPricEmpire') ? '***CONFIGURED***' : null
                 },
 
                 // Database configuration (removed - no longer used)
@@ -1921,8 +1922,15 @@ function exportAllData() {
                     alphaVantage: localStorage.getItem('portfolioPilotAlphaVantageUsage') || '{}',
                     coinGecko: localStorage.getItem('portfolioPilotCoinGeckoUsage') || '{}',
                     finnhub: localStorage.getItem('portfolioPilotFinnhubUsage') || '{}',
-                    coinMarketCal: localStorage.getItem('portfolioPilotCoinMarketCalUsage') || '{}'
-                }
+                    coinMarketCal: localStorage.getItem('portfolioPilotCoinMarketCalUsage') || '{}',
+                    pricempire: localStorage.getItem('portfolioPilotPricEmpireUsage') || '{}'
+                },
+
+                // CS2 API cache
+                pricempireCache: localStorage.getItem('portfolioPilotPricEmpireCache'),
+                
+                // CS2 mode preference
+                cs2ApiMode: localStorage.getItem('cs2ApiMode')
             }
         };
 
@@ -2048,6 +2056,15 @@ function importAllData(event) {
                 if (backupData.data.usageStats.coinGecko) localStorage.setItem('portfolioPilotCoinGeckoUsage', backupData.data.usageStats.coinGecko);
                 if (backupData.data.usageStats.finnhub) localStorage.setItem('portfolioPilotFinnhubUsage', backupData.data.usageStats.finnhub);
                 if (backupData.data.usageStats.coinMarketCal) localStorage.setItem('portfolioPilotCoinMarketCalUsage', backupData.data.usageStats.coinMarketCal);
+                if (backupData.data.usageStats.pricempire) localStorage.setItem('portfolioPilotPricEmpireUsage', backupData.data.usageStats.pricempire);
+            }
+
+            // Restore Pricempire cache and mode preference
+            if (backupData.data.pricempireCache) {
+                localStorage.setItem('portfolioPilotPricEmpireCache', backupData.data.pricempireCache);
+            }
+            if (backupData.data.cs2ApiMode) {
+                localStorage.setItem('cs2ApiMode', backupData.data.cs2ApiMode);
             }
 
             // Recalculate portfolio from transactions (source of truth)

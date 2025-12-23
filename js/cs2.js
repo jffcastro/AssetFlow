@@ -1,10 +1,24 @@
 // CS2 page functionality with dynamic portfolio management
+//
+// API INTEGRATION:
+// - Supports two modes: Manual and API
+// - Manual mode: User enters all values manually (default behavior)
+// - API mode: Fetches data from Pricempire API (https://api.pricempire.com/v4/trader/portfolios)
+//   - API returns: id, name, slug, currency, value, change24h, change24h_percentage, 
+//     items_count, total_invested, profit_loss, roi
+//   - Decimal adjustment: API values are divided by 100 (except percentages)
+//   - Realized P&L remains manually editable in both modes (not provided by API)
+//   - Value field is readonly in API mode
+//   - Additional API fields displayed: 24h change, items count, total invested, 
+//     unrealized P&L, ROI
+// - Mode preference saved in localStorage as 'cs2ApiMode'
 
 // Global DOM elements
 let portfoliosContainer;
 let totalCs2Usd;
 let totalCs2Eur;
 let editingMarketplace = null;
+let isApiMode = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     // DOM elements
@@ -12,19 +26,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const addPortfolioModal = document.getElementById('add-portfolio-modal');
     const addPortfolioForm = document.getElementById('add-portfolio-form');
     const cancelAddPortfolio = document.getElementById('cancel-add-portfolio');
+    const apiModeToggle = document.getElementById('api-mode-toggle');
+    const modeText = document.getElementById('mode-text');
+    const fetchApiBtn = document.getElementById('fetch-api-btn');
     
     // Initialize global DOM elements
     portfoliosContainer = document.getElementById('portfolios-container');
     totalCs2Usd = document.getElementById('total-cs2-usd');
     totalCs2Eur = document.getElementById('total-cs2-eur');
     
+    // Load saved mode preference
+    const savedMode = localStorage.getItem('cs2ApiMode');
+    isApiMode = savedMode === 'api';
+    apiModeToggle.checked = isApiMode;
+    modeText.textContent = isApiMode ? 'API' : 'Manual';
+    addPortfolioBtn.style.display = isApiMode ? 'none' : 'inline-block';
+    fetchApiBtn.style.display = isApiMode ? 'inline-block' : 'none';
+    
     // Event listeners
     addPortfolioBtn.addEventListener('click', () => showAddPortfolioModal());
     cancelAddPortfolio.addEventListener('click', () => hideAddPortfolioModal());
     addPortfolioForm.addEventListener('submit', handleAddPortfolio);
     
+    // API mode toggle
+    apiModeToggle.addEventListener('change', () => {
+        isApiMode = apiModeToggle.checked;
+        modeText.textContent = isApiMode ? 'API' : 'Manual';
+        localStorage.setItem('cs2ApiMode', isApiMode ? 'api' : 'manual');
+        addPortfolioBtn.style.display = isApiMode ? 'none' : 'inline-block';
+        fetchApiBtn.style.display = isApiMode ? 'inline-block' : 'none';
+        
+        if (isApiMode) {
+            fetchPricEmpireData(false); // Use cache if available
+        } else {
+            renderPortfolios();
+        }
+    });
+    
+    // Fetch API data button (force=true to bypass cache)
+    fetchApiBtn.addEventListener('click', () => fetchPricEmpireData(true));
+    
     // Initialize CS2 portfolios
     initializePortfolios();
+    
+    // Auto-fetch if in API mode (use cache if available)
+    if (isApiMode) {
+        fetchPricEmpireData(false);
+    }
     
     // Pending Funds functionality
     const togglePendingFundsBtn = document.getElementById('toggle-pending-funds-btn');
@@ -170,6 +218,135 @@ function createDefaultPortfolios() {
     saveData();
 }
 
+// Cache duration: 1 hour (same as other APIs)
+const PRICEMPIRE_CACHE_DURATION = 60 * 60 * 1000;
+
+function getCachedPricEmpireData() {
+    try {
+        const cached = localStorage.getItem('portfolioPilotPricEmpireCache');
+        if (cached) {
+            const parsed = JSON.parse(cached);
+            const now = Date.now();
+            // Check if cache is still valid (less than 1 hour old)
+            if (parsed.timestamp && (now - parsed.timestamp) < PRICEMPIRE_CACHE_DURATION) {
+                console.log('Using cached Pricempire data (age: ' + Math.round((now - parsed.timestamp) / 60000) + ' minutes)');
+                return parsed.data;
+            }
+        }
+    } catch (e) {
+        console.error('Error loading Pricempire cache:', e);
+    }
+    return null;
+}
+
+function savePricEmpireCache(data) {
+    try {
+        const cacheObject = {
+            data: data,
+            timestamp: Date.now()
+        };
+        localStorage.setItem('portfolioPilotPricEmpireCache', JSON.stringify(cacheObject));
+        console.log('Pricempire data cached successfully');
+    } catch (e) {
+        console.error('Error saving Pricempire cache:', e);
+    }
+}
+
+async function fetchPricEmpireData(force = false) {
+    try {
+        // Check cache first unless force is true
+        if (!force) {
+            const cachedData = getCachedPricEmpireData();
+            if (cachedData) {
+                applyPricEmpireData(cachedData);
+                return;
+            }
+        }
+        
+        const apiKey = getApiKey('PricEmpire');
+        if (!apiKey) {
+            showNotification('Pricempire API key not found. Please configure it in settings.', 'error');
+            return;
+        }
+        
+        showNotification('Fetching data from Pricempire...', 'info');
+        
+        // Use local proxy to bypass CORS restrictions
+        const proxyUrl = 'http://localhost:3000/api/pricempire/v4/trader/portfolios';
+        
+        const response = await fetch(proxyUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        // Validate response format
+        if (!data || !Array.isArray(data)) {
+            throw new Error('Invalid response format from Pricempire API');
+        }
+        
+        // Track API usage
+        trackApiUsage('PricEmpire');
+        
+        // Save to cache
+        savePricEmpireCache(data);
+        
+        // Apply the data
+        applyPricEmpireData(data);
+        
+        showNotification(`Successfully fetched ${data.length} portfolio(s) from Pricempire`, 'success');
+    } catch (error) {
+        console.error('Error fetching Pricempire data:', error);
+        showNotification(`Failed to fetch data: ${error.message}`, 'error');
+    }
+}
+
+function applyPricEmpireData(data) {
+    // Map API portfolios to our structure
+    const newPortfolios = {};
+    const colorKeys = Object.keys(colorThemes);
+    
+    data.forEach((apiPortfolio, index) => {
+        // Generate unique ID from API portfolio ID or slug
+        const id = apiPortfolio.slug || `portfolio-${apiPortfolio.id}`;
+        
+        // Preserve existing realizedPnl if portfolio exists
+        const existingRealizedPnl = portfolio.cs2.portfolios[id]?.realizedPnl || 0;
+        
+        // Map API data to our structure - divide by 100 for decimal adjustment
+        newPortfolios[id] = {
+            name: apiPortfolio.name || `Portfolio ${index + 1}`,
+            description: `${apiPortfolio.items_count || 0} items`,
+            color: colorKeys[index % colorKeys.length], // Cycle through colors
+            value: (apiPortfolio.value || 0) / 100,
+            realizedPnl: existingRealizedPnl, // Keep manual value
+            currency: apiPortfolio.currency || 'USD',
+            // Additional API fields (also divide by 100)
+            change24h: (apiPortfolio.change24h || 0) / 100,
+            change24h_percentage: apiPortfolio.change24h_percentage || 0, // Percentage, not divided
+            items_count: apiPortfolio.items_count || 0,
+            total_invested: (apiPortfolio.total_invested || 0) / 100,
+            profit_loss: (apiPortfolio.profit_loss || 0) / 100,
+            roi: apiPortfolio.roi || 0, // ROI percentage, not divided
+            apiManaged: true // Flag to indicate this came from API
+        };
+    });
+    
+    portfolio.cs2.portfolios = newPortfolios;
+    saveData();
+    renderPortfolios();
+    updateCombinedDisplay();
+    updateCS2RealizedPnLDisplay();
+}
+
 function renderPortfolios() {
     portfoliosContainer.innerHTML = '';
     
@@ -181,33 +358,97 @@ function renderPortfolios() {
 
 function createPortfolioElement(id, portfolioData) {
     const theme = colorThemes[portfolioData.color];
+    const isApiManaged = portfolioData.apiManaged && isApiMode;
+    
     const portfolioDiv = document.createElement('div');
     portfolioDiv.className = 'bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg';
+    
+    // Build additional API fields HTML if they exist
+    let apiFieldsHtml = '';
+    if (isApiManaged) {
+        apiFieldsHtml = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                ${portfolioData.change24h !== undefined ? `
+                    <div>
+                        <label class="block text-sm font-medium mb-1">24h Change</label>
+                        <div class="bg-gray-700 p-3 rounded-lg ${portfolioData.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                            ${portfolioData.change24h >= 0 ? '+' : ''}${formatCurrency(portfolioData.change24h, 'USD')} 
+                            (${portfolioData.change24h_percentage >= 0 ? '+' : ''}${portfolioData.change24h_percentage?.toFixed(2)}%)
+                        </div>
+                    </div>
+                ` : ''}
+                ${portfolioData.items_count !== undefined ? `
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Items Count</label>
+                        <div class="bg-gray-700 p-3 rounded-lg text-gray-300">
+                            ${portfolioData.items_count}
+                        </div>
+                    </div>
+                ` : ''}
+                ${portfolioData.total_invested !== undefined ? `
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Total Invested</label>
+                        <div class="bg-gray-700 p-3 rounded-lg text-gray-300">
+                            ${formatCurrency(portfolioData.total_invested, 'USD')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${portfolioData.profit_loss !== undefined ? `
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Unrealized P&L</label>
+                        <div class="bg-gray-700 p-3 rounded-lg ${portfolioData.profit_loss >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                            ${portfolioData.profit_loss >= 0 ? '+' : ''}${formatCurrency(portfolioData.profit_loss, 'USD')}
+                        </div>
+                    </div>
+                ` : ''}
+                ${portfolioData.roi !== undefined ? `
+                    <div>
+                        <label class="block text-sm font-medium mb-1">ROI</label>
+                        <div class="bg-gray-700 p-3 rounded-lg ${portfolioData.roi >= 0 ? 'text-emerald-400' : 'text-red-400'}">
+                            ${portfolioData.roi >= 0 ? '+' : ''}${portfolioData.roi?.toFixed(2)}%
+                        </div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    }
+    
     portfolioDiv.innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-semibold ${theme.text}">${portfolioData.name}</h3>
             <div class="flex items-center gap-2">
                 <div class="text-sm text-gray-400">${portfolioData.description}</div>
-                <button onclick="removePortfolio('${id}')" class="text-red-400 hover:text-red-300 text-sm font-medium">
-                    Remove
-                </button>
+                ${!isApiManaged ? `
+                    <button onclick="removePortfolio('${id}')" class="text-red-400 hover:text-red-300 text-sm font-medium">
+                        Remove
+                    </button>
+                ` : ''}
             </div>
         </div>
+        ${apiFieldsHtml}
         <div class="flex flex-col gap-4">
             <div>
                 <label for="${id}-input" class="block text-sm font-medium mb-2">Value (USD)</label>
                 <input type="number" id="${id}-input" step="any" placeholder="0.00" 
-                       class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:${theme.border} text-lg">
+                       ${isApiManaged ? 'readonly' : ''}
+                       class="w-full ${isApiManaged ? 'bg-gray-600 cursor-not-allowed' : 'bg-gray-700'} p-3 rounded-lg border border-gray-600 focus:outline-none focus:${theme.border} text-lg">
             </div>
             <div>
                 <label for="${id}-realized-pnl-input" class="block text-sm font-medium mb-2">Realized P&L (USD)</label>
                 <input type="number" id="${id}-realized-pnl-input" step="any" placeholder="0.00" 
                        class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:${theme.border} text-lg">
             </div>
-            <button onclick="savePortfolio('${id}')" 
-                    class="${theme.bg} ${theme.hover} text-white font-bold py-3 px-6 rounded-lg transition duration-300">
-                Save ${portfolioData.name}
-            </button>
+            ${!isApiManaged ? `
+                <button onclick="savePortfolio('${id}')" 
+                        class="${theme.bg} ${theme.hover} text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                    Save ${portfolioData.name}
+                </button>
+            ` : `
+                <button onclick="savePortfolioRealizedPnL('${id}')" 
+                        class="${theme.bg} ${theme.hover} text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                    Save Realized P&L
+                </button>
+            `}
         </div>
         <div class="mt-4 p-3 bg-gray-700 rounded-lg">
             <div class="text-sm text-gray-300 mb-2">
@@ -287,6 +528,28 @@ function savePortfolio(id) {
     }
     
     showNotification(`${portfolio.cs2.portfolios[id].name} value saved successfully!`, 'success');
+}
+
+function savePortfolioRealizedPnL(id) {
+    const realizedPnlInput = document.getElementById(`${id}-realized-pnl-input`);
+    const realizedPnl = parseFloat(realizedPnlInput.value) || 0;
+    
+    portfolio.cs2.portfolios[id].realizedPnl = realizedPnl;
+    saveData();
+    updateCS2RealizedPnLDisplay();
+    
+    // Update the realized P&L display
+    const realizedPnlDisplay = document.getElementById(`${id}-realized-pnl-display`);
+    const realizedPnlEurDisplay = document.getElementById(`${id}-realized-pnl-eur-display`);
+    if (realizedPnlDisplay) {
+        realizedPnlDisplay.textContent = formatCurrency(realizedPnl, 'USD');
+        realizedPnlDisplay.className = realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+    }
+    if (realizedPnlEurDisplay) {
+        realizedPnlEurDisplay.textContent = `(€${formatCurrency(realizedPnl / eurUsdRate, 'EUR').replace('€', '')})`;
+    }
+    
+    showNotification(`${portfolio.cs2.portfolios[id].name} Realized P&L saved successfully!`, 'success');
 }
 
 function removePortfolio(id) {
@@ -448,6 +711,7 @@ function updateCS2RealizedPnLDisplay() {
 
 // Make functions globally available for onclick handlers
 window.savePortfolio = savePortfolio;
+window.savePortfolioRealizedPnL = savePortfolioRealizedPnL;
 window.removePortfolio = removePortfolio;
 
 // Notes functionality

@@ -11,6 +11,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveCmcBtn = document.getElementById('save-cmc-btn');
     const cmcUsage = document.getElementById('cmc-usage');
     
+    const peApiKeyInput = document.getElementById('pe-api-key');
+    const peStatus = document.getElementById('pe-status');
+    const savePeBtn = document.getElementById('save-pe-btn');
+    const peUsage = document.getElementById('pe-usage');
     
     // Notes elements
     const configNotesTextarea = document.getElementById('config-notes');
@@ -25,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // API Keys Event listeners
     saveFhBtn.addEventListener('click', saveFinnhubKey);
     saveCmcBtn.addEventListener('click', saveCoinMarketCalKey);
+    savePeBtn.addEventListener('click', savePricEmpireKey);
 
     
     // Selective export button
@@ -93,16 +98,47 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
+    // Pricempire API functions
+    function savePricEmpireKey() {
+        const apiKey = peApiKeyInput.value.trim();
+        
+        if (!apiKey) {
+            showNotification('Please enter your Pricempire API key', 'error');
+            return;
+        }
+        
+        const peConfig = {
+            apiKey: apiKey,
+            savedAt: new Date().toISOString()
+        };
+        
+        setEncryptedItem('portfolioPilotPricEmpire', JSON.stringify(peConfig));
+        showNotification('Pricempire API key saved successfully!', 'success');
+        updateApiStatuses();
+    }
+
+    function loadPricEmpireKey() {
+        const config = getEncryptedItem('portfolioPilotPricEmpire');
+        if (config) {
+            const parsed = JSON.parse(config);
+            peApiKeyInput.value = parsed.apiKey || '';
+            return parsed;
+        }
+        return null;
+    }
+
     // Load all API keys
     function loadApiKeys() {
         loadFinnhubKey();
         loadCoinMarketCalKey();
+        loadPricEmpireKey();
     }
 
     // Update API status indicators
     function updateApiStatuses() {
         const fhConfig = getEncryptedItem('portfolioPilotFinnhub');
         const cmcConfig = getEncryptedItem('portfolioPilotCoinMarketCal');
+        const peConfig = getEncryptedItem('portfolioPilotPricEmpire');
         
         // Finnhub status
         if (fhConfig) {
@@ -133,6 +169,21 @@ document.addEventListener('DOMContentLoaded', () => {
             cmcStatus.textContent = 'Not Configured';
             cmcStatus.className = 'text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300';
         }
+        
+        // Pricempire status
+        if (peConfig) {
+            const parsed = JSON.parse(peConfig);
+            if (parsed.apiKey) {
+                peStatus.textContent = 'Configured';
+                peStatus.className = 'text-xs px-2 py-1 rounded-full bg-green-700 text-green-100';
+            } else {
+                peStatus.textContent = 'Incomplete';
+                peStatus.className = 'text-xs px-2 py-1 rounded-full bg-yellow-700 text-yellow-100';
+            }
+        } else {
+            peStatus.textContent = 'Not Configured';
+            peStatus.className = 'text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300';
+        }
     }
 
     // Usage statistics functions
@@ -140,9 +191,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toDateString();
         const fhUsageData = JSON.parse(localStorage.getItem('portfolioPilotFinnhubUsage') || '{}');
         const cmcUsageData = JSON.parse(localStorage.getItem('portfolioPilotCoinMarketCalUsage') || '{}');
+        const peUsageData = JSON.parse(localStorage.getItem('portfolioPilotPricEmpireUsage') || '{}');
         
         fhUsage.textContent = `${fhUsageData[today] || 0} calls today`;
         cmcUsage.textContent = `${cmcUsageData[today] || 0} calls today`;
+        peUsage.textContent = `${peUsageData[today] || 0} calls today`;
     }
 
 

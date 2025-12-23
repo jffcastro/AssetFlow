@@ -70,10 +70,25 @@
         <div class="glass-chart-container p-4 md:p-6 rounded-xl shadow-lg mb-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-semibold">Portfolio Management</h3>
-                <button id="add-portfolio-btn"
-                    class="glass-button glass-button-primary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
-                    + Add New Portfolio
-                </button>
+                <div class="flex items-center gap-3">
+                    <!-- Mode Toggle -->
+                    <div class="flex items-center gap-2 px-3 py-2 glass-input rounded-lg">
+                        <span class="text-sm text-gray-300">Mode:</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="api-mode-toggle" class="sr-only peer">
+                            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                            <span class="ml-2 text-sm font-medium" id="mode-text">Manual</span>
+                        </label>
+                    </div>
+                    <button id="add-portfolio-btn"
+                        class="glass-button glass-button-primary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        + Add New Portfolio
+                    </button>
+                    <button id="fetch-api-btn" style="display: none;"
+                        class="glass-button glass-button-secondary text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                        🔄 Fetch from API
+                    </button>
+                </div>
             </div>
             <p class="text-gray-400 text-sm">Manage your CS2 item portfolios. Each portfolio tracks items in USD and
                 contributes to your total portfolio value.</p>
