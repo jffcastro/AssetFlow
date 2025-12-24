@@ -1225,3 +1225,6 @@ function renderMonthlyStockVolumeChart(period = 'year') {
         }
     });
 }
+
+window.editStockTransaction = editStockTransaction;
+window.deleteStockTransaction = deleteStockTransaction;

@@ -552,3 +552,7 @@ function renderMonthlyCashflowChart(period = 'year') {
         }
     });
 }
+
+// Expose editTransaction and deleteTransaction as global functions
+window.editTransaction = editTransaction;
+window.deleteTransaction = deleteTransaction;

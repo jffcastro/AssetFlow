@@ -1052,3 +1052,8 @@ function renderMonthlyEtfVolumeChart(period = 'year') {
         }
     });
 }
+
+// Expose functions to global scope for HTML event handlers
+window.editEtfTransaction = editEtfTransaction;
+window.deleteEtfTransaction = deleteEtfTransaction;
+

@@ -1189,3 +1189,6 @@ function renderMonthlyCryptoVolumeChart(period = 'year') {
         }
     });
 }
+
+window.editCryptoTransaction = editCryptoTransaction;
+window.deleteCryptoTransaction = deleteCryptoTransaction;
