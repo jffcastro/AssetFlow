@@ -2384,6 +2384,8 @@ function getApiKey(apiName) {
     }
     return null;
 }
+// Make available immediately for other modules
+window.getApiKey = getApiKey;
 
 // Track API usage (called from other parts of the app)
 function trackApiUsage(apiName) {
@@ -2622,7 +2624,6 @@ function calculatePortfolioFromTransactions() {
 // Export functions for use in other files
 window.fetchStockEarnings = fetchStockEarnings;
 window.fetchCryptoEvents = fetchCryptoEvents;
-window.getApiKey = getApiKey;
 
 // Auto-calculation utility function for price/total fields
 function setupAutoCalculation(quantityId, priceId, totalId) {
