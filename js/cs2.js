@@ -269,10 +269,7 @@ async function fetchPricEmpireData(force = false) {
         
         showNotification('Fetching data from Pricempire...', 'info');
         
-        // Use local proxy to bypass CORS restrictions
-        const proxyUrl = 'http://localhost:3000/api/pricempire/v4/trader/portfolios';
-        
-        const response = await fetch(proxyUrl, {
+        const response = await fetch('https://api.pricempire.com/v4/trader/portfolios', {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,

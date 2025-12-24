@@ -11,8 +11,7 @@
     "test:integration": "jest --testPathPattern=integration-tests",
     "test:performance": "jest --testNamePattern='Performance Tests'",
     "lint": "echo 'No linting configured yet'",
-    "audit": "npm audit --audit-level=moderate",
-    "proxy": "node proxy-server.js"
+    "audit": "npm audit --audit-level=moderate"
   },
   "keywords": [
     "portfolio",
