@@ -1,7 +1,7 @@
 /**
- * Simple CORS Proxy Server for PricEmpire API
+ * Simple CORS Proxy Server for Pricempire API
  * 
- * This proxy server forwards requests from the frontend to the PricEmpire API,
+ * This proxy server forwards requests from the frontend to the Pricempire API,
  * bypassing CORS restrictions by adding the necessary headers.
  * 
  * Usage: node proxy-server.js
@@ -28,7 +28,7 @@ const server = http.createServer((req, res) => {
         return;
     }
     
-    // Only proxy PricEmpire API requests
+    // Only proxy Pricempire API requests
     if (!req.url.startsWith('/api/pricempire')) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: 'Not found' }));
@@ -47,7 +47,7 @@ const server = http.createServer((req, res) => {
         return;
     }
     
-    // Options for the HTTPS request to PricEmpire
+    // Options for the HTTPS request to Pricempire
     const options = {
         hostname: PRICEMPIRE_API_BASE,
         port: 443,
@@ -62,9 +62,9 @@ const server = http.createServer((req, res) => {
     
     console.log(`[${new Date().toISOString()}] Proxying ${req.method} request to https://${PRICEMPIRE_API_BASE}${apiPath}`);
     
-    // Make the request to PricEmpire API
+    // Make the request to Pricempire API
     const proxyReq = https.request(options, (proxyRes) => {
-        console.log(`[${new Date().toISOString()}] PricEmpire responded with status: ${proxyRes.statusCode}`);
+        console.log(`[${new Date().toISOString()}] Pricempire responded with status: ${proxyRes.statusCode}`);
         
         // Forward the status code
         res.writeHead(proxyRes.statusCode, {
@@ -72,7 +72,7 @@ const server = http.createServer((req, res) => {
             'Access-Control-Allow-Origin': '*'
         });
         
-        // Pipe the response from PricEmpire to the client
+        // Pipe the response from Pricempire to the client
         proxyRes.pipe(res);
     });
     
@@ -97,7 +97,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║  PricEmpire CORS Proxy Server                             ║
+║  Pricempire CORS Proxy Server                             ║
 ║  Running on http://localhost:${PORT}                         ║
 ║                                                           ║
 ║  Proxy endpoint: http://localhost:${PORT}/api/pricempire    ║

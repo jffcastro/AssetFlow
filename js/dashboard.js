@@ -1449,7 +1449,7 @@ function updateAutoUpdatesStatus() {
     const autoUpdatesElement = document.querySelector('.text-emerald-400');
 
     if (autoUpdatesElement && updateStatuses) {
-        const assetTypes = ['rates', 'stocks', 'etfs', 'crypto'];
+        const assetTypes = ['rates', 'benchmark', 'stocks', 'etfs', 'crypto'];
         const statusTexts = [];
 
         assetTypes.forEach(type => {

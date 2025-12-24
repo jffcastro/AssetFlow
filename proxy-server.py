@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Simple CORS Proxy Server for PricEmpire API
+Simple CORS Proxy Server for Pricempire API
 
-This proxy server forwards requests from the frontend to the PricEmpire API,
+This proxy server forwards requests from the frontend to the Pricempire API,
 bypassing CORS restrictions by adding the necessary headers.
 
 Usage: python3 proxy-server.py
@@ -54,8 +54,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self._proxy_request()
 
     def _proxy_request(self):
-        """Proxy the request to PricEmpire API"""
-        # Only proxy PricEmpire API requests
+        """Proxy the request to Pricempire API"""
+        # Only proxy Pricempire API requests
         if not self.path.startswith('/api/pricempire'):
             self.send_response(404)
             self.send_header('Content-Type', 'application/json')
@@ -100,12 +100,12 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 method=self.command
             )
 
-            # Make the request to PricEmpire API
+            # Make the request to Pricempire API
             with urllib.request.urlopen(req) as response:
                 response_data = response.read()
                 status_code = response.getcode()
 
-                print(f"PricEmpire responded with status: {status_code}")
+                print(f"Pricempire responded with status: {status_code}")
 
                 # Send response to client
                 self.send_response(status_code)
@@ -115,8 +115,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 self.wfile.write(response_data)
 
         except urllib.error.HTTPError as e:
-            # Handle HTTP errors from PricEmpire API
-            print(f"HTTP Error from PricEmpire: {e.code} {e.reason}")
+            # Handle HTTP errors from Pricempire API
+            print(f"HTTP Error from Pricempire: {e.code} {e.reason}")
             self.send_response(e.code)
             self.send_header('Content-Type', 'application/json')
             self._set_cors_headers()
@@ -164,7 +164,7 @@ def run_server():
     
     print("""
 ╔═══════════════════════════════════════════════════════════╗
-║  PricEmpire CORS Proxy Server                             ║
+║  Pricempire CORS Proxy Server                             ║
 ║  Running on http://localhost:{:<4}                        ║
 ║                                                           ║
 ║  Proxy endpoint: http://localhost:{:<4}/api/pricempire    ║

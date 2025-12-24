@@ -57,22 +57,20 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchApiBtn.style.display = isApiMode ? 'inline-block' : 'none';
         
         if (isApiMode) {
-            fetchPricEmpireData(false); // Use cache if available
+            fetchPricempireData(false); // Use cache if available
         } else {
             renderPortfolios();
         }
     });
     
     // Fetch API data button (force=true to bypass cache)
-    fetchApiBtn.addEventListener('click', () => fetchPricEmpireData(true));
+    fetchApiBtn.addEventListener('click', () => fetchPricempireData(true));
     
     // Initialize CS2 portfolios
     initializePortfolios();
     
-    // Auto-fetch if in API mode (use cache if available)
-    if (isApiMode) {
-        fetchPricEmpireData(false);
-    }
+    // Note: Auto-fetch is now handled by startScheduledUpdates() in shared.js
+    // which runs every hour across all pages when cs2ApiMode === 'api'
     
     // Pending Funds functionality
     const togglePendingFundsBtn = document.getElementById('toggle-pending-funds-btn');
@@ -868,3 +866,6 @@ window.removePendingFundsFromUI = function(marketplace) {
 };
 
 window.editPendingFunds = editPendingFunds;
+
+// Export fetchPricempireData for global access (used by shared.js fetchAllAssetPrices)
+window.fetchPricempireData = fetchPricEmpireData;

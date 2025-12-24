@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // API Keys Event listeners
     saveFhBtn.addEventListener('click', saveFinnhubKey);
     saveCmcBtn.addEventListener('click', saveCoinMarketCalKey);
-    savePeBtn.addEventListener('click', savePricEmpireKey);
+    savePeBtn.addEventListener('click', savePricempireKey);
 
     
     // Selective export button
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Pricempire API functions
-    function savePricEmpireKey() {
+    function savePricempireKey() {
         const apiKey = peApiKeyInput.value.trim();
         
         if (!apiKey) {
@@ -112,13 +112,13 @@ document.addEventListener('DOMContentLoaded', () => {
             savedAt: new Date().toISOString()
         };
         
-        setEncryptedItem('portfolioPilotPricEmpire', JSON.stringify(peConfig));
+        setEncryptedItem('portfolioPilotPricempire', JSON.stringify(peConfig));
         showNotification('Pricempire API key saved successfully!', 'success');
         updateApiStatuses();
     }
 
-    function loadPricEmpireKey() {
-        const config = getEncryptedItem('portfolioPilotPricEmpire');
+    function loadPricempireKey() {
+        const config = getEncryptedItem('portfolioPilotPricempire');
         if (config) {
             const parsed = JSON.parse(config);
             peApiKeyInput.value = parsed.apiKey || '';
@@ -131,14 +131,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadApiKeys() {
         loadFinnhubKey();
         loadCoinMarketCalKey();
-        loadPricEmpireKey();
+        loadPricempireKey();
     }
 
     // Update API status indicators
     function updateApiStatuses() {
         const fhConfig = getEncryptedItem('portfolioPilotFinnhub');
         const cmcConfig = getEncryptedItem('portfolioPilotCoinMarketCal');
-        const peConfig = getEncryptedItem('portfolioPilotPricEmpire');
+        const peConfig = getEncryptedItem('portfolioPilotPricempire');
         
         // Finnhub status
         if (fhConfig) {
@@ -191,7 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toDateString();
         const fhUsageData = JSON.parse(localStorage.getItem('portfolioPilotFinnhubUsage') || '{}');
         const cmcUsageData = JSON.parse(localStorage.getItem('portfolioPilotCoinMarketCalUsage') || '{}');
-        const peUsageData = JSON.parse(localStorage.getItem('portfolioPilotPricEmpireUsage') || '{}');
+        const peUsageData = JSON.parse(localStorage.getItem('portfolioPilotPricempireUsage') || '{}');
         
         fhUsage.textContent = `${fhUsageData[today] || 0} calls today`;
         cmcUsage.textContent = `${cmcUsageData[today] || 0} calls today`;

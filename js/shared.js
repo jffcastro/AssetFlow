@@ -801,7 +801,7 @@ function setLastUpdateTime() {
 function getCachedBenchmarkData() {
     try {
         const cached = JSON.parse(localStorage.getItem('portfolioPilotBenchmarkData'));
-        if (cached && cached.timestamp && Date.now() - cached.timestamp < 1000 * 60 * 60 * 24) { // 24 hours
+        if (cached && cached.timestamp && Date.now() - cached.timestamp < 1000 * 60 * 60) { // 1 hour (same as other APIs)
             return cached;
         }
     } catch (e) {
@@ -966,6 +966,16 @@ async function fetchBenchmarkDataForDate(date) {
 
 // Legacy function - now only fetches current benchmark data (no historical)
 async function fetchBenchmarkData() {
+    // Check cache first (1-hour cache like other APIs)
+    const cached = getCachedBenchmarkData();
+    if (cached) {
+        console.log('Using cached benchmark data:', { sp500: cached.sp500, nasdaq: cached.nasdaq });
+        return {
+            sp500: cached.sp500,
+            nasdaq: cached.nasdaq
+        };
+    }
+
     try {
         // Fetch S&P 500 (^GSPC) and NASDAQ (^IXIC) current data only
         const sp500Url = `https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=5d`;
@@ -1046,7 +1056,10 @@ async function fetchAllAssetPrices() {
             crypto: { success: 0, failed: 0, total: 0 }
         };
 
-        // Fetch stock prices
+        // Prepare all fetch promises
+        const allPromises = [];
+
+        // Stock prices
         if (portfolio.stocks && portfolio.stocks.length > 0) {
             results.stocks.total = portfolio.stocks.length;
             const stockPromises = portfolio.stocks.map(stock =>
@@ -1062,10 +1075,10 @@ async function fetchAllAssetPrices() {
                     results.stocks.failed++;
                 })
             );
-            await Promise.allSettled(stockPromises);
+            allPromises.push(...stockPromises);
         }
 
-        // Fetch ETF prices
+        // ETF prices
         if (portfolio.etfs && portfolio.etfs.length > 0) {
             results.etfs.total = portfolio.etfs.length;
             const etfPromises = portfolio.etfs.map(etf =>
@@ -1081,10 +1094,10 @@ async function fetchAllAssetPrices() {
                     results.etfs.failed++;
                 })
             );
-            await Promise.allSettled(etfPromises);
+            allPromises.push(...etfPromises);
         }
 
-        // Fetch crypto prices
+        // Crypto prices
         if (portfolio.crypto && portfolio.crypto.length > 0) {
             results.crypto.total = portfolio.crypto.length;
             const cryptoPromises = portfolio.crypto.map(crypto => {
@@ -1100,8 +1113,11 @@ async function fetchAllAssetPrices() {
                     results.crypto.failed++;
                 });
             });
-            await Promise.allSettled(cryptoPromises);
+            allPromises.push(...cryptoPromises);
         }
+
+        // Execute all fetches in parallel
+        await Promise.allSettled(allPromises);
 
         // Fetch prices for sold assets
         await fetchSoldAssetsPrices();
@@ -1117,7 +1133,7 @@ async function fetchAllAssetPrices() {
         setUpdateStatus('crypto', results.crypto.failed > 0 ? 'error' : 'success');
 
         // Check if we have any assets to update
-        const totalAssets = results.stocks.total + results.etfs.total + results.crypto.total;
+        const totalAssets = results.stocks.total + results.etfs.total + results.crypto.total + results.cs2.total;
         if (totalAssets === 0) {
             console.log('No assets found to update');
         }
@@ -1174,7 +1190,15 @@ function startScheduledUpdates() {
     if (!lastUpdate || (now - parseInt(lastUpdate)) > oneHour) {
         // Auto-fetch if it's been more than an hour
         fetchExchangeRate();
+        fetchBenchmarkData();
         fetchAllAssetPrices();
+        
+        // Fetch CS2 data if in API mode
+        const cs2ApiMode = localStorage.getItem('cs2ApiMode') === 'api';
+        if (cs2ApiMode && typeof window.fetchPricempireData === 'function') {
+            window.fetchPricempireData(false); // Use cache if available
+        }
+        
         // Update dashboard status if on dashboard page
         if (typeof updateAutoUpdatesStatus === 'function') {
             updateAutoUpdatesStatus();
@@ -1188,7 +1212,15 @@ function startScheduledUpdates() {
 
         if (!lastUpdate || (now - parseInt(lastUpdate)) > oneHour) {
             fetchExchangeRate();
+            fetchBenchmarkData();
             fetchAllAssetPrices();
+            
+            // Fetch CS2 data if in API mode
+            const cs2ApiMode = localStorage.getItem('cs2ApiMode') === 'api';
+            if (cs2ApiMode && typeof window.fetchPricempireData === 'function') {
+                window.fetchPricempireData(false); // Use cache if available
+            }
+            
             // Update dashboard status if on dashboard page
             if (typeof updateAutoUpdatesStatus === 'function') {
                 updateAutoUpdatesStatus();
@@ -1256,7 +1288,7 @@ function setCachedPrice(type, name, priceData) {
 function getCachedCryptoRates() {
     try {
         const cached = JSON.parse(localStorage.getItem('portfolioPilotCryptoRates'));
-        if (cached && cached.timestamp && Date.now() - cached.timestamp < 1000 * 60 * 60) {
+        if (cached && cached.timestamp && Date.now() - cached.timestamp < 1000 * 60 * 60) { // 1 hour
             return cached;
         }
     } catch { }
@@ -1377,6 +1409,14 @@ async function fetchCryptoPrice(name, currency = 'USD') {
 }
 
 async function fetchExchangeRate() {
+    // Check if we have cached crypto rates (includes timestamp)
+    const cachedCrypto = getCachedCryptoRates();
+    if (cachedCrypto && cachedCrypto.timestamp) {
+        // If crypto rates are cached and fresh, assume EUR/USD is also fresh
+        console.log('Using cached exchange rates (less than 1 hour old)');
+        return true;
+    }
+
     try {
         console.log('Fetching exchange rate from Frankfurter...');
         // Fetch EUR/USD rate from Frankfurter
@@ -1909,7 +1949,7 @@ function exportAllData() {
                     coinGecko: getEncryptedItem('portfolioPilotCoinGecko') ? '***CONFIGURED***' : null,
                     finnhub: getEncryptedItem('portfolioPilotFinnhub') ? '***CONFIGURED***' : null,
                     coinMarketCal: getEncryptedItem('portfolioPilotCoinMarketCal') ? '***CONFIGURED***' : null,
-                    pricempire: getEncryptedItem('portfolioPilotPricEmpire') ? '***CONFIGURED***' : null
+                    pricempire: getEncryptedItem('portfolioPilotPricempire') ? '***CONFIGURED***' : null
                 },
 
                 // Database configuration (removed - no longer used)
@@ -1923,11 +1963,11 @@ function exportAllData() {
                     coinGecko: localStorage.getItem('portfolioPilotCoinGeckoUsage') || '{}',
                     finnhub: localStorage.getItem('portfolioPilotFinnhubUsage') || '{}',
                     coinMarketCal: localStorage.getItem('portfolioPilotCoinMarketCalUsage') || '{}',
-                    pricempire: localStorage.getItem('portfolioPilotPricEmpireUsage') || '{}'
+                    pricempire: localStorage.getItem('portfolioPilotPricempireUsage') || '{}'
                 },
 
                 // CS2 API cache
-                pricempireCache: localStorage.getItem('portfolioPilotPricEmpireCache'),
+                pricempireCache: localStorage.getItem('portfolioPilotPricempireCache'),
                 
                 // CS2 mode preference
                 cs2ApiMode: localStorage.getItem('cs2ApiMode')
@@ -2056,12 +2096,12 @@ function importAllData(event) {
                 if (backupData.data.usageStats.coinGecko) localStorage.setItem('portfolioPilotCoinGeckoUsage', backupData.data.usageStats.coinGecko);
                 if (backupData.data.usageStats.finnhub) localStorage.setItem('portfolioPilotFinnhubUsage', backupData.data.usageStats.finnhub);
                 if (backupData.data.usageStats.coinMarketCal) localStorage.setItem('portfolioPilotCoinMarketCalUsage', backupData.data.usageStats.coinMarketCal);
-                if (backupData.data.usageStats.pricempire) localStorage.setItem('portfolioPilotPricEmpireUsage', backupData.data.usageStats.pricempire);
+                if (backupData.data.usageStats.pricempire) localStorage.setItem('portfolioPilotPricempireUsage', backupData.data.usageStats.pricempire);
             }
 
             // Restore Pricempire cache and mode preference
             if (backupData.data.pricempireCache) {
-                localStorage.setItem('portfolioPilotPricEmpireCache', backupData.data.pricempireCache);
+                localStorage.setItem('portfolioPilotPricempireCache', backupData.data.pricempireCache);
             }
             if (backupData.data.cs2ApiMode) {
                 localStorage.setItem('cs2ApiMode', backupData.data.cs2ApiMode);
@@ -2093,9 +2133,12 @@ function importAllData(event) {
 // With ES Modules, the script runs deferred but core data loading should happen 
 // immediately at module load time to ensure it's ready before page scripts (DOMContentLoaded)
 loadData();
-loadExchangeRate();
+loadExchangeRate(); // Only loads from localStorage, doesn't fetch
 loadPriceCache();
-fetchBenchmarkData(); // Fetch current S&P 500 and NASDAQ values immediately
+// Note: fetchBenchmarkData() and fetchExchangeRate() are now only called by:
+// - startScheduledUpdates() if >1hr since last update
+// - Manual "Update All" button click
+// This prevents unnecessary API calls on every page load
 
 // Ensure exchange rate labels are properly initialized as soon as possible
 // Note: This might still need the DOM to be ready for some elements
@@ -2107,44 +2150,109 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchRatesBtn = document.getElementById('fetch-rates-btn');
     if (fetchRatesBtn) {
         fetchRatesBtn.addEventListener('click', async () => {
-            showNotification('Updating all data...', 'info');
-
-            // Update exchange rates
-            const ratesSuccess = await fetchExchangeRate();
-            if (ratesSuccess) {
-                showNotification('Exchange rates updated successfully!', 'success');
-            } else {
-                showNotification('Failed to update exchange rates', 'error');
+            // Create/get status container
+            let statusContainer = document.getElementById('update-status-container');
+            if (!statusContainer) {
+                statusContainer = document.createElement('div');
+                statusContainer.id = 'update-status-container';
+                statusContainer.className = 'mt-2 space-y-1 text-sm';
+                fetchRatesBtn.parentElement.appendChild(statusContainer);
             }
+            statusContainer.innerHTML = ''; // Clear previous updates
+            
+            const addStatus = (message, type = 'info') => {
+                const statusLine = document.createElement('div');
+                const colors = {
+                    info: 'text-gray-400',
+                    success: 'text-emerald-400',
+                    warning: 'text-yellow-400',
+                    error: 'text-red-400'
+                };
+                statusLine.className = colors[type] || colors.info;
+                statusLine.innerHTML = `<i class="fas fa-circle text-xs mr-2"></i>${message}`;
+                statusContainer.appendChild(statusLine);
+            };
+            
+            // Disable button and show loading state
+            const originalText = fetchRatesBtn.innerHTML;
+            fetchRatesBtn.disabled = true;
+            fetchRatesBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Updating...';
+            
+            const startTime = Date.now();
 
-            // Update all asset prices with detailed feedback
-            await fetchBenchmarkData(); // Also update benchmark data
-            const results = await fetchAllAssetPrices();
-            if (results) {
-                // Show individual results for each asset class
-                if (results.stocks.total > 0) {
-                    const stockMessage = `Stocks: ${results.stocks.success}/${results.stocks.total} updated`;
-                    showNotification(stockMessage, results.stocks.failed === 0 ? 'success' : 'warning');
-                }
-                if (results.etfs.total > 0) {
-                    const etfMessage = `ETFs: ${results.etfs.success}/${results.etfs.total} updated`;
-                    showNotification(etfMessage, results.etfs.failed === 0 ? 'success' : 'warning');
-                }
-                if (results.crypto.total > 0) {
-                    const cryptoMessage = `Crypto: ${results.crypto.success}/${results.crypto.total} updated`;
-                    showNotification(cryptoMessage, results.crypto.failed === 0 ? 'success' : 'warning');
+            try {
+                // Step 1: Update exchange rates
+                addStatus('Fetching exchange rates...');
+                const ratesSuccess = await fetchExchangeRate();
+                if (ratesSuccess) {
+                    addStatus('✓ Exchange rates updated', 'success');
+                } else {
+                    addStatus('✗ Failed to update exchange rates', 'error');
                 }
 
-                // Trigger page refresh to show updated prices
-                setTimeout(() => {
-                    if (typeof loadStocks === 'function') loadStocks();
-                    if (typeof loadETFs === 'function') loadETFs();
-                    if (typeof loadCrypto === 'function') loadCrypto();
-                    if (typeof updateBenchmarkMetrics === 'function') updateBenchmarkMetrics();
-                }, 1000);
-            } else {
-                console.error('fetchAllAssetPrices returned false - check above logs for details');
-                showNotification('Error updating asset prices. Check console for details.', 'error');
+                // Step 2: Update benchmark data
+                addStatus('Fetching benchmark data...');
+                await fetchBenchmarkData();
+                addStatus('✓ Benchmark data updated', 'success');
+                
+                // Step 3: Count total assets
+                const totalAssets = portfolio.stocks.length + portfolio.etfs.length + portfolio.crypto.length;
+                
+                addStatus(`Updating ${totalAssets} assets in parallel...`);
+                
+                // Step 4: Update all asset prices
+                const results = await fetchAllAssetPrices();
+                
+                if (results) {
+                    const totalUpdated = results.stocks.success + results.etfs.success + results.crypto.success;
+                    const totalAssetsFetched = results.stocks.total + results.etfs.total + results.crypto.total;
+                    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+                    
+                    // Show summary
+                    if (totalUpdated === totalAssetsFetched) {
+                        addStatus(`✓ Updated ${totalUpdated}/${totalAssetsFetched} assets in ${duration}s`, 'success');
+                    } else {
+                        addStatus(`⚠ Updated ${totalUpdated}/${totalAssetsFetched} assets in ${duration}s`, 'warning');
+                    }
+                    
+                    // Show breakdown
+                    const breakdown = [];
+                    if (results.stocks.total > 0) {
+                        const icon = results.stocks.failed > 0 ? '⚠' : '✓';
+                        breakdown.push(`Stocks: ${results.stocks.success}/${results.stocks.total} ${icon}`);
+                    }
+                    if (results.etfs.total > 0) {
+                        const icon = results.etfs.failed > 0 ? '⚠' : '✓';
+                        breakdown.push(`ETFs: ${results.etfs.success}/${results.etfs.total} ${icon}`);
+                    }
+                    if (results.crypto.total > 0) {
+                        const icon = results.crypto.failed > 0 ? '⚠' : '✓';
+                        breakdown.push(`Crypto: ${results.crypto.success}/${results.crypto.total} ${icon}`);
+                    }
+                    
+                    if (breakdown.length > 0) {
+                        addStatus(breakdown.join(' | '), totalUpdated === totalAssetsFetched ? 'success' : 'warning');
+                    }
+
+                    // Trigger page refresh to show updated prices
+                    setTimeout(() => {
+                        if (typeof loadStocks === 'function') loadStocks();
+                        if (typeof loadETFs === 'function') loadETFs();
+                        if (typeof loadCrypto === 'function') loadCrypto();
+                        if (typeof updateBenchmarkMetrics === 'function') updateBenchmarkMetrics();
+                        if (typeof renderPortfolios === 'function') renderPortfolios();
+                    }, 1000);
+                } else {
+                    console.error('fetchAllAssetPrices returned false - check above logs for details');
+                    addStatus('✗ Error updating asset prices. Check console for details.', 'error');
+                }
+            } catch (error) {
+                console.error('Error during update:', error);
+                addStatus('✗ Update failed: ' + error.message, 'error');
+            } finally {
+                // Restore button state
+                fetchRatesBtn.disabled = false;
+                fetchRatesBtn.innerHTML = originalText;
             }
         });
     }

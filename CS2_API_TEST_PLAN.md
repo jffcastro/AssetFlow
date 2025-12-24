@@ -2,7 +2,7 @@
 
 ## Pre-requisites
 - [ ] Local server running on port 8000
-- [ ] Valid PricEmpire API key
+- [ ] Valid Pricempire API key
 - [ ] Browser DevTools open (for console monitoring)
 
 ## Test Scenarios
@@ -23,9 +23,9 @@
 ### 2. API Key Configuration
 **Steps:**
 1. Navigate to Configurations page
-2. Scroll to "PricEmpire API Key" section
+2. Scroll to "Pricempire API Key" section
 3. Enter test API key (or use provided key)
-4. Click "Save PricEmpire Key"
+4. Click "Save Pricempire Key"
 5. Verify status indicator
 
 **Expected Results:**
@@ -40,7 +40,7 @@
 3. Observe notification
 
 **Expected Results:**
-- Error notification: "PricEmpire API key not found..."
+- Error notification: "Pricempire API key not found..."
 - No API call attempted
 - Portfolios remain unchanged
 
@@ -52,7 +52,7 @@
 4. Wait for API response
 
 **Expected Results:**
-- Info notification: "Fetching data from PricEmpire..."
+- Info notification: "Fetching data from Pricempire..."
 - API call visible in Network tab
 - Success notification: "Successfully fetched X portfolio(s)..."
 - Portfolios replaced with API data
@@ -223,14 +223,14 @@
 
 ### Expected Console Logs (Success)
 ```
-Fetching data from PricEmpire...
+Fetching data from Pricempire...
 [API Response logged]
-Successfully fetched 3 portfolio(s) from PricEmpire
+Successfully fetched 3 portfolio(s) from Pricempire
 ```
 
 ### Expected Console Errors (Failures)
 ```
-Error fetching PricEmpire data: <error details>
+Error fetching Pricempire data: <error details>
 ```
 
 ## Browser DevTools Verification
@@ -245,7 +245,7 @@ Error fetching PricEmpire data: <error details>
 
 ### Application Tab (localStorage)
 - `cs2ApiMode`: "api" or "manual"
-- `portfolioPilotPricEmpire`: Encrypted API key object
+- `portfolioPilotPricempire`: Encrypted API key object
 - `portfolioPilotData`: Contains `cs2.portfolios` with API data
 
 ## Edge Cases

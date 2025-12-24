@@ -1,9 +1,9 @@
-# CS2 PricEmpire API Integration
+# CS2 Pricempire API Integration
 
 ## Overview
 The CS2 portfolio page now supports two modes of operation:
 1. **Manual Mode** (default): User manually enters all portfolio values
-2. **API Mode**: Automatically fetches portfolio data from PricEmpire API
+2. **API Mode**: Automatically fetches portfolio data from Pricempire API
 
 ## Features
 
@@ -109,7 +109,7 @@ localStorage.setItem('cs2ApiMode', 'api' | 'manual');
 
 #### API Key Storage
 - Configured in [configurations.html](configurations.html)
-- Stored encrypted: `portfolioPilotPricEmpire`
+- Stored encrypted: `portfolioPilotPricempire`
 - Format: `{apiKey: "your-api-key", status: "active"}`
 
 ## Implementation Files
@@ -122,27 +122,27 @@ localStorage.setItem('cs2ApiMode', 'api' | 'manual');
 
 2. **js/cs2.js**
    - Added `isApiMode` global variable
-   - Added `fetchPricEmpireData()` async function
+   - Added `fetchPricempireData()` async function
    - Modified `createPortfolioElement()` to support API mode
    - Added `savePortfolioRealizedPnL()` for API mode saves
    - Added mode toggle event listeners
    - Added API field rendering (24h change, items count, etc.)
 
 3. **configurations.html**
-   - Added PricEmpire API key section
+   - Added Pricempire API key section
    - Save/load functionality for API key
 
 4. **js/configurations.js**
-   - Added PricEmpire API key handlers
+   - Added Pricempire API key handlers
    - Updated status indicators
 
 ## Usage Instructions
 
 ### Setup
 1. Navigate to Configurations page
-2. Scroll to "PricEmpire API Key" section
-3. Enter your PricEmpire API key
-4. Click "Save PricEmpire Key"
+2. Scroll to "Pricempire API Key" section
+3. Enter your Pricempire API key
+4. Click "Save Pricempire Key"
 5. Verify status shows "Active"
 
 ### Using API Mode
@@ -162,7 +162,7 @@ localStorage.setItem('cs2ApiMode', 'api' | 'manual');
 ## Error Handling
 
 ### API Key Missing
-- Shows notification: "PricEmpire API key not found. Please configure it in settings."
+- Shows notification: "Pricempire API key not found. Please configure it in settings."
 - Does not attempt API call
 
 ### API Request Failed

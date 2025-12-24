@@ -1,7 +1,7 @@
-# PricEmpire CORS Proxy Server
+# Pricempire CORS Proxy Server
 
 ## Problem
-The PricEmpire API doesn't allow direct browser requests due to CORS (Cross-Origin Resource Sharing) restrictions. When attempting to fetch data directly from `https://api.pricempire.com` from a browser application running on `localhost`, you'll encounter this error:
+The Pricempire API doesn't allow direct browser requests due to CORS (Cross-Origin Resource Sharing) restrictions. When attempting to fetch data directly from `https://api.pricempire.com` from a browser application running on `localhost`, you'll encounter this error:
 
 ```
 Access to fetch at 'https://api.pricempire.com/v4/trader/portfolios' from origin 'http://localhost:5500' 
@@ -12,7 +12,7 @@ No 'Access-Control-Allow-Origin' header is present on the requested resource.
 ## Solution
 A local proxy server that:
 1. Receives requests from your browser application
-2. Forwards them to the PricEmpire API with proper headers
+2. Forwards them to the Pricempire API with proper headers
 3. Returns the API response with CORS headers enabled
 4. Runs on your local machine (localhost:3000)
 
@@ -47,7 +47,7 @@ node proxy-server.js
 You should see:
 ```
 ╔═══════════════════════════════════════════════════════════╗
-║  PricEmpire CORS Proxy Server                             ║
+║  Pricempire CORS Proxy Server                             ║
 ║  Running on http://localhost:3000                         ║
 ║                                                           ║
 ║  Proxy endpoint: http://localhost:3000/api/pricempire     ║
@@ -73,7 +73,7 @@ Open your browser and navigate to:
 - `http://localhost:8000/cs2.html` (if using port 8000)
 - `http://localhost:5500/cs2.html` (if using port 5500)
 
-The CS2 page will now successfully fetch data from PricEmpire through the proxy.
+The CS2 page will now successfully fetch data from Pricempire through the proxy.
 
 ## How It Works
 
@@ -83,7 +83,7 @@ Browser (localhost:8000)
     ↓ fetch('http://localhost:3000/api/pricempire/v4/trader/portfolios')
 Proxy Server (localhost:3000)
     ↓ https.request('https://api.pricempire.com/v4/trader/portfolios')
-PricEmpire API
+Pricempire API
     ↓ JSON response
 Proxy Server (adds CORS headers)
     ↓ Response with Access-Control-Allow-Origin: *
@@ -117,7 +117,7 @@ The proxy server logs all requests and responses:
 
 ```
 [2025-12-23T10:30:45.123Z] Proxying GET request to https://api.pricempire.com/v4/trader/portfolios
-[2025-12-23T10:30:45.789Z] PricEmpire responded with status: 200
+[2025-12-23T10:30:45.789Z] Pricempire responded with status: 200
 ```
 
 ## Error Handling
@@ -150,7 +150,7 @@ net::ERR_CONNECTION_REFUSED
 }
 ```
 
-**Solution:** Ensure you've configured your PricEmpire API key in the Configurations page
+**Solution:** Ensure you've configured your Pricempire API key in the Configurations page
 
 #### 4. Invalid API Key
 **Error from proxy:**
@@ -158,7 +158,7 @@ net::ERR_CONNECTION_REFUSED
 API request failed: 401 Unauthorized
 ```
 
-**Solution:** Check your PricEmpire API key in Configurations page
+**Solution:** Check your Pricempire API key in Configurations page
 
 ## Security Notes
 
@@ -228,7 +228,7 @@ taskkill /PID <PID> /F
 
 ### Keep Both Running
 Both servers need to remain running for the CS2 API integration to work:
-- Proxy server handles PricEmpire API requests
+- Proxy server handles Pricempire API requests
 - Application server serves HTML/CSS/JS files
 
 ## Alternative Solutions
@@ -238,7 +238,7 @@ If you prefer not to run a local proxy server, alternatives include:
 1. **Browser Extension**: CORS Unblock or similar (not recommended for security)
 2. **Backend Integration**: Build a proper Node.js/Python backend API
 3. **Serverless Functions**: Use Vercel/Netlify functions as proxy
-4. **PricEmpire SDK**: Check if PricEmpire provides a JavaScript SDK
+4. **Pricempire SDK**: Check if Pricempire provides a JavaScript SDK
 
 ## Files Modified
 
