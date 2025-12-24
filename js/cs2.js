@@ -12,6 +12,15 @@
 //   - Additional API fields displayed: 24h change, items count, total invested, 
 //     unrealized P&L, ROI
 // - Mode preference saved in localStorage as 'cs2ApiMode'
+// - CORS WORKAROUND: Uses corsproxy.io to bypass CORS restrictions when running on GitHub Pages
+//   (PriceEmpire API doesn't allow direct browser requests)
+
+// CORS Proxy Configuration
+// Options:
+// - 'https://corsproxy.io/?' (default, free, reliable)
+// - 'https://api.allorigins.win/raw?url=' (alternative)
+// - '' (empty string for direct API calls if running on localhost with CORS disabled)
+const CORS_PROXY = 'https://corsproxy.io/?';
 
 // Global DOM elements
 let portfoliosContainer;
@@ -269,7 +278,11 @@ async function fetchPricempireData(force = false) {
         
         showNotification('Fetching data from Pricempire...', 'info');
         
-        const response = await fetch('https://api.pricempire.com/v4/trader/portfolios', {
+        // Use CORS proxy to bypass CORS restrictions in browser
+        const apiUrl = 'https://api.pricempire.com/v4/trader/portfolios';
+        const fetchUrl = CORS_PROXY ? CORS_PROXY + encodeURIComponent(apiUrl) : apiUrl;
+
+        const response = await fetch(fetchUrl, {
             method: 'GET',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
