@@ -219,9 +219,9 @@ function createDefaultPortfolios() {
 // Cache duration: 1 hour (same as other APIs)
 const PRICEMPIRE_CACHE_DURATION = 60 * 60 * 1000;
 
-function getCachedPricEmpireData() {
+function getCachedPricempireData() {
     try {
-        const cached = localStorage.getItem('portfolioPilotPricEmpireCache');
+        const cached = localStorage.getItem('portfolioPilotPricempireCache');
         if (cached) {
             const parsed = JSON.parse(cached);
             const now = Date.now();
@@ -237,26 +237,26 @@ function getCachedPricEmpireData() {
     return null;
 }
 
-function savePricEmpireCache(data) {
+function savePricempireCache(data) {
     try {
         const cacheObject = {
             data: data,
             timestamp: Date.now()
         };
-        localStorage.setItem('portfolioPilotPricEmpireCache', JSON.stringify(cacheObject));
+        localStorage.setItem('portfolioPilotPricempireCache', JSON.stringify(cacheObject));
         console.log('Pricempire data cached successfully');
     } catch (e) {
         console.error('Error saving Pricempire cache:', e);
     }
 }
 
-async function fetchPricEmpireData(force = false) {
+async function fetchPricempireData(force = false) {
     try {
         // Check cache first unless force is true
         if (!force) {
-            const cachedData = getCachedPricEmpireData();
+            const cachedData = getCachedPricempireData();
             if (cachedData) {
-                applyPricEmpireData(cachedData);
+                applyPricempireData(cachedData);
                 return;
             }
         }
@@ -289,13 +289,13 @@ async function fetchPricEmpireData(force = false) {
         }
         
         // Track API usage
-        trackApiUsage('PricEmpire');
+        trackApiUsage('Pricempire');
         
         // Save to cache
-        savePricEmpireCache(data);
+        savePricempireCache(data);
         
         // Apply the data
-        applyPricEmpireData(data);
+        applyPricempireData(data);
         
         showNotification(`Successfully fetched ${data.length} portfolio(s) from Pricempire`, 'success');
     } catch (error) {
@@ -304,7 +304,7 @@ async function fetchPricEmpireData(force = false) {
     }
 }
 
-function applyPricEmpireData(data) {
+function applyPricempireData(data) {
     // Map API portfolios to our structure
     const newPortfolios = {};
     const colorKeys = Object.keys(colorThemes);
@@ -865,4 +865,4 @@ window.removePendingFundsFromUI = function(marketplace) {
 window.editPendingFunds = editPendingFunds;
 
 // Export fetchPricempireData for global access (used by shared.js fetchAllAssetPrices)
-window.fetchPricempireData = fetchPricEmpireData;
+window.fetchPricempireData = fetchPricempireData;
