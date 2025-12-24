@@ -1133,7 +1133,7 @@ async function fetchAllAssetPrices() {
         setUpdateStatus('crypto', results.crypto.failed > 0 ? 'error' : 'success');
 
         // Check if we have any assets to update
-        const totalAssets = results.stocks.total + results.etfs.total + results.crypto.total + results.cs2.total;
+        const totalAssets = results.stocks.total + results.etfs.total + results.crypto.total;
         if (totalAssets === 0) {
             console.log('No assets found to update');
         }
