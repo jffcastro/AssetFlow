@@ -261,7 +261,7 @@ async function fetchPricEmpireData(force = false) {
             }
         }
         
-        const apiKey = getApiKey('PricEmpire');
+        const apiKey = getApiKey('pricempire');
         if (!apiKey) {
             showNotification('Pricempire API key not found. Please configure it in settings.', 'error');
             return;
