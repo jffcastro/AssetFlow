@@ -276,8 +276,12 @@ function savePricempireCache(data) {
 
 async function fetchPricempireData(force = false) {
     try {
-        // Check cache first unless force is true
-        if (!force) {
+        // If force is true, clear the cache to ensure fresh data
+        if (force) {
+            localStorage.removeItem('portfolioPilotPricempireCache');
+            console.log('Cleared Pricempire cache (forced refresh)');
+        } else {
+            // Check cache first unless force is true
             const cachedData = getCachedPricempireData();
             if (cachedData) {
                 applyPricempireData(cachedData);
@@ -294,8 +298,13 @@ async function fetchPricempireData(force = false) {
         showNotification('Fetching data from Pricempire...', 'info');
         
         // Use CORS proxy to bypass CORS restrictions in browser
+        // Add timestamp parameter to prevent CORS proxy caching when forcing refresh
         const apiUrl = 'https://api.pricempire.com/v4/trader/portfolios';
-        const fetchUrl = CORS_PROXY ? CORS_PROXY + encodeURIComponent(apiUrl) : apiUrl;
+        const apiUrlWithCacheBust = force ? `${apiUrl}?_t=${Date.now()}` : apiUrl;
+        const fetchUrl = CORS_PROXY ? CORS_PROXY + encodeURIComponent(apiUrlWithCacheBust) : apiUrlWithCacheBust;
+
+        console.log('Fetching from:', force ? 'Fresh API (cache-busted)' : 'API (may use proxy cache)');
+        console.log('URL:', fetchUrl);
 
         const response = await fetch(fetchUrl, {
             method: 'GET',
@@ -311,6 +320,8 @@ async function fetchPricempireData(force = false) {
         
         const data = await response.json();
         
+        console.log('Raw API response received:', data);
+
         // Validate response format
         if (!data || !Array.isArray(data)) {
             throw new Error('Invalid response format from Pricempire API');
@@ -333,6 +344,9 @@ async function fetchPricempireData(force = false) {
 }
 
 function applyPricempireData(data) {
+    console.log('Applying Pricempire data:', data.length, 'portfolio(s)');
+    console.log('Current portfolios before replacement:', Object.keys(portfolio.cs2.portfolios));
+
     // Map API portfolios to our structure
     const newPortfolios = {};
     const colorKeys = Object.keys(colorThemes);
@@ -363,11 +377,29 @@ function applyPricempireData(data) {
         };
     });
     
+    // Completely replace old portfolios with new ones
     portfolio.cs2.portfolios = newPortfolios;
+    console.log('New portfolios after replacement:', Object.keys(portfolio.cs2.portfolios));
+    console.log('Full portfolio.cs2 object:', JSON.stringify(portfolio.cs2, null, 2));
+
+    // Force save to localStorage
     saveData();
+    console.log('Portfolio data saved to localStorage');
+
+    // Verify the save by reading it back
+    const savedData = localStorage.getItem('portfolioPilotData');
+    if (savedData) {
+        const parsed = JSON.parse(savedData);
+        console.log('Verified saved CS2 portfolios:', Object.keys(parsed.cs2?.portfolios || {}));
+        console.log('Saved portfolio count:', Object.keys(parsed.cs2?.portfolios || {}).length);
+    }
+
+    // Re-render everything
     renderPortfolios();
     updateCombinedDisplay();
     updateCS2RealizedPnLDisplay();
+
+    console.log('Apply complete - UI updated');
 }
 
 function renderPortfolios() {
@@ -715,9 +747,14 @@ function updateCombinedDisplay() {
     totalCs2Eur.textContent = formatCurrency(totalEur, 'EUR');
     
     // Update active items display
-    const activeItemsDisplay = document.getElementById('active-items-usd');
-    if (activeItemsDisplay) {
-        activeItemsDisplay.textContent = formatCurrency(activeItemsUsd, 'USD');
+    const activeItemsUsdDisplay = document.getElementById('active-items-usd');
+    if (activeItemsUsdDisplay) {
+        activeItemsUsdDisplay.textContent = formatCurrency(activeItemsUsd, 'USD');
+    }
+
+    const activeItemsEurDisplay = document.getElementById('active-items-eur');
+    if (activeItemsEurDisplay) {
+        activeItemsEurDisplay.textContent = formatCurrency(activeItemsEur, 'EUR');
     }
 }
 
@@ -961,3 +998,79 @@ window.editPendingFunds = editPendingFunds;
 
 // Export fetchPricempireData for global access (used by shared.js fetchAllAssetPrices)
 window.fetchPricempireData = fetchPricempireData;
+
+// Debug helper functions for troubleshooting
+window.debugCS2 = {
+    // Show current portfolios in memory
+    showPortfolios: function() {
+        console.log('=== CS2 Portfolios in Memory ===');
+        console.log('Portfolio IDs:', Object.keys(portfolio.cs2?.portfolios || {}));
+        console.log('Full data:', JSON.stringify(portfolio.cs2?.portfolios || {}, null, 2));
+        return portfolio.cs2?.portfolios || {};
+    },
+
+    // Show what's saved in localStorage
+    showSaved: function() {
+        console.log('=== CS2 Portfolios in localStorage ===');
+        const saved = localStorage.getItem('portfolioPilotData');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            console.log('Portfolio IDs:', Object.keys(parsed.cs2?.portfolios || {}));
+            console.log('Full data:', JSON.stringify(parsed.cs2?.portfolios || {}, null, 2));
+            return parsed.cs2?.portfolios || {};
+        }
+        console.log('No saved data found');
+        return {};
+    },
+
+    // Show cached API data
+    showCache: function() {
+        console.log('=== Pricempire Cache ===');
+        const cache = localStorage.getItem('portfolioPilotPricempireCache');
+        if (cache) {
+            const parsed = JSON.parse(cache);
+            const age = Math.round((Date.now() - parsed.timestamp) / 60000);
+            console.log(`Cache age: ${age} minutes`);
+            console.log('Cached portfolios:', parsed.data.length);
+            console.log('Data:', parsed.data);
+            return parsed;
+        }
+        console.log('No cache found');
+        return null;
+    },
+
+    // Clear all CS2 caches
+    clearCache: function() {
+        localStorage.removeItem('portfolioPilotPricempireCache');
+        console.log('✅ Pricempire cache cleared');
+    },
+
+    // Force reload from localStorage
+    reload: function() {
+        loadData();
+        renderPortfolios();
+        updateCombinedDisplay();
+        console.log('✅ Reloaded from localStorage');
+    },
+
+    // Compare memory vs saved
+    compare: function() {
+        const inMemory = Object.keys(portfolio.cs2?.portfolios || {});
+        const saved = localStorage.getItem('portfolioPilotData');
+        const inStorage = saved ? Object.keys(JSON.parse(saved).cs2?.portfolios || {}) : [];
+
+        console.log('=== Comparison ===');
+        console.log('In Memory:', inMemory);
+        console.log('In localStorage:', inStorage);
+        console.log('Match:', JSON.stringify(inMemory) === JSON.stringify(inStorage) ? '✅' : '❌');
+    }
+};
+
+console.log('💡 CS2 Debug tools available: window.debugCS2');
+console.log('   - debugCS2.showPortfolios() - Show current portfolios in memory');
+console.log('   - debugCS2.showSaved() - Show portfolios saved in localStorage');
+console.log('   - debugCS2.showCache() - Show Pricempire API cache');
+console.log('   - debugCS2.clearCache() - Clear Pricempire cache');
+console.log('   - debugCS2.reload() - Reload from localStorage');
+console.log('   - debugCS2.compare() - Compare memory vs localStorage');
+
