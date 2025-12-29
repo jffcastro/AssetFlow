@@ -138,7 +138,11 @@ export function calculateRealizedPnL(transactions, portfolio, eurUsdRate) {
     if (portfolio && portfolio.cs2 && portfolio.cs2.portfolios) {
         Object.values(portfolio.cs2.portfolios).forEach(portfolioData => {
             if (portfolioData.realizedPnl) {
-                const eurValue = portfolioData.realizedPnl / eurUsdRate;
+                const currency = portfolioData.currency || 'USD';
+                // Convert to EUR if needed
+                const eurValue = currency === 'USD'
+                    ? portfolioData.realizedPnl / eurUsdRate
+                    : portfolioData.realizedPnl;
                 realizedPnL.cs2 += eurValue;
             }
         });

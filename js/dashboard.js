@@ -1196,9 +1196,15 @@ function calculatePortfolioBreakdown() {
         }
         // If we have dynamic portfolios structure
         else if (portfolio.cs2.portfolios) {
-            const totalUsd = Object.values(portfolio.cs2.portfolios)
-                .reduce((sum, p) => sum + (p.value || 0), 0);
-            cs2Value = totalUsd / eurUsdRate;
+            const totalEur = Object.values(portfolio.cs2.portfolios)
+                .reduce((sum, p) => {
+                    const value = p.value || 0;
+                    const currency = p.currency || 'USD';
+                    // Convert to EUR if needed
+                    const valueInEur = currency === 'USD' ? value / eurUsdRate : value;
+                    return sum + valueInEur;
+                }, 0);
+            cs2Value = totalEur;
         }
         // Legacy structure (playItems + investmentItems)
         else {
@@ -1208,7 +1214,7 @@ function calculatePortfolioBreakdown() {
             cs2Value = totalUsd / eurUsdRate;
         }
 
-        // Add pending funds to CS2 total
+        // Add pending funds to CS2 total (pending funds total is always in USD)
         if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.total) {
             cs2Value += portfolio.cs2.pendingFunds.total / eurUsdRate;
         }

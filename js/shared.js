@@ -583,12 +583,15 @@ function updateSoldAssetsWithCurrentPrices(soldAssets, assetType) {
 }
 
 // --- PENDING FUNDS MANAGEMENT ---
-function addPendingFunds(marketplace, amountUSD) {
+function addPendingFunds(marketplace, amount, currency = 'USD') {
     if (!portfolio.cs2.pendingFunds) {
         portfolio.cs2.pendingFunds = { total: 0, breakdown: {} };
     }
 
-    portfolio.cs2.pendingFunds.breakdown[marketplace] = amountUSD;
+    portfolio.cs2.pendingFunds.breakdown[marketplace] = {
+        amount: amount,
+        currency: currency
+    };
     updatePendingFundsTotal();
     saveData();
 }
@@ -607,8 +610,16 @@ function updatePendingFundsTotal() {
     }
 
     let totalUSD = 0;
-    Object.values(portfolio.cs2.pendingFunds.breakdown).forEach(amount => {
-        totalUSD += amount;
+    Object.values(portfolio.cs2.pendingFunds.breakdown).forEach(item => {
+        // Support both old (number) and new (object) format
+        if (typeof item === 'number') {
+            totalUSD += item;
+        } else if (item && typeof item === 'object') {
+            const amount = item.amount || 0;
+            const currency = item.currency || 'USD';
+            // Convert to USD if needed
+            totalUSD += currency === 'EUR' ? amount * eurUsdRate : amount;
+        }
     });
 
     portfolio.cs2.pendingFunds.total = totalUSD;

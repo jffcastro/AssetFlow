@@ -164,6 +164,21 @@ function initializePortfolios() {
         createDefaultPortfolios();
     }
     
+    // Migrate pending funds to new currency-aware format
+    if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.breakdown) {
+        let needsMigration = false;
+        Object.entries(portfolio.cs2.pendingFunds.breakdown).forEach(([key, value]) => {
+            if (typeof value === 'number') {
+                needsMigration = true;
+            }
+        });
+        if (needsMigration) {
+            // Recalculate total from migrated data
+            updatePendingFundsTotal();
+            saveData();
+        }
+    }
+
     renderPortfolios();
     updateCombinedDisplay();
     updateCS2RealizedPnLDisplay();
@@ -367,7 +382,8 @@ function renderPortfolios() {
 function createPortfolioElement(id, portfolioData) {
     const theme = colorThemes[portfolioData.color];
     const isApiManaged = portfolioData.apiManaged && isApiMode;
-    
+    const currency = portfolioData.currency || 'USD';
+
     const portfolioDiv = document.createElement('div');
     portfolioDiv.className = 'bg-gray-800 p-4 md:p-6 rounded-xl shadow-lg';
     
@@ -380,7 +396,7 @@ function createPortfolioElement(id, portfolioData) {
                     <div>
                         <label class="block text-sm font-medium mb-1">24h Change</label>
                         <div class="bg-gray-700 p-3 rounded-lg ${portfolioData.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'}">
-                            ${portfolioData.change24h >= 0 ? '+' : ''}${formatCurrency(portfolioData.change24h, 'USD')} 
+                            ${portfolioData.change24h >= 0 ? '+' : ''}${formatCurrency(portfolioData.change24h, currency)} 
                             (${portfolioData.change24h_percentage >= 0 ? '+' : ''}${portfolioData.change24h_percentage?.toFixed(2)}%)
                         </div>
                     </div>
@@ -397,7 +413,7 @@ function createPortfolioElement(id, portfolioData) {
                     <div>
                         <label class="block text-sm font-medium mb-1">Total Invested</label>
                         <div class="bg-gray-700 p-3 rounded-lg text-gray-300">
-                            ${formatCurrency(portfolioData.total_invested, 'USD')}
+                            ${formatCurrency(portfolioData.total_invested, currency)}
                         </div>
                     </div>
                 ` : ''}
@@ -405,7 +421,7 @@ function createPortfolioElement(id, portfolioData) {
                     <div>
                         <label class="block text-sm font-medium mb-1">Unrealized P&L</label>
                         <div class="bg-gray-700 p-3 rounded-lg ${portfolioData.profit_loss >= 0 ? 'text-emerald-400' : 'text-red-400'}">
-                            ${portfolioData.profit_loss >= 0 ? '+' : ''}${formatCurrency(portfolioData.profit_loss, 'USD')}
+                            ${portfolioData.profit_loss >= 0 ? '+' : ''}${formatCurrency(portfolioData.profit_loss, currency)}
                         </div>
                     </div>
                 ` : ''}
@@ -436,13 +452,13 @@ function createPortfolioElement(id, portfolioData) {
         ${apiFieldsHtml}
         <div class="flex flex-col gap-4">
             <div>
-                <label for="${id}-input" class="block text-sm font-medium mb-2">Value (USD)</label>
+                <label for="${id}-input" class="block text-sm font-medium mb-2">Value (${currency})</label>
                 <input type="number" id="${id}-input" step="any" placeholder="0.00" 
                        ${isApiManaged ? 'readonly' : ''}
                        class="w-full ${isApiManaged ? 'bg-gray-600 cursor-not-allowed' : 'bg-gray-700'} p-3 rounded-lg border border-gray-600 focus:outline-none focus:${theme.border} text-lg">
             </div>
             <div>
-                <label for="${id}-realized-pnl-input" class="block text-sm font-medium mb-2">Realized P&L (USD)</label>
+                <label for="${id}-realized-pnl-input" class="block text-sm font-medium mb-2">Realized P&L (${currency})</label>
                 <input type="number" id="${id}-realized-pnl-input" step="any" placeholder="0.00" 
                        class="w-full bg-gray-700 p-3 rounded-lg border border-gray-600 focus:outline-none focus:${theme.border} text-lg">
             </div>
@@ -460,10 +476,10 @@ function createPortfolioElement(id, portfolioData) {
         </div>
         <div class="mt-4 p-3 bg-gray-700 rounded-lg">
             <div class="text-sm text-gray-300 mb-2">
-                <strong>Current Value:</strong> <span id="${id}-current" class="${theme.text}">$0.00</span>
+                <strong>Current Value:</strong> <span id="${id}-current" class="${theme.text}">0.00</span>
             </div>
             <div class="text-sm text-gray-300">
-                <strong>Realized P&L:</strong> <span id="${id}-realized-pnl-display" class="${portfolioData.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">$0.00</span> <span id="${id}-realized-pnl-eur-display" class="text-gray-400">(€0.00)</span>
+                <strong>Realized P&L:</strong> <span id="${id}-realized-pnl-display" class="${portfolioData.realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400'}">0.00</span> <span id="${id}-realized-pnl-alt-display" class="text-gray-400">(0.00)</span>
             </div>
         </div>
     `;
@@ -473,13 +489,20 @@ function createPortfolioElement(id, portfolioData) {
     const realizedPnlInput = portfolioDiv.querySelector(`#${id}-realized-pnl-input`);
     const current = portfolioDiv.querySelector(`#${id}-current`);
     const realizedPnlDisplay = portfolioDiv.querySelector(`#${id}-realized-pnl-display`);
-    const realizedPnlEurDisplay = portfolioDiv.querySelector(`#${id}-realized-pnl-eur-display`);
+    const realizedPnlAltDisplay = portfolioDiv.querySelector(`#${id}-realized-pnl-alt-display`);
+
     input.value = portfolioData.value || '';
     realizedPnlInput.value = portfolioData.realizedPnl || '';
-    current.textContent = formatCurrency(portfolioData.value || 0, 'USD');
-    realizedPnlDisplay.textContent = formatCurrency(portfolioData.realizedPnl || 0, 'USD');
-    realizedPnlEurDisplay.textContent = `(€${formatCurrency(portfolioData.realizedPnl / eurUsdRate || 0, 'EUR').replace('€', '')})`;
-    
+    current.textContent = formatCurrency(portfolioData.value || 0, currency);
+    realizedPnlDisplay.textContent = formatCurrency(portfolioData.realizedPnl || 0, currency);
+
+    // Show alternative currency in parentheses
+    const altCurrency = currency === 'USD' ? 'EUR' : 'USD';
+    const realizedPnlAlt = currency === 'USD'
+        ? (portfolioData.realizedPnl || 0) / eurUsdRate
+        : (portfolioData.realizedPnl || 0) * eurUsdRate;
+    realizedPnlAltDisplay.textContent = `(${formatCurrency(realizedPnlAlt, altCurrency)})`;
+
     return portfolioDiv;
 }
 
@@ -488,7 +511,8 @@ function savePortfolio(id) {
     const realizedPnlInput = document.getElementById(`${id}-realized-pnl-input`);
     const value = parseFloat(input.value) || 0;
     const realizedPnl = parseFloat(realizedPnlInput.value) || 0;
-    
+    const currency = portfolio.cs2.portfolios[id].currency || 'USD';
+
     // Track value change for realized P&L calculation
     const previousValue = portfolio.cs2.portfolios[id].value || 0;
     const valueChange = value - previousValue;
@@ -503,14 +527,14 @@ function savePortfolio(id) {
             quantity: 1, // CS2 doesn't use quantity
             price: value,
             total: value,
-            currency: 'USD',
+            currency: currency,
             originalPrice: value,
-            originalCurrency: 'USD',
+            originalCurrency: currency,
             historicalRate: eurUsdRate, // Use current rate since it's a current value update
             previousValue: previousValue,
             currentValue: value,
             date: new Date().toISOString().split('T')[0],
-            note: `Updated ${portfolio.cs2.portfolios[id].name} value from $${previousValue.toFixed(2)} to $${value.toFixed(2)}`,
+            note: `Updated ${portfolio.cs2.portfolios[id].name} value from ${formatCurrency(previousValue, currency)} to ${formatCurrency(value, currency)}`,
             timestamp: new Date().toISOString()
         };
         
@@ -526,13 +550,17 @@ function savePortfolio(id) {
     
     // Update the realized P&L display
     const realizedPnlDisplay = document.getElementById(`${id}-realized-pnl-display`);
-    const realizedPnlEurDisplay = document.getElementById(`${id}-realized-pnl-eur-display`);
+    const realizedPnlAltDisplay = document.getElementById(`${id}-realized-pnl-alt-display`);
     if (realizedPnlDisplay) {
-        realizedPnlDisplay.textContent = formatCurrency(realizedPnl, 'USD');
+        realizedPnlDisplay.textContent = formatCurrency(realizedPnl, currency);
         realizedPnlDisplay.className = realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400';
     }
-    if (realizedPnlEurDisplay) {
-        realizedPnlEurDisplay.textContent = `(€${formatCurrency(realizedPnl / eurUsdRate, 'EUR').replace('€', '')})`;
+    if (realizedPnlAltDisplay) {
+        const altCurrency = currency === 'USD' ? 'EUR' : 'USD';
+        const realizedPnlAlt = currency === 'USD'
+            ? realizedPnl / eurUsdRate
+            : realizedPnl * eurUsdRate;
+        realizedPnlAltDisplay.textContent = `(${formatCurrency(realizedPnlAlt, altCurrency)})`;
     }
     
     showNotification(`${portfolio.cs2.portfolios[id].name} value saved successfully!`, 'success');
@@ -541,20 +569,25 @@ function savePortfolio(id) {
 function savePortfolioRealizedPnL(id) {
     const realizedPnlInput = document.getElementById(`${id}-realized-pnl-input`);
     const realizedPnl = parseFloat(realizedPnlInput.value) || 0;
-    
+    const currency = portfolio.cs2.portfolios[id].currency || 'USD';
+
     portfolio.cs2.portfolios[id].realizedPnl = realizedPnl;
     saveData();
     updateCS2RealizedPnLDisplay();
     
     // Update the realized P&L display
     const realizedPnlDisplay = document.getElementById(`${id}-realized-pnl-display`);
-    const realizedPnlEurDisplay = document.getElementById(`${id}-realized-pnl-eur-display`);
+    const realizedPnlAltDisplay = document.getElementById(`${id}-realized-pnl-alt-display`);
     if (realizedPnlDisplay) {
-        realizedPnlDisplay.textContent = formatCurrency(realizedPnl, 'USD');
+        realizedPnlDisplay.textContent = formatCurrency(realizedPnl, currency);
         realizedPnlDisplay.className = realizedPnl >= 0 ? 'text-emerald-400' : 'text-red-400';
     }
-    if (realizedPnlEurDisplay) {
-        realizedPnlEurDisplay.textContent = `(€${formatCurrency(realizedPnl / eurUsdRate, 'EUR').replace('€', '')})`;
+    if (realizedPnlAltDisplay) {
+        const altCurrency = currency === 'USD' ? 'EUR' : 'USD';
+        const realizedPnlAlt = currency === 'USD'
+            ? realizedPnl / eurUsdRate
+            : realizedPnl * eurUsdRate;
+        realizedPnlAltDisplay.textContent = `(${formatCurrency(realizedPnlAlt, altCurrency)})`;
     }
     
     showNotification(`${portfolio.cs2.portfolios[id].name} Realized P&L saved successfully!`, 'success');
@@ -593,7 +626,8 @@ function handleAddPortfolio(e) {
     const name = document.getElementById('portfolio-name').value.trim();
     const description = document.getElementById('portfolio-description').value.trim();
     const color = document.getElementById('portfolio-color').value;
-    
+    const currency = document.getElementById('portfolio-currency').value;
+
     if (!name) {
         showNotification('Portfolio name is required!', 'error');
         return;
@@ -615,7 +649,8 @@ function handleAddPortfolio(e) {
         description: description || 'Custom portfolio',
         color: color,
         value: 0,
-        currency: 'USD'
+        currency: currency,
+        realizedPnl: 0
     };
     
     saveData();
@@ -629,13 +664,17 @@ function handleAddPortfolio(e) {
 function updateCombinedTotal() {
     if (!portfolio.cs2.portfolios) return;
     
-    const totalUsd = Object.values(portfolio.cs2.portfolios)
-        .reduce((sum, p) => sum + (p.value || 0), 0);
-    
-    // Convert to EUR using the current exchange rate
-    const totalEur = totalUsd / eurUsdRate;
-    
-    // Save the combined total
+    // Convert all portfolio values to EUR
+    const totalEur = Object.values(portfolio.cs2.portfolios)
+        .reduce((sum, p) => {
+            const value = p.value || 0;
+            const currency = p.currency || 'USD';
+            // Convert to EUR if needed
+            const valueInEur = currency === 'USD' ? value / eurUsdRate : value;
+            return sum + valueInEur;
+        }, 0);
+
+    // Save the combined total in EUR
     portfolio.cs2.value = totalEur;
     portfolio.cs2.currency = 'EUR';
 }
@@ -643,17 +682,34 @@ function updateCombinedTotal() {
 function updateCombinedDisplay() {
     if (!portfolio.cs2.portfolios) return;
     
-    // Calculate active items total
+    // Calculate active items total in USD (for display)
     const activeItemsUsd = Object.values(portfolio.cs2.portfolios)
-        .reduce((sum, p) => sum + (p.value || 0), 0);
-    
-    // Calculate pending funds total
+        .reduce((sum, p) => {
+            const value = p.value || 0;
+            const currency = p.currency || 'USD';
+            // Convert to USD if needed
+            const valueInUsd = currency === 'EUR' ? value * eurUsdRate : value;
+            return sum + valueInUsd;
+        }, 0);
+
+    // Calculate active items total in EUR
+    const activeItemsEur = Object.values(portfolio.cs2.portfolios)
+        .reduce((sum, p) => {
+            const value = p.value || 0;
+            const currency = p.currency || 'USD';
+            // Convert to EUR if needed
+            const valueInEur = currency === 'USD' ? value / eurUsdRate : value;
+            return sum + valueInEur;
+        }, 0);
+
+    // Calculate pending funds total (already in USD)
     const pendingFundsUsd = portfolio.cs2.pendingFunds ? portfolio.cs2.pendingFunds.total : 0;
-    
+    const pendingFundsEur = pendingFundsUsd / eurUsdRate;
+
     // Total CS2 exposure
     const totalUsd = activeItemsUsd + pendingFundsUsd;
-    const totalEur = totalUsd / eurUsdRate;
-    
+    const totalEur = activeItemsEur + pendingFundsEur;
+
     // Update displays
     totalCs2Usd.textContent = formatCurrency(totalUsd, 'USD');
     totalCs2Eur.textContent = formatCurrency(totalEur, 'EUR');
@@ -781,7 +837,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function handlePendingFundsSubmit() {
     const marketplaceName = document.getElementById('marketplace-name').value.trim();
     const amount = parseFloat(document.getElementById('funds-amount').value);
-    
+    const currency = document.getElementById('funds-currency').value;
+
     if (!marketplaceName || isNaN(amount) || amount <= 0) {
         showNotification('Please enter valid marketplace name and amount', 'error');
         return;
@@ -792,7 +849,7 @@ function handlePendingFundsSubmit() {
         removePendingFunds(editingMarketplace);
     }
     
-    addPendingFunds(marketplaceName, amount);
+    addPendingFunds(marketplaceName, amount, currency);
     renderPendingFunds();
     updateCombinedDisplay();
     
@@ -829,16 +886,30 @@ function renderPendingFunds() {
     pendingFundsEmpty.classList.add('hidden');
     
     // Render each marketplace
-    Object.entries(breakdown).forEach(([marketplace, amountUSD]) => {
-        const amountEUR = amountUSD / eurUsdRate;
-        
+    Object.entries(breakdown).forEach(([marketplace, item]) => {
+        // Support both old (number) and new (object) format
+        let amount, currency;
+        if (typeof item === 'number') {
+            amount = item;
+            currency = 'USD';
+        } else {
+            amount = item.amount || 0;
+            currency = item.currency || 'USD';
+        }
+
+        // Calculate alternative currency display
+        const altAmount = currency === 'USD' ? amount / eurUsdRate : amount * eurUsdRate;
+        const altCurrency = currency === 'USD' ? 'EUR' : 'USD';
+        const altSymbol = altCurrency === 'USD' ? '$' : '€';
+        const currencySymbol = currency === 'USD' ? '$' : '€';
+
         const marketplaceElement = document.createElement('div');
         marketplaceElement.className = 'flex items-center justify-between p-3 glass-input rounded-lg';
         marketplaceElement.innerHTML = `
             <div class="flex-1">
                 <div class="font-medium text-white">${marketplace}</div>
                 <div class="text-sm text-gray-400">
-                    $${amountUSD.toFixed(2)} (€${amountEUR.toFixed(2)})
+                    ${currencySymbol}${amount.toFixed(2)} (${altSymbol}${altAmount.toFixed(2)})
                 </div>
             </div>
             <div class="flex gap-2">
@@ -856,12 +927,23 @@ function renderPendingFunds() {
 }
 
 function editPendingFunds(marketplace) {
-    const amount = portfolio.cs2.pendingFunds.breakdown[marketplace];
-    
+    const item = portfolio.cs2.pendingFunds.breakdown[marketplace];
+
+    // Support both old (number) and new (object) format
+    let amount, currency;
+    if (typeof item === 'number') {
+        amount = item;
+        currency = 'USD';
+    } else {
+        amount = item.amount || 0;
+        currency = item.currency || 'USD';
+    }
+
     editingMarketplace = marketplace;
     document.getElementById('pending-funds-modal-title').textContent = 'Edit Marketplace Funds';
     document.getElementById('marketplace-name').value = marketplace;
     document.getElementById('funds-amount').value = amount;
+    document.getElementById('funds-currency').value = currency;
     document.getElementById('pending-funds-modal').classList.remove('hidden');
 }
 
