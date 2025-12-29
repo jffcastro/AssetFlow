@@ -1190,9 +1190,10 @@ function calculatePortfolioBreakdown() {
     if (portfolio.cs2) {
         let cs2Value = 0;
 
-        // If we have the combined total in EUR (new structure)
+        // If we have the combined total in EUR (new structure with pending funds included)
         if (typeof portfolio.cs2.value === 'number' && portfolio.cs2.currency === 'EUR') {
             cs2Value = portfolio.cs2.value;
+            // Note: portfolio.cs2.value now includes both active items and pending funds
         }
         // If we have dynamic portfolios structure
         else if (portfolio.cs2.portfolios) {
@@ -1205,6 +1206,11 @@ function calculatePortfolioBreakdown() {
                     return sum + valueInEur;
                 }, 0);
             cs2Value = totalEur;
+
+            // Add pending funds (only if not already in portfolio.cs2.value)
+            if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.total) {
+                cs2Value += portfolio.cs2.pendingFunds.total / eurUsdRate;
+            }
         }
         // Legacy structure (playItems + investmentItems)
         else {
@@ -1212,11 +1218,11 @@ function calculatePortfolioBreakdown() {
             const investmentItemsValue = portfolio.cs2.investmentItems?.value || 0;
             const totalUsd = playItemsValue + investmentItemsValue;
             cs2Value = totalUsd / eurUsdRate;
-        }
 
-        // Add pending funds to CS2 total (pending funds total is always in USD)
-        if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.total) {
-            cs2Value += portfolio.cs2.pendingFunds.total / eurUsdRate;
+            // Add pending funds for legacy structure
+            if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.total) {
+                cs2Value += portfolio.cs2.pendingFunds.total / eurUsdRate;
+            }
         }
 
         breakdown['CS2 Items'] += cs2Value;

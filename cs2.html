@@ -90,7 +90,7 @@
                     </button>
                 </div>
             </div>
-            <p class="text-gray-400 text-sm">Manage your CS2 item portfolios. Each portfolio tracks items in USD and
+            <p class="text-gray-400 text-sm">Manage your CS2 item portfolios. Each portfolio tracks items in EUR and
                 contributes to your total portfolio value.</p>
         </div>
 
@@ -105,18 +105,10 @@
                 <h3 class="text-xl font-semibold text-emerald-400">Total CS2 Portfolio Value</h3>
                 <div class="text-sm text-gray-400">Combined total in EUR</div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-                <div class="p-4 glass-input rounded-lg">
-                    <div class="text-sm text-gray-300 mb-1">Total Exposure (USD)</div>
-                    <div class="text-lg font-semibold text-blue-400" id="total-cs2-usd">$0.00</div>
-                </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="p-4 glass-input rounded-lg">
                     <div class="text-sm text-gray-300 mb-1">Total Exposure (EUR)</div>
                     <div class="text-lg font-semibold text-emerald-400" id="total-cs2-eur">€0.00</div>
-                </div>
-                <div class="p-4 glass-input rounded-lg">
-                    <div class="text-sm text-gray-300 mb-1">Active Items (USD)</div>
-                    <div class="text-lg font-semibold text-green-400" id="active-items-usd">$0.00</div>
                 </div>
                 <div class="p-4 glass-input rounded-lg">
                     <div class="text-sm text-gray-300 mb-1">Active Items (EUR)</div>
@@ -143,10 +135,6 @@
             <div id="pending-funds-container" class="hidden">
                 <div class="mb-4">
                     <div class="flex items-center justify-between p-4 glass-input rounded-lg">
-                        <div>
-                            <div class="text-sm text-gray-300 mb-1">Total Pending Funds (USD)</div>
-                            <div class="text-lg font-semibold text-orange-400" id="total-pending-funds-usd">$0.00</div>
-                        </div>
                         <div>
                             <div class="text-sm text-gray-300 mb-1">Total Pending Funds (EUR)</div>
                             <div class="text-lg font-semibold text-orange-400" id="total-pending-funds-eur">€0.00</div>
@@ -243,14 +231,7 @@
                             <option value="orange">Orange</option>
                         </select>
                     </div>
-                    <div class="mb-6">
-                        <label for="portfolio-currency" class="block text-sm font-medium mb-2">Currency</label>
-                        <select id="portfolio-currency"
-                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500">
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                        </select>
-                    </div>
+                    <input type="hidden" id="portfolio-currency" value="EUR">
                     <div class="flex gap-3">
                         <button type="submit"
                             class="flex-1 glass-button glass-button-primary text-white font-bold py-3 px-6 rounded-lg transition duration-300">
@@ -277,14 +258,7 @@
                             class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500"
                             placeholder="e.g., Steam Market, Buff163, Skinport">
                     </div>
-                    <div class="mb-4">
-                        <label for="funds-currency" class="block text-sm font-medium mb-2">Currency</label>
-                        <select id="funds-currency"
-                            class="w-full glass-input p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-emerald-500">
-                            <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
-                        </select>
-                    </div>
+                    <input type="hidden" id="funds-currency" value="EUR">
                     <div class="mb-6">
                         <label for="funds-amount" class="block text-sm font-medium mb-2">Amount</label>
                         <input type="number" id="funds-amount" step="0.01" min="0" required
