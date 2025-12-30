@@ -1195,31 +1195,46 @@ function calculatePortfolioBreakdown() {
             cs2Value = portfolio.cs2.value;
             // Note: portfolio.cs2.value now includes both active items and pending funds
         }
-        // If we have dynamic portfolios structure
+        // If we have dynamic portfolios structure (portfolios may be in USD or EUR)
         else if (portfolio.cs2.portfolios) {
             const totalEur = Object.values(portfolio.cs2.portfolios)
                 .reduce((sum, p) => {
                     const value = p.value || 0;
-                    const currency = p.currency || 'USD';
-                    // Convert to EUR if needed
+                    const currency = p.currency || 'EUR';
+                    // Convert to EUR if portfolio is stored in USD (for Pricempire API compatibility)
                     const valueInEur = currency === 'USD' ? value / eurUsdRate : value;
                     return sum + valueInEur;
                 }, 0);
             cs2Value = totalEur;
 
-            // Add pending funds (only if not already in portfolio.cs2.value)
-            if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.total) {
-                cs2Value += portfolio.cs2.pendingFunds.total / eurUsdRate;
+            // Add pending funds (calculating total from breakdown in case it's not in portfolio.cs2.value)
+            if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.breakdown) {
+                const pendingFundsEur = Object.values(portfolio.cs2.pendingFunds.breakdown)
+                    .reduce((sum, item) => {
+                        let amount, currency;
+                        if (typeof item === 'number') {
+                            // Legacy format: assume USD
+                            amount = item;
+                            currency = 'USD';
+                        } else {
+                            amount = item.amount || 0;
+                            currency = item.currency || 'EUR';
+                        }
+                        // Convert to EUR if needed
+                        const amountInEur = currency === 'USD' ? amount / eurUsdRate : amount;
+                        return sum + amountInEur;
+                    }, 0);
+                cs2Value += pendingFundsEur;
             }
         }
-        // Legacy structure (playItems + investmentItems)
+        // Legacy structure (playItems + investmentItems in USD)
         else {
             const playItemsValue = portfolio.cs2.playItems?.value || 0;
             const investmentItemsValue = portfolio.cs2.investmentItems?.value || 0;
             const totalUsd = playItemsValue + investmentItemsValue;
             cs2Value = totalUsd / eurUsdRate;
 
-            // Add pending funds for legacy structure
+            // Add pending funds for legacy structure (stored in USD)
             if (portfolio.cs2.pendingFunds && portfolio.cs2.pendingFunds.total) {
                 cs2Value += portfolio.cs2.pendingFunds.total / eurUsdRate;
             }

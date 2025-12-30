@@ -209,9 +209,15 @@ export function calculateTotalValue(portfolio, priceCache, eurUsdRate) {
         if (typeof portfolio.cs2.value === 'number' && portfolio.cs2.currency === 'EUR') {
             cs2Value = portfolio.cs2.value;
         } else if (portfolio.cs2.portfolios) {
-            const totalUsd = Object.values(portfolio.cs2.portfolios)
-                .reduce((sum, p) => sum + (p.value || 0), 0);
-            cs2Value = totalUsd / eurUsdRate;
+            const totalEur = Object.values(portfolio.cs2.portfolios)
+                .reduce((sum, p) => {
+                    const value = p.value || 0;
+                    const currency = p.currency || 'EUR';
+                    // Convert to EUR if portfolio is stored in USD (for Pricempire API compatibility)
+                    const valueInEur = currency === 'USD' ? value / eurUsdRate : value;
+                    return sum + valueInEur;
+                }, 0);
+            cs2Value = totalEur;
         } else {
             const playItemsValue = portfolio.cs2.playItems?.value || 0;
             const investmentItemsValue = portfolio.cs2.investmentItems?.value || 0;

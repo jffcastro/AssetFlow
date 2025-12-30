@@ -1631,13 +1631,19 @@ function calculateTotalValue() {
         if (typeof portfolio.cs2.value === 'number' && portfolio.cs2.currency === 'EUR') {
             cs2Value = portfolio.cs2.value;
         }
-        // If we have dynamic portfolios structure
+        // If we have dynamic portfolios structure (portfolios may be in USD or EUR)
         else if (portfolio.cs2.portfolios) {
-            const totalUsd = Object.values(portfolio.cs2.portfolios)
-                .reduce((sum, p) => sum + (p.value || 0), 0);
-            cs2Value = totalUsd / eurUsdRate;
+            const totalEur = Object.values(portfolio.cs2.portfolios)
+                .reduce((sum, p) => {
+                    const value = p.value || 0;
+                    const currency = p.currency || 'EUR';
+                    // Convert to EUR if portfolio is stored in USD
+                    const valueInEur = currency === 'USD' ? value / eurUsdRate : value;
+                    return sum + valueInEur;
+                }, 0);
+            cs2Value = totalEur;
         }
-        // Legacy structure (playItems + investmentItems)
+        // Legacy structure (playItems + investmentItems in USD)
         else {
             const playItemsValue = portfolio.cs2.playItems?.value || 0;
             const investmentItemsValue = portfolio.cs2.investmentItems?.value || 0;
