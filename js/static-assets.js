@@ -33,6 +33,17 @@ document.addEventListener('DOMContentLoaded', () => {
         yieldRateContainer.style.display = e.target.checked ? 'block' : 'none';
     });
     
+    // Event delegation for edit and delete buttons
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('edit-static-btn')) {
+            const assetId = parseInt(e.target.dataset.assetId);
+            editStaticAsset(assetId);
+        } else if (e.target.classList.contains('delete-static-btn')) {
+            const assetId = parseInt(e.target.dataset.assetId);
+            deleteStaticAsset(assetId);
+        }
+    });
+
     // Initial render
     renderStaticAssets();
 });
@@ -190,8 +201,8 @@ function renderStaticAssetsByType(type, tbodyId, countId) {
                 <td class="py-2 px-2">${currency}</td>
                 <td class="py-2 px-2">${lastUpdated}</td>
                 <td class="py-2 px-2">
-                    <button onclick="editStaticAsset(${asset.id})" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs mr-1">Edit</button>
-                    <button onclick="deleteStaticAsset(${asset.id})" class="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
+                    <button data-asset-id="${asset.id}" class="edit-static-btn bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs mr-1">Edit</button>
+                    <button data-asset-id="${asset.id}" class="delete-static-btn bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-2 rounded text-xs">Delete</button>
                 </td>
             </tr>
         `;
