@@ -5,6 +5,9 @@
 # Operating System Files
 # ===========================================
 
+# Other
+*.Identifier
+
 # macOS
 .DS_Store
 .DS_Store?

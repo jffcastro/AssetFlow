@@ -307,6 +307,16 @@ function initializeCumulativeInvestmentChart() {
 
 // Dashboard-specific functionality
 document.addEventListener('DOMContentLoaded', () => {
+    // Cache frequently accessed DOM elements for performance
+    const frequentlyAccessedElements = [
+        'portfolio-total-eur', 'portfolio-total-usd', 'portfolio-total-btc', 'portfolio-total-eth',
+        'eur-usd-rate-label', 'eur-btc-rate-label', 'eur-eth-rate-label',
+        'last-update-time', 'total-deposits', 'total-withdrawals', 'net-cash-flow',
+        'validate-history-btn', 'monthly-allocation-amount', 'annual-return-rate',
+        'best-performer', 'worst-performer', 'total-pnl', 'total-pnl-percent'
+    ];
+    getCachedElements(frequentlyAccessedElements);
+
     // Initialize charts
     initializePortfolioChart();
     initializeMultiCurrencyChart();
@@ -317,7 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize invested vs net cash flow chart
     initializeInvestedVsCashflowChart();
-    
+
     // Initialize cumulative investment assets chart
     initializeCumulativeInvestmentChart();
 
@@ -347,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
     startScheduledUpdates();
 
     // Set up validate history button
-    const validateHistoryBtn = document.getElementById('validate-history-btn');
+    const validateHistoryBtn = getCachedElement('validate-history-btn');
     if (validateHistoryBtn) {
         validateHistoryBtn.addEventListener('click', addToHistory);
     }
@@ -2289,10 +2299,10 @@ function updateCashFlowSummary() {
     // Negative = money flowing OUT of portfolio (deposits > withdrawals) = RED
     const netCashFlow = totalWithdrawals - totalDeposits;
 
-    // Update DOM elements
-    const totalDepositsEl = document.getElementById('total-deposits');
-    const totalWithdrawalsEl = document.getElementById('total-withdrawals');
-    const netCashFlowEl = document.getElementById('net-cash-flow');
+    // Update DOM elements using cached elements
+    const totalDepositsEl = getCachedElement('total-deposits');
+    const totalWithdrawalsEl = getCachedElement('total-withdrawals');
+    const netCashFlowEl = getCachedElement('net-cash-flow');
 
     if (totalDepositsEl) {
         totalDepositsEl.textContent = formatCurrency(totalDeposits, 'EUR');

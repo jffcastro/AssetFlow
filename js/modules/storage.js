@@ -274,7 +274,6 @@ export function getCachedCryptoRates() {
  * @param {number} eth - ETH price in EUR
  */
 export function setCachedCryptoRates(btc, eth) {
-    localStorage.setItem('portfolioPilotCryptoRates', JSON.stringify({
-        btc, eth, timestamp: Date.now()
-    }));
+    const data = { btc, eth, timestamp: Date.now() };
+    localStorage.setItem('portfolioPilotCryptoRates', JSON.stringify(data));
 }
