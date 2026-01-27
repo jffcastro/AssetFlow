@@ -49,6 +49,8 @@ import {
     calculateTotalValue as _calculateTotalValue
 } from './modules/calculator.js';
 
+import * as performance from './modules/performance.js';
+
 // --- STATE MANAGEMENT ---
 // These remain as mutable globals for backward compatibility
 let portfolio = {
@@ -91,12 +93,17 @@ function loadData() {
     }
 }
 
-function saveData() {
+// Debounced saveData - wrapped with performance.debounce
+const debouncedSaveData = performance.debounce(function() {
     try {
-        localStorage.setItem('portfolioPilotData', JSON.stringify(portfolio));
+        performance.queueStorageWrite('portfolioPilotData', JSON.stringify(portfolio));
     } catch (e) {
         console.error('Error saving portfolio data:', e);
     }
+}, 500);
+
+function saveData() {
+    debouncedSaveData();
 }
 
 function loadExchangeRate() {
@@ -143,9 +150,10 @@ function saveExchangeRate(rate) {
     console.log('Saving exchange rate:', rate);
     eurUsdRate = rate;
     window.eurUsdRate = eurUsdRate; // Sync global reference
-    localStorage.setItem('eurUsdRate', rate);
+    performance.queueStorageWrite('eurUsdRate', rate);
     console.log('Saved eurUsdRate to storage:', eurUsdRate);
     updateExchangeRateLabel();
+    performance.flushStorageQueue();
 }
 
 // --- HISTORICAL EXCHANGE RATES ---
@@ -165,7 +173,7 @@ function loadHistoricalRates() {
 
 function saveHistoricalRates() {
     try {
-        localStorage.setItem('historicalRates', JSON.stringify(historicalRates));
+        performance.queueStorageWrite('historicalRates', JSON.stringify(historicalRates));
     } catch (e) {
         console.error('Error saving historical rates:', e);
     }
@@ -224,7 +232,7 @@ function loadSoldAssetsCache() {
 
 function saveSoldAssetsCache() {
     try {
-        localStorage.setItem('soldAssetsCache', JSON.stringify(soldAssetsCache));
+        performance.queueStorageWrite('soldAssetsCache', JSON.stringify(soldAssetsCache));
     } catch (e) {
         console.error('Error saving sold assets cache:', e);
     }
@@ -804,7 +812,7 @@ function updateLastUpdateTime() {
 }
 
 function setLastUpdateTime() {
-    localStorage.setItem('portfolioPilotLastUpdate', Date.now().toString());
+    performance.queueStorageWrite('portfolioPilotLastUpdate', Date.now().toString());
     updateLastUpdateTime();
 }
 
@@ -822,7 +830,7 @@ function getCachedBenchmarkData() {
 }
 
 function setCachedBenchmarkData(sp500, nasdaq) {
-    localStorage.setItem('portfolioPilotBenchmarkData', JSON.stringify({
+    performance.queueStorageWrite('portfolioPilotBenchmarkData', JSON.stringify({
         sp500,
         nasdaq,
         timestamp: Date.now()
@@ -835,7 +843,7 @@ function setCachedBenchmarkHistory(sp500History, nasdaqHistory) {
         nasdaqHistory: nasdaqHistory,
         timestamp: Date.now()
     };
-    localStorage.setItem('portfolioPilotBenchmarkHistory', JSON.stringify(data));
+    performance.queueStorageWrite('portfolioPilotBenchmarkHistory', JSON.stringify(data));
 }
 
 function getCachedBenchmarkHistory() {
@@ -857,7 +865,7 @@ function setCachedBenchmarkDataForDate(date, sp500Value, nasdaqValue) {
             nasdaq: nasdaqValue,
             timestamp: Date.now()
         };
-        localStorage.setItem('portfolioPilotBenchmarkDataByDate', JSON.stringify(cached));
+        performance.queueStorageWrite('portfolioPilotBenchmarkDataByDate', JSON.stringify(cached));
     } catch (e) {
         console.error('Error caching benchmark data for date:', e);
     }
@@ -1260,7 +1268,7 @@ function loadPriceCache() {
 
 function savePriceCache() {
     try {
-        localStorage.setItem('portfolioPilotPriceCache', JSON.stringify(priceCache));
+        performance.queueStorageWrite('portfolioPilotPriceCache', JSON.stringify(priceCache));
     } catch (e) {
         // ignore
     }
@@ -1307,7 +1315,7 @@ function getCachedCryptoRates() {
 }
 
 function setCachedCryptoRates(btc, eth) {
-    localStorage.setItem('portfolioPilotCryptoRates', JSON.stringify({
+    performance.queueStorageWrite('portfolioPilotCryptoRates', JSON.stringify({
         btc,
         eth,
         timestamp: Date.now()
@@ -1474,12 +1482,17 @@ function loadTransactions() {
     return [];
 }
 
-function saveTransactions(transactions) {
+// Debounced saveTransactions
+const debouncedSaveTransactions = performance.debounce(function(transactions) {
     try {
-        localStorage.setItem('portfolioPilotTransactions', JSON.stringify(transactions));
+        performance.queueStorageWrite('portfolioPilotTransactions', JSON.stringify(transactions));
     } catch (e) {
         console.error('Error saving transactions:', e);
     }
+}, 500);
+
+function saveTransactions(transactions) {
+    debouncedSaveTransactions(transactions);
 }
 
 // Deposit/Withdrawal transaction functions
@@ -1493,12 +1506,17 @@ function loadDepositTransactions() {
     return [];
 }
 
-function saveDepositTransactions(transactions) {
+// Debounced saveDepositTransactions
+const debouncedSaveDepositTransactions = performance.debounce(function(transactions) {
     try {
-        localStorage.setItem('portfolioPilotDeposits', JSON.stringify(transactions));
+        performance.queueStorageWrite('portfolioPilotDeposits', JSON.stringify(transactions));
     } catch (e) {
         console.error('Error saving deposit transactions:', e);
     }
+}, 500);
+
+function saveDepositTransactions(transactions) {
+    debouncedSaveDepositTransactions(transactions);
 }
 
 function getTransactionTotals(transactions) {
@@ -1534,8 +1552,13 @@ function loadValidatedHistory() {
     return [];
 }
 
+// Debounced saveValidatedHistory
+const debouncedSaveValidatedHistory = performance.debounce(function(history) {
+    performance.queueStorageWrite('portfolioPilotValidatedHistory', JSON.stringify(history));
+}, 500);
+
 function saveValidatedHistory(history) {
-    localStorage.setItem('portfolioPilotValidatedHistory', JSON.stringify(history));
+    debouncedSaveValidatedHistory(history);
 }
 
 // --- UTILITY FUNCTIONS ---
@@ -2326,7 +2349,7 @@ function setCachedStockEarnings(symbol, earningsData) {
             data: earningsData,
             timestamp: Date.now()
         };
-        localStorage.setItem('portfolioPilotStockEarnings', JSON.stringify(cached));
+        performance.queueStorageWrite('portfolioPilotStockEarnings', JSON.stringify(cached));
     } catch (e) {
         console.error('Error caching stock earnings:', e);
     }
@@ -2423,7 +2446,7 @@ function setCachedCryptoEvents(coins, eventsData) {
             data: eventsData,
             timestamp: Date.now()
         };
-        localStorage.setItem('portfolioPilotCryptoEvents', JSON.stringify(cached));
+        performance.queueStorageWrite('portfolioPilotCryptoEvents', JSON.stringify(cached));
     } catch (e) {
         console.error('Error caching crypto events:', e);
     }
@@ -2523,7 +2546,7 @@ function setUpdateStatus(assetType, status) {
             status: status,
             timestamp: Date.now()
         };
-        localStorage.setItem('portfolioPilotUpdateStatuses', JSON.stringify(updateStatuses));
+        performance.queueStorageWrite('portfolioPilotUpdateStatuses', JSON.stringify(updateStatuses));
     } catch (e) {
         console.error('Error setting update status:', e);
     }
@@ -3033,5 +3056,20 @@ window.importAllData = importAllData;
 window.getSoldAssetsAnalysis = getSoldAssetsAnalysis;
 window.setupAutoCalculation = setupAutoCalculation;
 window.createTransactionWithCurrencyConversion = createTransactionWithCurrencyConversion;
+
+// Performance utilities exported globally for page scripts
+window.debounce = performance.debounce;
+window.throttle = performance.throttle;
+window.queueStorageWrite = performance.queueStorageWrite;
+window.memoizeWithTTL = performance.memoizeWithTTL;
+window.getCachedElement = performance.getCachedElement;
+window.getCachedElements = performance.getCachedElements;
+window.clearDomCache = performance.clearDomCache;
+window.flushStorageQueue = performance.flushStorageQueue;
+window.forceFlushStorageQueue = performance.forceFlushStorageQueue;
+window.getStorageQueueLength = performance.getStorageQueueLength;
+window.cleanupCaches = performance.cleanupCaches;
+window.clearMemoCache = performance.clearMemoCache;
+window.getMemoCacheStats = performance.getMemoCacheStats;
 
 console.log('✅ Shared.js loaded with ES Modules and global exports');

@@ -126,8 +126,9 @@
             <div class="mb-4 flex flex-wrap gap-4 items-center">
                 <div class="flex items-center gap-2">
                     <label class="text-sm text-gray-300">Filter by Account:</label>
-                    <input type="text" id="account-filter" placeholder="Search accounts..."
-                        class="glass-input p-2 rounded-lg text-sm">
+                    <select id="account-filter" class="glass-input p-2 rounded-lg text-sm">
+                        <option value="">All Accounts</option>
+                    </select>
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-sm text-gray-300">Search Note:</label>
@@ -183,10 +184,19 @@
 
                 <div class="mb-4">
                     <label for="transaction-account" class="block mb-2">Account</label>
-                    <input type="text" id="transaction-account"
-                        placeholder="e.g., Trading 212, Binance, Interactive Brokers"
+                    <select id="transaction-account"
                         class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500"
                         required>
+                        <option value="">Select Account</option>
+                        <option value="__new__">+ Add New Account</option>
+                    </select>
+                </div>
+
+                <div id="new-account-field" class="mb-4 hidden">
+                    <label for="transaction-account-new" class="block mb-2">New Account Name</label>
+                    <input type="text" id="transaction-account-new"
+                        placeholder="e.g., Trading 212, Binance, Interactive Brokers"
+                        class="w-full glass-input p-2 rounded-lg border border-gray-600 focus:outline-none focus:border-green-500">
                 </div>
 
                 <div class="mb-4">
