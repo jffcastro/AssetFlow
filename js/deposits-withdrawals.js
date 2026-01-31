@@ -39,10 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const noteSearch = document.getElementById('note-search');
     const clearFiltersBtn = document.getElementById('clear-filters-btn');
     
-    // Populate account filter dropdown
     if (accountFilter) {
-        populateAccountFilter();
-        accountFilter.addEventListener('change', renderTransactionsList);
+        accountFilter.addEventListener('input', renderTransactionsList);
     }
     
     if (noteSearch) {
@@ -96,9 +94,7 @@ function openTransactionModal(mode = 'add', tx = null) {
     const transactionModalTitle = document.getElementById('transaction-modal-title');
     const transactionIdInput = document.getElementById('transaction-id');
     const transactionTypeSelect = document.getElementById('transaction-type');
-    const transactionAccountSelect = document.getElementById('transaction-account');
-    const transactionAccountNew = document.getElementById('transaction-account-new');
-    const transactionNewField = document.getElementById('new-account-field');
+    const transactionAccountInput = document.getElementById('transaction-account');
     const transactionAmountInput = document.getElementById('transaction-amount');
     const transactionDateInput = document.getElementById('transaction-date');
     const transactionNoteInput = document.getElementById('transaction-note');
@@ -107,31 +103,15 @@ function openTransactionModal(mode = 'add', tx = null) {
     transactionModalTitle.textContent = mode === 'add' ? 'Add Transaction' : 'Edit Transaction';
     transactionIdInput.value = tx ? tx.id : '';
     
-    // Populate account dropdown with existing accounts
-    populateAccountDropdown(tx?.account);
-    
-    // Hide new account field by default
-    transactionNewField.classList.add('hidden');
-    transactionAccountNew.value = '';
-    
     if (tx) {
         transactionTypeSelect.value = tx.type;
-        // Set account dropdown
-        const existingAccounts = getExistingAccounts();
-        if (existingAccounts.includes(tx.account)) {
-            transactionAccountSelect.value = tx.account;
-        } else {
-            // Account doesn't exist anymore, show as new
-            transactionAccountSelect.value = '__new__';
-            transactionNewField.classList.remove('hidden');
-            transactionAccountNew.value = tx.account;
-        }
+        transactionAccountInput.value = tx.account || '';
         transactionAmountInput.value = tx.amount;
         transactionDateInput.value = tx.date;
         transactionNoteInput.value = tx.note || '';
     } else {
         transactionTypeSelect.value = 'deposit';
-        transactionAccountSelect.value = '';
+        transactionAccountInput.value = '';
         transactionAmountInput.value = '';
         transactionDateInput.value = new Date().toISOString().slice(0, 10);
         transactionNoteInput.value = '';
@@ -144,82 +124,20 @@ function closeTransactionModal() {
     document.getElementById('transaction-modal').classList.add('hidden');
 }
 
-function getExistingAccounts() {
-    const transactions = loadDepositTransactions();
-    const accounts = new Set();
-    transactions.forEach(tx => {
-        if (tx.account) {
-            accounts.add(tx.account);
-        }
-    });
-    return Array.from(accounts).sort();
-}
-
-function populateAccountDropdown(selectedAccount = '') {
-    const select = document.getElementById('transaction-account');
-    const accounts = getExistingAccounts();
-    
-    // Keep first two options (Select and Add New)
-    select.innerHTML = `
-        <option value="">Select Account</option>
-        <option value="__new__">+ Add New Account</option>
-    `;
-    
-    // Add existing accounts
-    accounts.forEach(account => {
-        const option = document.createElement('option');
-        option.value = account;
-        option.textContent = account;
-        if (account === selectedAccount) {
-            option.selected = true;
-        }
-        select.appendChild(option);
-    });
-    
-    // Add event listener for dropdown change
-    select.onchange = function() {
-        const newField = document.getElementById('new-account-field');
-        const newInput = document.getElementById('transaction-account-new');
-        if (this.value === '__new__') {
-            newField.classList.remove('hidden');
-            newInput.required = true;
-            newInput.focus();
-        } else {
-            newField.classList.add('hidden');
-            newInput.required = false;
-            newInput.value = '';
-        }
-    };
-}
-
 // Deposit/withdrawal functions are now in shared.js
 
 function saveTransaction() {
     const transactionIdInput = document.getElementById('transaction-id');
     const transactionTypeSelect = document.getElementById('transaction-type');
-    const transactionAccountSelect = document.getElementById('transaction-account');
-    const transactionAccountNew = document.getElementById('transaction-account-new');
+    const transactionAccountInput = document.getElementById('transaction-account');
     const transactionAmountInput = document.getElementById('transaction-amount');
     const transactionDateInput = document.getElementById('transaction-date');
     const transactionNoteInput = document.getElementById('transaction-note');
     
-    // Determine account value (either selected or new)
-    let accountValue;
-    if (transactionAccountSelect.value === '__new__') {
-        accountValue = transactionAccountNew.value.trim();
-    } else {
-        accountValue = transactionAccountSelect.value;
-    }
-    
-    if (!accountValue) {
-        showNotification('Please select or enter an account name', 'error');
-        return;
-    }
-    
     const txData = {
         id: transactionIdInput.value ? parseInt(transactionIdInput.value) : Date.now(),
         type: transactionTypeSelect.value,
-        account: accountValue,
+        account: transactionAccountInput.value.trim(),
         amount: parseFloat(transactionAmountInput.value),
         date: transactionDateInput.value,
         note: transactionNoteInput.value.trim()
@@ -236,7 +154,6 @@ function saveTransaction() {
     }
     
     saveDepositTransactions(transactions);
-    populateAccountFilter();
     renderDepositsSummary();
     renderTransactionsList();
     closeTransactionModal();
@@ -247,7 +164,6 @@ function deleteTransaction(id) {
     if (confirm('Are you sure you want to delete this transaction?')) {
         let transactions = loadDepositTransactions().filter(t => t.id != id);
         saveDepositTransactions(transactions);
-        populateAccountFilter();
         renderDepositsSummary();
         renderTransactionsList();
         showNotification('Transaction deleted successfully!', 'success');
@@ -324,35 +240,13 @@ function renderTransactionsList() {
     renderMonthlyCashflowChart(currentPeriod);
 }
 
-function populateAccountFilter() {
-    const select = document.getElementById('account-filter');
-    if (!select) return;
-    
-    const accounts = getExistingAccounts();
-    const currentValue = select.value;
-    
-    select.innerHTML = '<option value="">All Accounts</option>';
-    
-    accounts.forEach(account => {
-        const option = document.createElement('option');
-        option.value = account;
-        option.textContent = account;
-        select.appendChild(option);
-    });
-    
-    // Restore previous value if still exists
-    if (currentValue && accounts.includes(currentValue)) {
-        select.value = currentValue;
-    }
-}
-
 function applyFilters(transactions) {
     const accountFilter = document.getElementById('account-filter')?.value || '';
     const noteSearch = document.getElementById('note-search')?.value || '';
     
     return transactions.filter(tx => {
-        // Filter by account (exact match for dropdown)
-        if (accountFilter && tx.account !== accountFilter) {
+        // Filter by account
+        if (accountFilter && (!tx.account || !tx.account.toLowerCase().includes(accountFilter.toLowerCase()))) {
             return false;
         }
         

@@ -15,6 +15,3 @@ export * from './calculator.js';
 
 // UI utilities
 export * from './ui.js';
-
-// Performance utilities
-export * from './performance.js';
