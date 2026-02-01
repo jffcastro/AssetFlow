@@ -176,6 +176,8 @@ function initializePortfolios() {
     }
 
     renderPortfolios();
+    updateCombinedTotal();  // Calculate and save portfolio.cs2.value for dashboard
+    saveData();  // Persist the calculated portfolio.cs2.value to localStorage
     updateCombinedDisplay();
     updateCS2RealizedPnLDisplay();
 }
